@@ -21,7 +21,7 @@
 
 ### Backend
 - Node.js + Express + TypeScript
-- PostgreSQL
+- SQLite (for development)
 - Prisma ORM
 - JWT Authentication
 - bcrypt
@@ -45,8 +45,7 @@ painai/
 
 ### Prerequisites
 - Node.js 18+
-- Docker & Docker Compose
-- PostgreSQL
+- Docker & Docker Compose (optional)
 
 ### Installation
 
@@ -60,15 +59,29 @@ npm run install:all
 2. **Setup environment**
 ```bash
 cp backend/.env.example backend/.env
-# Edit backend/.env with your database credentials
+# Edit backend/.env with your configuration
 ```
 
-3. **Start development servers**
+3. **Setup database**
 ```bash
+cd backend
+npx prisma generate
+npx prisma db push
+npx prisma db seed
+```
+
+4. **Start development servers**
+```bash
+# Terminal 1 - Backend
+cd backend
+npm run dev
+
+# Terminal 2 - Frontend
+cd frontend
 npm run dev
 ```
 
-4. **Access the application**
+5. **Access the application**
 - Frontend: http://localhost:3000
 - Backend API: http://localhost:8000
 
@@ -110,4 +123,4 @@ npm run dev
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details. 
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
