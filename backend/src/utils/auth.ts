@@ -1,8 +1,9 @@
 import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
+import jwt, { Secret, SignOptions } from 'jsonwebtoken';
 import { IUser } from '../types';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-jwt-key-here';
+// กำหนด JWT_SECRET เป็น Secret ตาม type ของ jsonwebtoken v9+
+const JWT_SECRET: Secret = process.env.JWT_SECRET || 'b7e2c1a4e8f3d9b6c2a7e4f1b3d8c6a1e9f2b4c7d1a6e3f8b2c5d7e1a3f6b9c4';
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
 
 export const hashPassword = async (password: string): Promise<string> => {
@@ -21,10 +22,8 @@ export const generateToken = (user: IUser): string => {
     role: user.role,
     name: user.name
   };
-
-  return jwt.sign(payload, JWT_SECRET, {
-    expiresIn: JWT_EXPIRES_IN
-  });
+  const options: SignOptions = { expiresIn: JWT_EXPIRES_IN as SignOptions['expiresIn'] };
+  return jwt.sign(payload, JWT_SECRET, options);
 };
 
 export const verifyToken = (token: string): any => {

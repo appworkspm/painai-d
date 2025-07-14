@@ -159,6 +159,31 @@ export const getProfile = async (req: Request, res: Response): Promise<void> => 
   }
 };
 
+export const updateProfile = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const user = (req as any).user;
+    const { name, password } = req.body;
+    const updateData: any = {};
+    if (name) updateData.name = name;
+    if (password) updateData.password = await hashPassword(password);
+    if (!name && !password) {
+      res.status(400).json({ success: false, message: 'No data to update' });
+      return;
+    }
+    const updatedUser = await prisma.user.update({
+      where: { id: user.id },
+      data: updateData,
+      select: {
+        id: true, email: true, name: true, role: true, isActive: true, createdAt: true, updatedAt: true
+      }
+    });
+    res.json({ success: true, message: 'Profile updated', data: updatedUser });
+  } catch (error) {
+    console.error('Update profile error:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+
 // Validation middleware
 export const validateRegister = [
   body('email').isEmail().withMessage('Please provide a valid email'),

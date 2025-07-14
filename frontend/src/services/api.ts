@@ -55,6 +55,11 @@ export const authAPI = {
   },
 };
 
+export const usersAPI = {
+  updateProfile: (data: { name: string; password?: string }) =>
+    api.patch('/auth/profile', data),
+};
+
 // Timesheet API
 export const timesheetAPI = {
   getTimesheets: async (params?: any): Promise<ApiResponse<PaginatedResponse<Timesheet>>> => {

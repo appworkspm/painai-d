@@ -2,6 +2,7 @@ import React from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Clock, Calendar, BarChart3, LogOut, User } from 'lucide-react';
+import { useState } from 'react';
 
 const Layout: React.FC = () => {
   const { user, logout } = useAuth();
@@ -16,6 +17,15 @@ const Layout: React.FC = () => {
   const navigation = [
     { name: 'Dashboard', href: '/', icon: BarChart3 },
     { name: 'Timesheets', href: '/timesheets', icon: Clock },
+    {
+      name: 'Report',
+      icon: BarChart3,
+      children: [
+        { name: 'Workload Report', href: '/report' },
+        { name: 'Timesheet Report', href: '/report/timesheet' },
+      ],
+    },
+    { name: 'Profile', href: '/profile', icon: User },
   ];
 
   return (
@@ -31,21 +41,64 @@ const Layout: React.FC = () => {
           {/* Navigation */}
           <nav className="flex-1 space-y-1 px-4 py-4">
             {navigation.map((item) => {
-              const isActive = location.pathname === item.href;
-              return (
-                <Link
-                  key={item.name}
-                  to={item.href}
-                  className={`group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors ${
-                    isActive
-                      ? 'bg-primary-100 text-primary-700'
-                      : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                  }`}
-                >
-                  <item.icon className="mr-3 h-5 w-5" />
-                  {item.name}
-                </Link>
-              );
+              if (!item.children) {
+                const isActive = location.pathname === item.href;
+                return (
+                  <Link
+                    key={item.name}
+                    to={item.href}
+                    className={`group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+                      isActive
+                        ? 'bg-primary-100 text-primary-700'
+                        : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                    }`}
+                  >
+                    <item.icon className="mr-3 h-5 w-5" />
+                    {item.name}
+                  </Link>
+                );
+              } else {
+                // submenu
+                const [open, setOpen] = useState(true);
+                const isParentActive = item.children.some((c) => location.pathname === c.href);
+                return (
+                  <div key={item.name}>
+                    <button
+                      type="button"
+                      onClick={() => setOpen((v) => !v)}
+                      className={`group flex items-center w-full px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+                        isParentActive
+                          ? 'bg-primary-100 text-primary-700'
+                          : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                      }`}
+                    >
+                      <item.icon className="mr-3 h-5 w-5" />
+                      {item.name}
+                      <span className="ml-auto">{open ? '▾' : '▸'}</span>
+                    </button>
+                    {open && (
+                      <div className="ml-8 mt-1 space-y-1">
+                        {item.children.map((child) => {
+                          const isActive = location.pathname === child.href;
+                          return (
+                            <Link
+                              key={child.name}
+                              to={child.href}
+                              className={`block px-3 py-2 text-sm rounded-md transition-colors ${
+                                isActive
+                                  ? 'bg-primary-50 text-primary-700'
+                                  : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                              }`}
+                            >
+                              {child.name}
+                            </Link>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                );
+              }
             })}
           </nav>
 
