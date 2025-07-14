@@ -1,305 +1,533 @@
-import React, { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from 'react-query';
-import { timesheetAPI } from '../services/api';
-import { ActivityType } from '../types';
-import { Plus, Search, Filter, Edit, Trash2 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Card, Button, Table, Tag, Space, Modal, Form, Input, Select, DatePicker, message, Row, Col, Statistic } from 'antd';
+import { PlusOutlined, EditOutlined, DeleteOutlined, EyeOutlined, SendOutlined, CheckOutlined, CloseOutlined } from '@ant-design/icons';
+import { useAuth } from '../contexts/AuthContext';
+import api from '../services/api';
+import dayjs from 'dayjs';
+
+const { TextArea } = Input;
+const { Option } = Select;
+
+interface Timesheet {
+  id: string;
+  user_id: string;
+  project_id?: string;
+  work_type: string;
+  sub_work_type: string;
+  activity: string;
+  date: string;
+  hours_worked: number;
+  overtime_hours: number;
+  description: string;
+  status: 'draft' | 'submitted' | 'approved' | 'rejected';
+  submitted_at?: string;
+  approved_by?: string;
+  approved_at?: string;
+  rejection_reason?: string;
+  billable: boolean;
+  hourly_rate?: number;
+  created_at: string;
+  updated_at: string;
+  user?: {
+    id: string;
+    first_name: string;
+    last_name: string;
+    email: string;
+  };
+  project?: {
+    id: string;
+    name: string;
+    code: string;
+  };
+  approver?: {
+    id: string;
+    first_name: string;
+    last_name: string;
+  };
+}
+
+interface Project {
+  id: string;
+  name: string;
+  code: string;
+}
 
 const Timesheets: React.FC = () => {
-  const [search, setSearch] = useState('');
-  const [activityFilter, setActivityFilter] = useState<ActivityType | ''>('');
-  const [showCreateForm, setShowCreateForm] = useState(false);
-  
-  const queryClient = useQueryClient();
-
-  const { data: timesheetsData, isLoading } = useQuery(
-    ['timesheets', search, activityFilter],
-    () => timesheetAPI.getTimesheets({ 
-      search, 
-      activityType: activityFilter || undefined,
-      limit: 20 
-    })
-  );
-
-  const createMutation = useMutation(timesheetAPI.createTimesheet, {
-    onSuccess: () => {
-      queryClient.invalidateQueries('timesheets');
-      setShowCreateForm(false);
-    },
+  const { user } = useAuth();
+  const [timesheets, setTimesheets] = useState<Timesheet[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [editingTimesheet, setEditingTimesheet] = useState<Timesheet | null>(null);
+  const [form] = Form.useForm();
+  const [stats, setStats] = useState({
+    total: 0,
+    draft: 0,
+    submitted: 0,
+    approved: 0,
+    rejected: 0,
+    totalHours: 0
   });
 
-  const deleteMutation = useMutation(timesheetAPI.deleteTimesheet, {
-    onSuccess: () => {
-      queryClient.invalidateQueries('timesheets');
-    },
-  });
+  // Work type options
+  const workTypeOptions = [
+    { label: 'งานโครงการ', value: 'PROJECT' },
+    { label: 'งานไม่เกี่ยวกับโครงการ', value: 'NON_PROJECT' }
+  ];
 
-  const timesheets = timesheetsData?.data?.data || [];
-
-  const handleCreateTimesheet = (formData: any) => {
-    createMutation.mutate(formData);
+  const subWorkTypeOptions = {
+    PROJECT: [
+      { label: 'ซอฟต์แวร์', value: 'SOFTWARE' },
+      { label: 'ฮาร์ดแวร์', value: 'HARDWARE' },
+      { label: 'การประชุม', value: 'MEETING' },
+      { label: 'การทดสอบ', value: 'TESTING' },
+      { label: 'เอกสาร', value: 'DOCUMENTATION' }
+    ],
+    NON_PROJECT: [
+      { label: 'การประชุม', value: 'MEETING' },
+      { label: 'การฝึกอบรม', value: 'TRAINING' },
+      { label: 'การบริหาร', value: 'ADMINISTRATION' },
+      { label: 'อื่นๆ', value: 'OTHER' }
+    ]
   };
 
-  const handleDeleteTimesheet = (id: string) => {
-    if (window.confirm('Are you sure you want to delete this timesheet?')) {
-      deleteMutation.mutate(id);
+  const activityOptions = {
+    SOFTWARE: [
+      { label: 'การพัฒนา', value: 'DEVELOPMENT' },
+      { label: 'การออกแบบ', value: 'DESIGN' },
+      { label: 'การแก้ไขบั๊ก', value: 'BUG_FIX' },
+      { label: 'การทดสอบ', value: 'TESTING' }
+    ],
+    HARDWARE: [
+      { label: 'การติดตั้ง', value: 'INSTALLATION' },
+      { label: 'การบำรุงรักษา', value: 'MAINTENANCE' },
+      { label: 'การแก้ไข', value: 'REPAIR' }
+    ],
+    MEETING: [
+      { label: 'การประชุมทีม', value: 'TEAM_MEETING' },
+      { label: 'การประชุมลูกค้า', value: 'CLIENT_MEETING' },
+      { label: 'การประชุมโครงการ', value: 'PROJECT_MEETING' }
+    ]
+  };
+
+  useEffect(() => {
+    fetchTimesheets();
+    fetchProjects();
+  }, []);
+
+  const fetchTimesheets = async () => {
+    try {
+      setLoading(true);
+      const response = await api.get('/timesheets/my');
+      setTimesheets(response.data.data || []);
+      
+      // Calculate stats
+      const stats = response.data.data.reduce((acc: any, timesheet: Timesheet) => {
+        acc.total++;
+        acc[timesheet.status]++;
+        acc.totalHours += timesheet.hours_worked + (timesheet.overtime_hours || 0);
+        return acc;
+      }, { total: 0, draft: 0, submitted: 0, approved: 0, rejected: 0, totalHours: 0 });
+      
+      setStats(stats);
+    } catch (error) {
+      message.error('ไม่สามารถโหลดข้อมูล timesheet ได้');
+    } finally {
+      setLoading(false);
     }
   };
 
-  return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Timesheets</h1>
-          <p className="text-gray-600">จัดการและดูรายการ timesheet</p>
-        </div>
-        <button
-          onClick={() => setShowCreateForm(true)}
-          className="btn btn-primary flex items-center"
-        >
-          <Plus className="h-4 w-4 mr-2" />
-          Add Timesheet
-        </button>
-      </div>
-
-      {/* Filters */}
-      <div className="card">
-        <div className="card-body">
-          <div className="flex flex-col sm:flex-row gap-4">
-            <div className="flex-1">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="Search timesheets..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="input pl-10"
-                />
-              </div>
-            </div>
-            <div className="sm:w-48">
-              <select
-                value={activityFilter}
-                onChange={(e) => setActivityFilter(e.target.value as ActivityType | '')}
-                className="input"
-              >
-                <option value="">All Activities</option>
-                <option value={ActivityType.PROJECT_WORK}>Project Work</option>
-                <option value={ActivityType.NON_PROJECT_WORK}>Non-Project Work</option>
-                <option value={ActivityType.MEETING}>Meeting</option>
-                <option value={ActivityType.BREAK}>Break</option>
-                <option value={ActivityType.OTHER}>Other</option>
-              </select>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Timesheets List */}
-      <div className="card">
-        <div className="card-body">
-          {isLoading ? (
-            <div className="flex justify-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
-            </div>
-          ) : timesheets.length === 0 ? (
-            <p className="text-gray-500 text-center py-8">No timesheets found</p>
-          ) : (
-            <div className="overflow-hidden">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      User
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Activity
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Project
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Duration
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Date
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {timesheets.map((timesheet: any) => (
-                    <tr key={timesheet.id}>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-gray-900">
-                          {timesheet.user?.name}
-                        </div>
-                        <div className="text-sm text-gray-500">
-                          {timesheet.user?.email}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">{timesheet.description}</div>
-                        <div className="text-sm text-gray-500">{timesheet.activityType}</div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">
-                          {timesheet.project?.name || 'No Project'}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">
-                          {timesheet.duration ? `${Math.round(timesheet.duration / 60 * 10) / 10}h` : '-'}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">
-                          {new Date(timesheet.startTime).toLocaleDateString()}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <button
-                          onClick={() => handleDeleteTimesheet(timesheet.id)}
-                          className="text-red-600 hover:text-red-900"
-                          title="Delete"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Create Timesheet Modal */}
-      {showCreateForm && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
-            <div className="mt-3">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Create New Timesheet</h3>
-              <CreateTimesheetForm
-                onSubmit={handleCreateTimesheet}
-                onCancel={() => setShowCreateForm(false)}
-                loading={createMutation.isLoading}
-              />
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-};
-
-// Create Timesheet Form Component
-interface CreateTimesheetFormProps {
-  onSubmit: (data: any) => void;
-  onCancel: () => void;
-  loading: boolean;
-}
-
-const CreateTimesheetForm: React.FC<CreateTimesheetFormProps> = ({ onSubmit, onCancel, loading }) => {
-  const [formData, setFormData] = useState({
-    activityType: ActivityType.PROJECT_WORK,
-    description: '',
-    startTime: new Date().toISOString().slice(0, 16),
-    endTime: '',
-    duration: '',
-  });
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    onSubmit({
-      ...formData,
-      duration: formData.duration ? parseInt(formData.duration) : undefined,
-    });
+  const fetchProjects = async () => {
+    try {
+      const response = await api.get('/projects');
+      setProjects(response.data.projects || []);
+    } catch (error) {
+      console.error('Error fetching projects:', error);
+    }
   };
 
+  const handleSubmit = async (values: any) => {
+    try {
+      const data = {
+        ...values,
+        date: values.date.format('YYYY-MM-DD'),
+        hours_worked: parseFloat(values.hours_worked),
+        overtime_hours: parseFloat(values.overtime_hours || 0),
+        billable: values.billable ?? true
+      };
+
+      if (editingTimesheet) {
+        await api.put(`/timesheets/${editingTimesheet.id}`, data);
+        message.success('อัปเดต timesheet สำเร็จ');
+      } else {
+        await api.post('/timesheets', data);
+        message.success('สร้าง timesheet สำเร็จ');
+      }
+
+      setModalVisible(false);
+      setEditingTimesheet(null);
+      form.resetFields();
+      fetchTimesheets();
+    } catch (error) {
+      message.error('เกิดข้อผิดพลาดในการบันทึกข้อมูล');
+    }
+  };
+
+  const handleEdit = (timesheet: Timesheet) => {
+    setEditingTimesheet(timesheet);
+    form.setFieldsValue({
+      ...timesheet,
+      date: dayjs(timesheet.date),
+      project_id: timesheet.project_id,
+      work_type: timesheet.work_type,
+      sub_work_type: timesheet.sub_work_type,
+      activity: timesheet.activity,
+      hours_worked: timesheet.hours_worked,
+      overtime_hours: timesheet.overtime_hours,
+      description: timesheet.description,
+      billable: timesheet.billable
+    });
+    setModalVisible(true);
+  };
+
+  const handleDelete = async (id: string) => {
+    try {
+      await api.delete(`/timesheets/${id}`);
+      message.success('ลบ timesheet สำเร็จ');
+      fetchTimesheets();
+    } catch (error) {
+      message.error('เกิดข้อผิดพลาดในการลบข้อมูล');
+    }
+  };
+
+  const handleSubmitTimesheet = async (id: string) => {
+    try {
+      await api.patch(`/timesheets/${id}/submit`);
+      message.success('ส่ง timesheet สำเร็จ');
+      fetchTimesheets();
+    } catch (error) {
+      message.error('เกิดข้อผิดพลาดในการส่ง timesheet');
+    }
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'draft': return 'default';
+      case 'submitted': return 'processing';
+      case 'approved': return 'success';
+      case 'rejected': return 'error';
+      default: return 'default';
+    }
+  };
+
+  const getStatusText = (status: string) => {
+    switch (status) {
+      case 'draft': return 'ร่าง';
+      case 'submitted': return 'ส่งแล้ว';
+      case 'approved': return 'อนุมัติแล้ว';
+      case 'rejected': return 'ไม่อนุมัติ';
+      default: return status;
+    }
+  };
+
+  const columns = [
+    {
+      title: 'วันที่',
+      dataIndex: 'date',
+      key: 'date',
+      render: (date: string) => dayjs(date).format('DD/MM/YYYY')
+    },
+    {
+      title: 'ประเภทงาน',
+      dataIndex: 'work_type',
+      key: 'work_type',
+      render: (workType: string) => workTypeOptions.find(opt => opt.value === workType)?.label || workType
+    },
+    {
+      title: 'โครงการ',
+      dataIndex: 'project',
+      key: 'project',
+      render: (project: any) => project ? `${project.name} (${project.code})` : '-'
+    },
+    {
+      title: 'กิจกรรม',
+      dataIndex: 'activity',
+      key: 'activity'
+    },
+    {
+      title: 'ชั่วโมงทำงาน',
+      dataIndex: 'hours_worked',
+      key: 'hours_worked',
+      render: (hours: number, record: Timesheet) => `${hours}h${record.overtime_hours ? ` + ${record.overtime_hours}h OT` : ''}`
+    },
+    {
+      title: 'สถานะ',
+      dataIndex: 'status',
+      key: 'status',
+      render: (status: string) => (
+        <Tag color={getStatusColor(status)}>
+          {getStatusText(status)}
+        </Tag>
+      )
+    },
+    {
+      title: 'การดำเนินการ',
+      key: 'actions',
+      render: (record: Timesheet) => (
+        <Space>
+          <Button 
+            type="text" 
+            icon={<EditOutlined />} 
+            onClick={() => handleEdit(record)}
+            disabled={record.status !== 'draft'}
+          />
+          <Button 
+            type="text" 
+            danger 
+            icon={<DeleteOutlined />} 
+            onClick={() => handleDelete(record.id)}
+            disabled={record.status !== 'draft'}
+          />
+          {record.status === 'draft' && (
+            <Button 
+              type="text" 
+              icon={<SendOutlined />} 
+              onClick={() => handleSubmitTimesheet(record.id)}
+            />
+          )}
+        </Space>
+      )
+    }
+  ];
+
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div>
-        <label className="block text-sm font-medium text-gray-700">Activity Type</label>
-        <select
-          value={formData.activityType}
-          onChange={(e) => setFormData({ ...formData, activityType: e.target.value as ActivityType })}
-          className="input"
-          required
+    <div className="p-6">
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold mb-4">จัดการ Timesheet</h1>
+        
+        {/* Statistics */}
+        <Row gutter={16} className="mb-6">
+          <Col span={4}>
+            <Card>
+              <Statistic title="ทั้งหมด" value={stats.total} />
+            </Card>
+          </Col>
+          <Col span={4}>
+            <Card>
+              <Statistic title="ร่าง" value={stats.draft} />
+            </Card>
+          </Col>
+          <Col span={4}>
+            <Card>
+              <Statistic title="ส่งแล้ว" value={stats.submitted} />
+            </Card>
+          </Col>
+          <Col span={4}>
+            <Card>
+              <Statistic title="อนุมัติแล้ว" value={stats.approved} />
+            </Card>
+          </Col>
+          <Col span={4}>
+            <Card>
+              <Statistic title="ไม่อนุมัติ" value={stats.rejected} />
+            </Card>
+          </Col>
+          <Col span={4}>
+            <Card>
+              <Statistic title="ชั่วโมงรวม" value={stats.totalHours} suffix="h" />
+            </Card>
+          </Col>
+        </Row>
+
+        <Button 
+          type="primary" 
+          icon={<PlusOutlined />}
+          onClick={() => {
+            setEditingTimesheet(null);
+            form.resetFields();
+            setModalVisible(true);
+          }}
+          className="mb-4"
         >
-          <option value={ActivityType.PROJECT_WORK}>Project Work</option>
-          <option value={ActivityType.NON_PROJECT_WORK}>Non-Project Work</option>
-          <option value={ActivityType.MEETING}>Meeting</option>
-          <option value={ActivityType.BREAK}>Break</option>
-          <option value={ActivityType.OTHER}>Other</option>
-        </select>
+          สร้าง Timesheet ใหม่
+        </Button>
       </div>
 
-      <div>
-        <label className="block text-sm font-medium text-gray-700">Description</label>
-        <textarea
-          value={formData.description}
-          onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-          className="input"
-          rows={3}
-          required
+      <Card>
+        <Table
+          columns={columns}
+          dataSource={timesheets}
+          rowKey="id"
+          loading={loading}
+          pagination={{
+            pageSize: 10,
+            showSizeChanger: true,
+            showQuickJumper: true,
+            showTotal: (total, range) => `${range[0]}-${range[1]} จาก ${total} รายการ`
+          }}
         />
-      </div>
+      </Card>
 
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label className="block text-sm font-medium text-gray-700">Start Time</label>
-          <input
-            type="datetime-local"
-            value={formData.startTime}
-            onChange={(e) => setFormData({ ...formData, startTime: e.target.value })}
-            className="input"
-            required
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700">End Time</label>
-          <input
-            type="datetime-local"
-            value={formData.endTime}
-            onChange={(e) => setFormData({ ...formData, endTime: e.target.value })}
-            className="input"
-          />
-        </div>
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium text-gray-700">Duration (minutes)</label>
-        <input
-          type="number"
-          value={formData.duration}
-          onChange={(e) => setFormData({ ...formData, duration: e.target.value })}
-          className="input"
-          placeholder="Optional"
-        />
-      </div>
-
-      <div className="flex justify-end space-x-3 pt-4">
-        <button
-          type="button"
-          onClick={onCancel}
-          className="btn btn-secondary"
-          disabled={loading}
+      {/* Create/Edit Modal */}
+      <Modal
+        title={editingTimesheet ? 'แก้ไข Timesheet' : 'สร้าง Timesheet ใหม่'}
+        open={modalVisible}
+        onCancel={() => {
+          setModalVisible(false);
+          setEditingTimesheet(null);
+          form.resetFields();
+        }}
+        footer={null}
+        width={800}
+      >
+        <Form
+          form={form}
+          layout="vertical"
+          onFinish={handleSubmit}
+          initialValues={{
+            work_type: 'PROJECT',
+            sub_work_type: 'SOFTWARE',
+            activity: 'DEVELOPMENT',
+            hours_worked: 8,
+            overtime_hours: 0,
+            billable: true
+          }}
         >
-          Cancel
-        </button>
-        <button
-          type="submit"
-          className="btn btn-primary"
-          disabled={loading}
-        >
-          {loading ? 'Creating...' : 'Create Timesheet'}
-        </button>
-      </div>
-    </form>
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item
+                name="date"
+                label="วันที่"
+                rules={[{ required: true, message: 'กรุณาเลือกวันที่' }]}
+              >
+                <DatePicker style={{ width: '100%' }} format="DD/MM/YYYY" />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item
+                name="work_type"
+                label="ประเภทงาน"
+                rules={[{ required: true, message: 'กรุณาเลือกประเภทงาน' }]}
+              >
+                <Select
+                  options={workTypeOptions}
+                  onChange={(value) => {
+                    form.setFieldsValue({
+                      sub_work_type: subWorkTypeOptions[value as keyof typeof subWorkTypeOptions][0]?.value,
+                      project_id: value === 'NON_PROJECT' ? null : undefined
+                    });
+                  }}
+                />
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Form.Item
+            name="project_id"
+            label="โครงการ"
+            rules={[{ required: true, message: 'กรุณาเลือกโครงการ' }]}
+          >
+            <Select
+              placeholder="เลือกโครงการ"
+              showSearch
+              optionFilterProp="children"
+              disabled={form.getFieldValue('work_type') === 'NON_PROJECT'}
+            >
+              {projects.map(project => (
+                <Option key={project.id} value={project.id}>
+                  {project.name} ({project.code})
+                </Option>
+              ))}
+            </Select>
+          </Form.Item>
+
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item
+                name="sub_work_type"
+                label="ประเภทงานย่อย"
+                rules={[{ required: true, message: 'กรุณาเลือกประเภทงานย่อย' }]}
+              >
+                <Select
+                  options={subWorkTypeOptions[form.getFieldValue('work_type') as keyof typeof subWorkTypeOptions] || []}
+                  onChange={(value) => {
+                    const activities = activityOptions[value as keyof typeof activityOptions];
+                    if (activities && activities.length > 0) {
+                      form.setFieldsValue({ activity: activities[0].value });
+                    }
+                  }}
+                />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item
+                name="activity"
+                label="กิจกรรม"
+                rules={[{ required: true, message: 'กรุณาเลือกกิจกรรม' }]}
+              >
+                <Select
+                  options={activityOptions[form.getFieldValue('sub_work_type') as keyof typeof activityOptions] || []}
+                />
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item
+                name="hours_worked"
+                label="ชั่วโมงทำงาน"
+                rules={[{ required: true, message: 'กรุณาระบุชั่วโมงทำงาน' }]}
+              >
+                <Input type="number" min={0} max={24} step={0.5} />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item
+                name="overtime_hours"
+                label="ชั่วโมงโอที"
+              >
+                <Input type="number" min={0} max={24} step={0.5} />
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Form.Item
+            name="description"
+            label="รายละเอียด"
+            rules={[{ required: true, message: 'กรุณาระบุรายละเอียด' }]}
+          >
+            <TextArea rows={4} />
+          </Form.Item>
+
+          <Form.Item
+            name="billable"
+            label="สามารถเรียกเก็บเงินได้"
+            valuePropName="checked"
+          >
+            <Select>
+              <Option value={true}>ใช่</Option>
+              <Option value={false}>ไม่</Option>
+            </Select>
+          </Form.Item>
+
+          <Form.Item>
+            <Space>
+              <Button type="primary" htmlType="submit">
+                {editingTimesheet ? 'อัปเดต' : 'สร้าง'}
+              </Button>
+              <Button onClick={() => {
+                setModalVisible(false);
+                setEditingTimesheet(null);
+                form.resetFields();
+              }}>
+                ยกเลิก
+              </Button>
+            </Space>
+          </Form.Item>
+        </Form>
+      </Modal>
+    </div>
   );
 };
 

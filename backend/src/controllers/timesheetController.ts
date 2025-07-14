@@ -1,135 +1,26 @@
 import { Request, Response } from 'express';
-import { body, validationResult, query } from 'express-validator';
-import { prisma } from '../utils/database';
-import { ICreateTimesheet, IUpdateTimesheet, IQueryParams, ActivityType } from '../types';
-import { IAuthenticatedRequest } from '../types';
+import { PrismaClient } from '@prisma/client';
 
-export const createTimesheet = async (req: IAuthenticatedRequest, res: Response): Promise<void> => {
+const prisma = new PrismaClient();
+
+// Get all timesheets for the authenticated user
+export const getMyTimesheets = async (req: Request, res: Response) => {
   try {
-    // Validation
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      res.status(400).json({
-        success: false,
-        message: 'Validation failed',
-        errors: errors.array()
-      });
-      return;
-    }
-
-    const { projectId, activityType, description, startTime, endTime, duration }: ICreateTimesheet = req.body;
-    const userId = req.user!.id;
-
-    // Validate project if provided
-    if (projectId) {
-      const project = await prisma.project.findUnique({
-        where: { id: projectId }
-      });
-
-      if (!project) {
-        res.status(400).json({
-          success: false,
-          message: 'Project not found'
-        });
-        return;
-      }
-    }
-
-    // Create timesheet
-    const timesheet = await prisma.timesheet.create({
-      data: {
-        userId,
-        projectId,
-        activityType,
-        description,
-        startTime: new Date(startTime),
-        endTime: endTime ? new Date(endTime) : null,
-        duration
-      },
-      include: {
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true
-          }
-        },
-        project: {
-          select: {
-            id: true,
-            name: true
-          }
-        }
-      }
-    });
-
-    res.status(201).json({
-      success: true,
-      message: 'Timesheet created successfully',
-      data: timesheet
-    });
-  } catch (error) {
-    console.error('Create timesheet error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Internal server error'
-    });
-  }
-};
-
-export const getTimesheets = async (req: IAuthenticatedRequest, res: Response): Promise<void> => {
-  try {
-    const {
-      page = 1,
-      limit = 10,
-      search,
-      startDate,
-      endDate,
-      userId,
-      projectId,
-      activityType
-    }: IQueryParams = req.query;
+    const userId = (req as any).user.id;
+    const { page = 1, limit = 10, status, project_id, start_date, end_date } = req.query;
 
     const skip = (Number(page) - 1) * Number(limit);
+    const where: any = { user_id: userId };
 
-    // Build where clause
-    const where: any = {
-      isActive: true
-    };
-
-    // Filter by user (admin can see all, others only their own)
-    if (req.user!.role !== 'ADMIN') {
-      where.userId = req.user!.id;
-    } else if (userId) {
-      where.userId = userId;
-    }
-
-    if (projectId) {
-      where.projectId = projectId;
-    }
-
-    if (activityType) {
-      where.activityType = activityType;
-    }
-
-    if (search) {
-      where.description = {
-        contains: search,
-        mode: 'insensitive'
+    if (status) where.status = status;
+    if (project_id) where.project_id = project_id;
+    if (start_date && end_date) {
+      where.date = {
+        gte: new Date(start_date as string),
+        lte: new Date(end_date as string),
       };
     }
 
-    if (startDate || endDate) {
-      where.startTime = {};
-      if (startDate) {
-        where.startTime.gte = new Date(startDate);
-      }
-      if (endDate) {
-        where.startTime.lte = new Date(endDate);
-      }
-    }
-
-    // Get timesheets with pagination
     const [timesheets, total] = await Promise.all([
       prisma.timesheet.findMany({
         where,
@@ -139,53 +30,150 @@ export const getTimesheets = async (req: IAuthenticatedRequest, res: Response): 
               id: true,
               name: true,
               email: true
-            }
+            },
           },
           project: {
             select: {
               id: true,
-              name: true
-            }
-          }
+              name: true,
+            },
+          },
+          approver: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
         },
-        orderBy: {
-          startTime: 'desc'
-        },
+        orderBy: { date: 'desc' },
         skip,
-        take: Number(limit)
+        take: Number(limit),
       }),
-      prisma.timesheet.count({ where })
+      prisma.timesheet.count({ where }),
     ]);
-
-    const totalPages = Math.ceil(total / Number(limit));
 
     res.json({
       success: true,
-      message: 'Timesheets retrieved successfully',
       data: timesheets,
       pagination: {
         page: Number(page),
         limit: Number(limit),
         total,
-        totalPages
-      }
+        pages: Math.ceil(total / Number(limit)),
+      },
     });
   } catch (error) {
-    console.error('Get timesheets error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Internal server error'
-    });
+    console.error('Get my timesheets error:', error);
+    res.status(500).json({ message: 'Internal server error' });
   }
 };
 
-export const getTimesheetById = async (req: IAuthenticatedRequest, res: Response): Promise<void> => {
+// Get pending timesheets for approval (for managers/admins)
+export const getPendingTimesheets = async (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
+    const { page = 1, limit = 10 } = req.query;
 
-    const timesheet = await prisma.timesheet.findUnique({
-      where: { id },
+    const skip = (Number(page) - 1) * Number(limit);
+
+    const [timesheets, total] = await Promise.all([
+      prisma.timesheet.findMany({
+        where: { status: 'submitted' },
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+              email: true
+            },
+          },
+          project: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+        },
+        orderBy: { submitted_at: 'desc' },
+        skip,
+        take: Number(limit),
+      }),
+      prisma.timesheet.count({ where: { status: 'submitted' } }),
+    ]);
+
+    res.json({
+      success: true,
+      data: timesheets,
+      pagination: {
+        page: Number(page),
+        limit: Number(limit),
+        total,
+        pages: Math.ceil(total / Number(limit)),
+      },
+    });
+  } catch (error) {
+    console.error('Get pending timesheets error:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+// Create new timesheet
+export const createTimesheet = async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).user.id;
+    const {
+      project_id,
+      work_type = 'PROJECT',
+      sub_work_type = 'SOFTWARE',
+      activity,
+      date,
+      hours_worked,
+      overtime_hours = 0,
+      description,
+      billable = true,
+      hourly_rate,
+      status = 'draft'
+    } = req.body;
+
+    // Check if timesheet already exists for this user, project, and date
+    const existingTimesheet = await prisma.timesheet.findFirst({
+      where: {
+        user_id: userId,
+        project_id: project_id || null,
+        date: new Date(date),
+        work_type,
+        sub_work_type,
+      },
+    });
+
+    if (existingTimesheet) {
+      res.status(400).json({ 
+        message: 'Timesheet already exists for this date, project, and work type' 
+      });
+      return;
+    }
+
+    const timesheet = await prisma.timesheet.create({
+      data: {
+        user_id: userId,
+        project_id: project_id || null,
+        work_type,
+        sub_work_type,
+        activity,
+        date: new Date(date),
+        hours_worked,
+        overtime_hours,
+        description,
+        status,
+        billable,
+        hourly_rate,
+      },
       include: {
+        project: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
         user: {
           select: {
             id: true,
@@ -193,108 +181,209 @@ export const getTimesheetById = async (req: IAuthenticatedRequest, res: Response
             email: true
           }
         },
-        project: {
-          select: {
-            id: true,
-            name: true
-          }
-        }
-      }
+      },
     });
 
-    if (!timesheet) {
-      res.status(404).json({
-        success: false,
-        message: 'Timesheet not found'
-      });
-      return;
-    }
-
-    // Check permissions
-    if (req.user!.role !== 'ADMIN' && timesheet.userId !== req.user!.id) {
-      res.status(403).json({
-        success: false,
-        message: 'Access denied'
-      });
-      return;
-    }
-
-    res.json({
-      success: true,
-      message: 'Timesheet retrieved successfully',
-      data: timesheet
+    res.status(201).json({
+      message: 'Timesheet created successfully',
+      timesheet,
     });
   } catch (error) {
-    console.error('Get timesheet error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Internal server error'
-    });
+    console.error('Create timesheet error:', error);
+    res.status(500).json({ message: 'Internal server error' });
   }
 };
 
-export const updateTimesheet = async (req: IAuthenticatedRequest, res: Response): Promise<void> => {
+// Update timesheet
+export const updateTimesheet = async (req: Request, res: Response) => {
   try {
-    // Validation
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      res.status(400).json({
-        success: false,
-        message: 'Validation failed',
-        errors: errors.array()
+    const userId = (req as any).user.id;
+    const { id } = req.params;
+    const updateData = req.body;
+
+    // Check if timesheet exists and belongs to user
+    const existingTimesheet = await prisma.timesheet.findFirst({
+      where: { id, user_id: userId }
+    });
+
+    if (!existingTimesheet) {
+      res.status(404).json({ message: 'Timesheet not found' });
+      return;
+    }
+
+    // Don't allow updates if already submitted/approved
+    if (existingTimesheet.status !== 'draft') {
+      res.status(400).json({ 
+        message: 'Cannot update timesheet that is already submitted or approved' 
       });
       return;
     }
 
+    const timesheet = await prisma.timesheet.update({
+      where: { id },
+      data: updateData,
+      include: {
+        project: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true
+          }
+        },
+      },
+    });
+
+    res.json({
+      message: 'Timesheet updated successfully',
+      timesheet,
+    });
+  } catch (error) {
+    console.error('Update timesheet error:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+// Delete timesheet
+export const deleteTimesheet = async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).user.id;
     const { id } = req.params;
-    const updateData: IUpdateTimesheet = req.body;
+
+    // Check if timesheet exists and belongs to user
+    const existingTimesheet = await prisma.timesheet.findFirst({
+      where: { id, user_id: userId }
+    });
+
+    if (!existingTimesheet) {
+      res.status(404).json({ message: 'Timesheet not found' });
+      return;
+    }
+
+    // Don't allow deletion if already submitted/approved
+    if (existingTimesheet.status !== 'draft') {
+      res.status(400).json({ 
+        message: 'Cannot delete timesheet that is already submitted or approved' 
+      });
+      return;
+    }
+
+    await prisma.timesheet.delete({
+      where: { id }
+    });
+
+    res.json({ message: 'Timesheet deleted successfully' });
+  } catch (error) {
+    console.error('Delete timesheet error:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+// Submit timesheet for approval
+export const submitTimesheet = async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).user.id;
+    const { id } = req.params;
+
+    // Check if timesheet exists and belongs to user
+    const existingTimesheet = await prisma.timesheet.findFirst({
+      where: { id, user_id: userId }
+    });
+
+    if (!existingTimesheet) {
+      res.status(404).json({ message: 'Timesheet not found' });
+      return;
+    }
+
+    if (existingTimesheet.status !== 'draft') {
+      res.status(400).json({ 
+        message: 'Timesheet is already submitted or approved' 
+      });
+      return;
+    }
+
+    const timesheet = await prisma.timesheet.update({
+      where: { id },
+      data: {
+        status: 'submitted',
+        submitted_at: new Date(),
+      },
+      include: {
+        project: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true
+          }
+        },
+      },
+    });
+
+    res.json({
+      message: 'Timesheet submitted successfully',
+      timesheet,
+    });
+  } catch (error) {
+    console.error('Submit timesheet error:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+// Approve/reject timesheet (for managers/admins)
+export const approveTimesheet = async (req: Request, res: Response) => {
+  try {
+    const approverId = (req as any).user.id;
+    const { id } = req.params;
+    const { status, rejection_reason } = req.body;
 
     // Check if timesheet exists
-    const existingTimesheet = await prisma.timesheet.findUnique({
+    const existingTimesheet = await prisma.timesheet.findFirst({
       where: { id }
     });
 
     if (!existingTimesheet) {
-      res.status(404).json({
-        success: false,
-        message: 'Timesheet not found'
+      res.status(404).json({ message: 'Timesheet not found' });
+      return;
+    }
+
+    if (existingTimesheet.status !== 'submitted') {
+      res.status(400).json({ 
+        message: 'Timesheet is not in submitted status' 
       });
       return;
     }
 
-    // Check permissions
-    if (req.user!.role !== 'ADMIN' && existingTimesheet.userId !== req.user!.id) {
-      res.status(403).json({
-        success: false,
-        message: 'Access denied'
-      });
-      return;
+    const updateData: any = {
+      status,
+      approved_by: approverId,
+      approved_at: new Date(),
+    };
+
+    if (status === 'rejected' && rejection_reason) {
+      updateData.rejection_reason = rejection_reason;
     }
 
-    // Validate project if provided
-    if (updateData.projectId) {
-      const project = await prisma.project.findUnique({
-        where: { id: updateData.projectId }
-      });
-
-      if (!project) {
-        res.status(400).json({
-          success: false,
-          message: 'Project not found'
-        });
-        return;
-      }
-    }
-
-    // Update timesheet
     const timesheet = await prisma.timesheet.update({
       where: { id },
-      data: {
-        ...updateData,
-        startTime: updateData.startTime ? new Date(updateData.startTime) : undefined,
-        endTime: updateData.endTime ? new Date(updateData.endTime) : undefined
-      },
+      data: updateData,
       include: {
+        project: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
         user: {
           select: {
             id: true,
@@ -302,89 +391,21 @@ export const updateTimesheet = async (req: IAuthenticatedRequest, res: Response)
             email: true
           }
         },
-        project: {
+        approver: {
           select: {
             id: true,
-            name: true
-          }
-        }
-      }
+            name: true,
+          },
+        },
+      },
     });
 
     res.json({
-      success: true,
-      message: 'Timesheet updated successfully',
-      data: timesheet
+      message: `Timesheet ${status} successfully`,
+      timesheet,
     });
   } catch (error) {
-    console.error('Update timesheet error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Internal server error'
-    });
+    console.error('Approve timesheet error:', error);
+    res.status(500).json({ message: 'Internal server error' });
   }
-};
-
-export const deleteTimesheet = async (req: IAuthenticatedRequest, res: Response): Promise<void> => {
-  try {
-    const { id } = req.params;
-
-    // Check if timesheet exists
-    const timesheet = await prisma.timesheet.findUnique({
-      where: { id }
-    });
-
-    if (!timesheet) {
-      res.status(404).json({
-        success: false,
-        message: 'Timesheet not found'
-      });
-      return;
-    }
-
-    // Check permissions
-    if (req.user!.role !== 'ADMIN' && timesheet.userId !== req.user!.id) {
-      res.status(403).json({
-        success: false,
-        message: 'Access denied'
-      });
-      return;
-    }
-
-    // Soft delete
-    await prisma.timesheet.update({
-      where: { id },
-      data: { isActive: false }
-    });
-
-    res.json({
-      success: true,
-      message: 'Timesheet deleted successfully'
-    });
-  } catch (error) {
-    console.error('Delete timesheet error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Internal server error'
-    });
-  }
-};
-
-// Validation middleware
-export const validateCreateTimesheet = [
-  body('activityType').isIn(Object.values(ActivityType)).withMessage('Invalid activity type'),
-  body('description').notEmpty().withMessage('Description is required'),
-  body('startTime').isISO8601().withMessage('Start time must be a valid date'),
-  body('endTime').optional().isISO8601().withMessage('End time must be a valid date'),
-  body('duration').optional().isInt({ min: 0 }).withMessage('Duration must be a positive integer'),
-  body('projectId').optional().isUUID().withMessage('Project ID must be a valid UUID')
-];
-
-export const validateUpdateTimesheet = [
-  body('activityType').optional().isIn(Object.values(ActivityType)).withMessage('Invalid activity type'),
-  body('description').optional().notEmpty().withMessage('Description cannot be empty'),
-  body('startTime').optional().isISO8601().withMessage('Start time must be a valid date'),
-  body('endTime').optional().isISO8601().withMessage('End time must be a valid date'),
-  body('duration').optional().isInt({ min: 0 }).withMessage('Duration must be a positive integer'),
-  body('projectId').optional().isUUID().withMessage('Project ID must be a valid UUID')
-]; 
+}; 

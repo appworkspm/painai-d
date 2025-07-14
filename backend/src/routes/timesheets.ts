@@ -1,25 +1,26 @@
 import { Router } from 'express';
+import { requireAuth } from '../middleware/auth';
 import {
   createTimesheet,
-  getTimesheets,
-  getTimesheetById,
+  getMyTimesheets,
+  getPendingTimesheets,
   updateTimesheet,
   deleteTimesheet,
-  validateCreateTimesheet,
-  validateUpdateTimesheet
+  submitTimesheet,
+  approveTimesheet,
 } from '../controllers/timesheetController';
-import { authenticate } from '../middleware/auth';
 
 const router = Router();
 
-// All routes require authentication
-router.use(authenticate);
+// Timesheet CRUD routes
+router.get('/my', requireAuth, getMyTimesheets);
+router.get('/pending', requireAuth, getPendingTimesheets);
+router.post('/', requireAuth, createTimesheet);
+router.put('/:id', requireAuth, updateTimesheet);
+router.delete('/:id', requireAuth, deleteTimesheet);
 
-// CRUD operations
-router.post('/', validateCreateTimesheet, createTimesheet);
-router.get('/', getTimesheets);
-router.get('/:id', getTimesheetById);
-router.put('/:id', validateUpdateTimesheet, updateTimesheet);
-router.delete('/:id', deleteTimesheet);
+// Timesheet workflow routes
+router.patch('/:id/submit', requireAuth, submitTimesheet);
+router.patch('/:id/approve', requireAuth, approveTimesheet);
 
 export default router; 

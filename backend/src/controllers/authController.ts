@@ -3,6 +3,7 @@ import { body, validationResult } from 'express-validator';
 import { prisma } from '../utils/database';
 import { hashPassword, comparePassword, generateToken } from '../utils/auth';
 import { ICreateUser, ILoginRequest, IAuthResponse } from '../types';
+import crypto from 'crypto';
 
 export const register = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -162,25 +163,124 @@ export const getProfile = async (req: Request, res: Response): Promise<void> => 
 export const updateProfile = async (req: Request, res: Response): Promise<void> => {
   try {
     const user = (req as any).user;
-    const { name, password } = req.body;
+    const { name, currentPassword, newPassword } = req.body;
+    
     const updateData: any = {};
-    if (name) updateData.name = name;
-    if (password) updateData.password = await hashPassword(password);
-    if (!name && !password) {
-      res.status(400).json({ success: false, message: 'No data to update' });
-      return;
+    
+    // Update name if provided
+    if (name) {
+      updateData.name = name;
     }
+    
+    // Update password if provided
+    if (newPassword) {
+      if (!currentPassword) {
+        return res.status(400).json({ 
+          success: false, 
+          message: 'Current password is required to change password' 
+        });
+      }
+      
+      // Verify current password
+      const isCurrentPasswordValid = await comparePassword(currentPassword, user.password);
+      if (!isCurrentPasswordValid) {
+        return res.status(400).json({ 
+          success: false, 
+          message: 'Current password is incorrect' 
+        });
+      }
+      
+      // Hash new password
+      updateData.password = await hashPassword(newPassword);
+    }
+    
+    if (!name && !newPassword) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'No data to update' 
+      });
+    }
+    
     const updatedUser = await prisma.user.update({
       where: { id: user.id },
       data: updateData,
       select: {
-        id: true, email: true, name: true, role: true, isActive: true, createdAt: true, updatedAt: true
+        id: true, 
+        email: true, 
+        name: true, 
+        role: true, 
+        isActive: true, 
+        createdAt: true, 
+        updatedAt: true
       }
     });
-    res.json({ success: true, message: 'Profile updated', data: updatedUser });
+    
+    return res.json({ 
+      success: true, 
+      message: 'Profile updated successfully', 
+      data: updatedUser 
+    });
   } catch (error) {
     console.error('Update profile error:', error);
-    res.status(500).json({ success: false, message: 'Internal server error' });
+    return res.status(500).json({ 
+      success: false, 
+      message: 'Internal server error' 
+    });
+  }
+};
+
+export const forgotPassword = async (req: Request, res: Response) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email is required'
+      });
+    }
+
+    // Check if user exists
+    const user = await prisma.user.findUnique({
+      where: { email }
+    });
+
+    if (!user) {
+      // For security reasons, don't reveal if email exists or not
+      return res.json({
+        success: true,
+        message: 'If the email exists, a password reset link has been sent'
+      });
+    }
+
+    // Generate reset token (in production, use a proper JWT or crypto library)
+    const resetToken = crypto.randomBytes(32).toString('hex');
+    const resetTokenExpiry = new Date(Date.now() + 3600000); // 1 hour
+
+    // Store reset token in database
+    await prisma.user.update({
+      where: { email },
+      data: {
+        resetToken,
+        resetTokenExpiry
+      }
+    });
+
+    // In production, send email here
+    // For now, just return success message
+    console.log(`Password reset link for ${email}: http://localhost:3000/reset-password?token=${resetToken}`);
+
+    return res.json({
+      success: true,
+      message: 'Password reset link has been sent to your email'
+    });
+
+  } catch (error) {
+    console.error('Forgot password error:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
   }
 };
 

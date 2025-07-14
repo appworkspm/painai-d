@@ -16,6 +16,9 @@ async function main() {
       password: adminPassword,
       name: 'Admin User',
       role: 'ADMIN',
+      isActive: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
     },
   });
 
@@ -29,6 +32,9 @@ async function main() {
       password: managerPassword,
       name: 'Project Manager',
       role: 'MANAGER',
+      isActive: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
     },
   });
 
@@ -42,31 +48,32 @@ async function main() {
       password: userPassword,
       name: 'Regular User',
       role: 'USER',
+      isActive: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
     },
   });
 
   // Create sample projects
-  const project1 = await prisma.project.upsert({
-    where: { id: 'project-1' },
-    update: {},
-    create: {
-      id: 'project-1',
+  const project1 = await prisma.project.create({
+    data: {
       name: 'Website Development',
       description: 'Development of company website',
       status: 'ACTIVE',
       managerId: manager.id,
+      createdAt: new Date(),
+      updatedAt: new Date(),
     },
   });
 
-  const project2 = await prisma.project.upsert({
-    where: { id: 'project-2' },
-    update: {},
-    create: {
-      id: 'project-2',
+  const project2 = await prisma.project.create({
+    data: {
       name: 'Mobile App',
       description: 'iOS and Android mobile application',
       status: 'ACTIVE',
       managerId: manager.id,
+      createdAt: new Date(),
+      updatedAt: new Date(),
     },
   });
 
@@ -77,47 +84,52 @@ async function main() {
   await prisma.timesheet.createMany({
     data: [
       {
-        userId: user.id,
-        projectId: project1.id,
-        activityType: 'PROJECT_WORK',
-        description: 'Frontend development - React components',
-        startTime: new Date(yesterday.getTime() + 9 * 60 * 60 * 1000), // 9 AM
-        endTime: new Date(yesterday.getTime() + 12 * 60 * 60 * 1000), // 12 PM
-        duration: 180, // 3 hours
+        user_id: user.id,
+        project_id: project1.id,
+        work_type: 'PROJECT',
+        sub_work_type: 'SOFTWARE',
+        activity: 'Frontend development',
+        date: yesterday,
+        hours_worked: 3.5,
+        overtime_hours: 0,
+        description: 'Developed React components',
+        status: 'submitted',
+        billable: true,
+        hourly_rate: 1000,
+        created_at: yesterday,
+        updated_at: yesterday,
       },
       {
-        userId: user.id,
-        activityType: 'MEETING',
-        description: 'Team standup meeting',
-        startTime: new Date(yesterday.getTime() + 13 * 60 * 60 * 1000), // 1 PM
-        endTime: new Date(yesterday.getTime() + 13 * 60 * 60 * 1000 + 30 * 60 * 1000), // 1:30 PM
-        duration: 30,
+        user_id: user.id,
+        project_id: project2.id,
+        work_type: 'PROJECT',
+        sub_work_type: 'MEETING',
+        activity: 'Team meeting',
+        date: now,
+        hours_worked: 1.0,
+        overtime_hours: 0,
+        description: 'Daily standup',
+        status: 'draft',
+        billable: false,
+        hourly_rate: 0,
+        created_at: now,
+        updated_at: now,
       },
       {
-        userId: user.id,
-        projectId: project1.id,
-        activityType: 'PROJECT_WORK',
-        description: 'Backend API integration',
-        startTime: new Date(yesterday.getTime() + 14 * 60 * 60 * 1000), // 2 PM
-        endTime: new Date(yesterday.getTime() + 17 * 60 * 60 * 1000), // 5 PM
-        duration: 180,
-      },
-      {
-        userId: manager.id,
-        projectId: project2.id,
-        activityType: 'PROJECT_WORK',
-        description: 'Project planning and requirements analysis',
-        startTime: new Date(now.getTime() + 9 * 60 * 60 * 1000), // 9 AM today
-        endTime: new Date(now.getTime() + 11 * 60 * 60 * 1000), // 11 AM today
-        duration: 120,
-      },
-      {
-        userId: manager.id,
-        activityType: 'NON_PROJECT_WORK',
-        description: 'Email correspondence and documentation',
-        startTime: new Date(now.getTime() + 11 * 60 * 60 * 1000), // 11 AM today
-        endTime: new Date(now.getTime() + 12 * 60 * 60 * 1000), // 12 PM today
-        duration: 60,
+        user_id: manager.id,
+        project_id: project2.id,
+        work_type: 'PROJECT',
+        sub_work_type: 'SOFTWARE',
+        activity: 'Planning',
+        date: now,
+        hours_worked: 2.0,
+        overtime_hours: 0,
+        description: 'Project planning and requirements',
+        status: 'approved',
+        billable: true,
+        hourly_rate: 1200,
+        created_at: now,
+        updated_at: now,
       },
     ],
     skipDuplicates: true,

@@ -33,12 +33,10 @@
 ## 📁 Project Structure
 
 ```
-painai/
 ├── frontend/          # React application
 ├── backend/           # Node.js API server
-├── shared/            # Shared types and utilities
 ├── docs/              # Documentation
-└── docker/            # Docker configuration
+└── docker-compose.yml # Docker configuration
 ```
 
 ## 🚀 Quick Start

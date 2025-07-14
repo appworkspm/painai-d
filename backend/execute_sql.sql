@@ -1,0 +1,2 @@
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp"; 
+TRUNCATE TABLE "_prisma_migrations" CASCADE; 

@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { ApiResponse, LoginRequest, AuthResponse, Timesheet, CreateTimesheetForm, UpdateTimesheetForm, PaginatedResponse } from '../types';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -40,50 +40,88 @@ api.interceptors.response.use(
 // Auth API
 export const authAPI = {
   login: async (credentials: LoginRequest): Promise<ApiResponse<AuthResponse>> => {
-    const response = await api.post('/auth/login', credentials);
+    const response = await api.post('/api/auth/login', credentials);
     return response.data;
   },
 
   register: async (userData: any): Promise<ApiResponse<AuthResponse>> => {
-    const response = await api.post('/auth/register', userData);
+    const response = await api.post('/api/auth/register', userData);
+    return response.data;
+  },
+
+  forgotPassword: async (data: { email: string }): Promise<ApiResponse<any>> => {
+    const response = await api.post('/api/auth/forgot-password', data);
     return response.data;
   },
 
   getProfile: async (): Promise<ApiResponse<any>> => {
-    const response = await api.get('/auth/profile');
+    const response = await api.get('/api/auth/profile');
     return response.data;
   },
 };
 
 export const usersAPI = {
-  updateProfile: (data: { name: string; password?: string }) =>
-    api.patch('/auth/profile', data),
+  updateProfile: (data: { name: string; currentPassword?: string; newPassword?: string }) =>
+    api.patch('/api/auth/profile', data),
+};
+
+// Admin API
+export const adminAPI = {
+  getUsers: async (): Promise<ApiResponse<any[]>> => {
+    const response = await api.get('/api/users');
+    return response.data;
+  },
+
+  getUser: async (id: string): Promise<ApiResponse<any>> => {
+    const response = await api.get(`/api/users/${id}`);
+    return response.data;
+  },
+
+  createUser: async (userData: { email: string; name: string; password: string; role: string }): Promise<ApiResponse<any>> => {
+    const response = await api.post('/api/users', userData);
+    return response.data;
+  },
+
+  updateUser: async (id: string, userData: { email?: string; name?: string; role?: string; isActive?: boolean }): Promise<ApiResponse<any>> => {
+    const response = await api.put(`/api/users/${id}`, userData);
+    return response.data;
+  },
+
+  deleteUser: async (id: string): Promise<ApiResponse<void>> => {
+    const response = await api.delete(`/api/users/${id}`);
+    return response.data;
+  },
+
+  getSystemStats: async (): Promise<ApiResponse<any>> => {
+    const response = await api.get('/api/users/stats/overview');
+    return response.data;
+  },
 };
 
 // Timesheet API
 export const timesheetAPI = {
   getTimesheets: async (params?: any): Promise<ApiResponse<PaginatedResponse<Timesheet>>> => {
-    const response = await api.get('/timesheets', { params });
+    const response = await api.get('/api/timesheets', { params });
     return response.data;
   },
 
   getTimesheet: async (id: string): Promise<ApiResponse<Timesheet>> => {
-    const response = await api.get(`/timesheets/${id}`);
+    const response = await api.get(`/api/timesheets/${id}`);
     return response.data;
   },
 
   createTimesheet: async (data: CreateTimesheetForm): Promise<ApiResponse<Timesheet>> => {
-    const response = await api.post('/timesheets', data);
+    const response = await api.post('/api/timesheets', data);
     return response.data;
   },
 
   updateTimesheet: async (id: string, data: UpdateTimesheetForm): Promise<ApiResponse<Timesheet>> => {
-    const response = await api.put(`/timesheets/${id}`, data);
+    const response = await api.put(`/api/timesheets/${id}`, data);
     return response.data;
   },
 
   deleteTimesheet: async (id: string): Promise<ApiResponse<void>> => {
-    const response = await api.delete(`/timesheets/${id}`);
+    const response = await api.delete(`/api/timesheets/${id}`);
     return response.data;
   },
 };

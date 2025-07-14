@@ -1,7 +1,7 @@
 import React from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { Clock, Calendar, BarChart3, LogOut, User } from 'lucide-react';
+import { Clock, Calendar, BarChart3, LogOut, User, Shield } from 'lucide-react';
 import { useState } from 'react';
 
 const Layout: React.FC = () => {
@@ -26,6 +26,11 @@ const Layout: React.FC = () => {
       ],
     },
     { name: 'Profile', href: '/profile', icon: User },
+  ];
+
+  // Add Admin Panel menu item for admin users
+  const adminNavigation = [
+    { name: 'Admin Panel', href: '/admin', icon: Shield },
   ];
 
   return (
@@ -100,6 +105,32 @@ const Layout: React.FC = () => {
                 );
               }
             })}
+
+            {/* Admin Panel Navigation - Only show for admin users */}
+            {user?.role === 'ADMIN' && (
+              <div className="pt-4 border-t border-gray-200">
+                <div className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                  Administration
+                </div>
+                {adminNavigation.map((item) => {
+                  const isActive = location.pathname === item.href;
+                  return (
+                    <Link
+                      key={item.name}
+                      to={item.href}
+                      className={`group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+                        isActive
+                          ? 'bg-red-100 text-red-700'
+                          : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                      }`}
+                    >
+                      <item.icon className="mr-3 h-5 w-5" />
+                      {item.name}
+                    </Link>
+                  );
+                })}
+              </div>
+            )}
           </nav>
 
           {/* User info */}

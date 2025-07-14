@@ -83,4 +83,7 @@ export const requireRole = (requiredRole: string) => {
 
 export const requireAdmin = requireRole('ADMIN');
 export const requireManager = requireRole('MANAGER');
-export const requireUser = requireRole('USER'); 
+export const requireUser = requireRole('USER');
+
+// Alias for backward compatibility
+export const requireAuth = authenticate; 
