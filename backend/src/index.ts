@@ -12,6 +12,7 @@ import authRoutes from './routes/auth';
 import userRoutes from './routes/users';
 import projectRoutes from './routes/projects';
 import timesheetRoutes from './routes/timesheets';
+import reportRoutes from './routes/reports';
 
 // Load environment variables
 dotenv.config();

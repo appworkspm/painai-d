@@ -175,19 +175,21 @@ export const updateProfile = async (req: Request, res: Response): Promise<void> 
     // Update password if provided
     if (newPassword) {
       if (!currentPassword) {
-        return res.status(400).json({ 
+        res.status(400).json({ 
           success: false, 
           message: 'Current password is required to change password' 
         });
+        return;
       }
       
       // Verify current password
       const isCurrentPasswordValid = await comparePassword(currentPassword, user.password);
       if (!isCurrentPasswordValid) {
-        return res.status(400).json({ 
+        res.status(400).json({ 
           success: false, 
           message: 'Current password is incorrect' 
         });
+        return;
       }
       
       // Hash new password
@@ -195,10 +197,11 @@ export const updateProfile = async (req: Request, res: Response): Promise<void> 
     }
     
     if (!name && !newPassword) {
-      return res.status(400).json({ 
+      res.status(400).json({ 
         success: false, 
         message: 'No data to update' 
       });
+      return;
     }
     
     const updatedUser = await prisma.user.update({
@@ -215,29 +218,30 @@ export const updateProfile = async (req: Request, res: Response): Promise<void> 
       }
     });
     
-    return res.json({ 
+    res.json({ 
       success: true, 
       message: 'Profile updated successfully', 
       data: updatedUser 
     });
   } catch (error) {
     console.error('Update profile error:', error);
-    return res.status(500).json({ 
+    res.status(500).json({ 
       success: false, 
       message: 'Internal server error' 
     });
   }
 };
 
-export const forgotPassword = async (req: Request, res: Response) => {
+export const forgotPassword = async (req: Request, res: Response): Promise<void> => {
   try {
     const { email } = req.body;
 
     if (!email) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         message: 'Email is required'
       });
+      return;
     }
 
     // Check if user exists
@@ -247,10 +251,11 @@ export const forgotPassword = async (req: Request, res: Response) => {
 
     if (!user) {
       // For security reasons, don't reveal if email exists or not
-      return res.json({
+      res.json({
         success: true,
         message: 'If the email exists, a password reset link has been sent'
       });
+      return;
     }
 
     // Generate reset token (in production, use a proper JWT or crypto library)
@@ -270,14 +275,14 @@ export const forgotPassword = async (req: Request, res: Response) => {
     // For now, just return success message
     console.log(`Password reset link for ${email}: http://localhost:3000/reset-password?token=${resetToken}`);
 
-    return res.json({
+    res.json({
       success: true,
       message: 'Password reset link has been sent to your email'
     });
 
   } catch (error) {
     console.error('Forgot password error:', error);
-    return res.status(500).json({
+    res.status(500).json({
       success: false,
       message: 'Internal server error'
     });

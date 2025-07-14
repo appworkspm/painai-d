@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Button, Table, Tag, Space, Modal, Form, Input, Select, DatePicker, message, Row, Col, Statistic } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined, EyeOutlined, SendOutlined, CheckOutlined, CloseOutlined } from '@ant-design/icons';
+import { Button, Table, Tag, Space, Modal, Form, Input, Select, DatePicker, message, Row, Col, Statistic } from 'antd';
+import { PlusOutlined, EditOutlined, DeleteOutlined, SendOutlined } from '@ant-design/icons';
 import { useAuth } from '../contexts/AuthContext';
 import api from '../services/api';
 import dayjs from 'dayjs';
 
 const { TextArea } = Input;
-const { Option } = Select;
+
 
 interface Timesheet {
   id: string;
@@ -57,6 +57,8 @@ const Timesheets: React.FC = () => {
   const [timesheets, setTimesheets] = useState<Timesheet[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [deleting, setDeleting] = useState<string | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
   const [editingTimesheet, setEditingTimesheet] = useState<Timesheet | null>(null);
   const [form] = Form.useForm();
@@ -119,19 +121,23 @@ const Timesheets: React.FC = () => {
     try {
       setLoading(true);
       const response = await api.get('/timesheets/my');
-      setTimesheets(response.data.data || []);
-      
-      // Calculate stats
-      const stats = response.data.data.reduce((acc: any, timesheet: Timesheet) => {
-        acc.total++;
-        acc[timesheet.status]++;
-        acc.totalHours += timesheet.hours_worked + (timesheet.overtime_hours || 0);
-        return acc;
-      }, { total: 0, draft: 0, submitted: 0, approved: 0, rejected: 0, totalHours: 0 });
-      
-      setStats(stats);
-    } catch (error) {
-      message.error('ไม่สามารถโหลดข้อมูล timesheet ได้');
+      if (response.data.success) {
+        setTimesheets(response.data.data || []);
+        
+        // Calculate stats
+        const stats = response.data.data.reduce((acc: any, timesheet: Timesheet) => {
+          acc.total++;
+          acc[timesheet.status]++;
+          acc.totalHours += timesheet.hours_worked + (timesheet.overtime_hours || 0);
+          return acc;
+        }, { total: 0, draft: 0, submitted: 0, approved: 0, rejected: 0, totalHours: 0 });
+        
+        setStats(stats);
+      } else {
+        message.error(response.data.message || 'ไม่สามารถโหลดข้อมูล timesheet ได้');
+      }
+    } catch (error: any) {
+      message.error(error.response?.data?.message || 'ไม่สามารถโหลดข้อมูล timesheet ได้');
     } finally {
       setLoading(false);
     }
@@ -140,14 +146,19 @@ const Timesheets: React.FC = () => {
   const fetchProjects = async () => {
     try {
       const response = await api.get('/projects');
-      setProjects(response.data.projects || []);
-    } catch (error) {
-      console.error('Error fetching projects:', error);
+      if (response.data.success) {
+        setProjects(response.data.data || []);
+      } else {
+        message.error(response.data.message || 'ไม่สามารถโหลดข้อมูลโครงการได้');
+      }
+    } catch (error: any) {
+      message.error(error.response?.data?.message || 'ไม่สามารถโหลดข้อมูลโครงการได้');
     }
   };
 
   const handleSubmit = async (values: any) => {
     try {
+      setSubmitting(true);
       const data = {
         ...values,
         date: values.date.format('YYYY-MM-DD'),
@@ -157,19 +168,31 @@ const Timesheets: React.FC = () => {
       };
 
       if (editingTimesheet) {
-        await api.put(`/timesheets/${editingTimesheet.id}`, data);
-        message.success('อัปเดต timesheet สำเร็จ');
+        const response = await api.put(`/timesheets/${editingTimesheet.id}`, data);
+        if (response.data.success) {
+          message.success('อัปเดต timesheet สำเร็จ');
+        } else {
+          message.error(response.data.message || 'เกิดข้อผิดพลาดในการอัปเดต');
+          return;
+        }
       } else {
-        await api.post('/timesheets', data);
-        message.success('สร้าง timesheet สำเร็จ');
+        const response = await api.post('/timesheets', data);
+        if (response.data.success) {
+          message.success('สร้าง timesheet สำเร็จ');
+        } else {
+          message.error(response.data.message || 'เกิดข้อผิดพลาดในการสร้าง');
+          return;
+        }
       }
 
       setModalVisible(false);
       setEditingTimesheet(null);
       form.resetFields();
       fetchTimesheets();
-    } catch (error) {
-      message.error('เกิดข้อผิดพลาดในการบันทึกข้อมูล');
+    } catch (error: any) {
+      message.error(error.response?.data?.message || 'เกิดข้อผิดพลาดในการบันทึกข้อมูล');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -192,21 +215,35 @@ const Timesheets: React.FC = () => {
 
   const handleDelete = async (id: string) => {
     try {
-      await api.delete(`/timesheets/${id}`);
-      message.success('ลบ timesheet สำเร็จ');
-      fetchTimesheets();
-    } catch (error) {
-      message.error('เกิดข้อผิดพลาดในการลบข้อมูล');
+      setDeleting(id);
+      const response = await api.delete(`/timesheets/${id}`);
+      if (response.data.success) {
+        message.success('ลบ timesheet สำเร็จ');
+        fetchTimesheets();
+      } else {
+        message.error(response.data.message || 'เกิดข้อผิดพลาดในการลบ');
+      }
+    } catch (error: any) {
+      message.error(error.response?.data?.message || 'เกิดข้อผิดพลาดในการลบข้อมูล');
+    } finally {
+      setDeleting(null);
     }
   };
 
   const handleSubmitTimesheet = async (id: string) => {
     try {
-      await api.patch(`/timesheets/${id}/submit`);
-      message.success('ส่ง timesheet สำเร็จ');
-      fetchTimesheets();
-    } catch (error) {
-      message.error('เกิดข้อผิดพลาดในการส่ง timesheet');
+      setSubmitting(true);
+      const response = await api.patch(`/timesheets/${id}/submit`);
+      if (response.data.success) {
+        message.success('ส่ง timesheet สำเร็จ');
+        fetchTimesheets();
+      } else {
+        message.error(response.data.message || 'เกิดข้อผิดพลาดในการส่ง');
+      }
+    } catch (error: any) {
+      message.error(error.response?.data?.message || 'เกิดข้อผิดพลาดในการส่งข้อมูล');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -279,20 +316,22 @@ const Timesheets: React.FC = () => {
             type="text" 
             icon={<EditOutlined />} 
             onClick={() => handleEdit(record)}
-            disabled={record.status !== 'draft'}
+            disabled={record.status === 'approved' || record.status === 'rejected'}
           />
           <Button 
             type="text" 
             danger 
             icon={<DeleteOutlined />} 
             onClick={() => handleDelete(record.id)}
-            disabled={record.status !== 'draft'}
+            loading={deleting === record.id}
+            disabled={record.status === 'approved' || record.status === 'rejected'}
           />
           {record.status === 'draft' && (
             <Button 
               type="text" 
               icon={<SendOutlined />} 
               onClick={() => handleSubmitTimesheet(record.id)}
+              loading={submitting}
             />
           )}
         </Space>
@@ -308,34 +347,34 @@ const Timesheets: React.FC = () => {
         {/* Statistics */}
         <Row gutter={16} className="mb-6">
           <Col span={4}>
-            <Card>
+            <div className="bg-white p-4 rounded-lg shadow">
               <Statistic title="ทั้งหมด" value={stats.total} />
-            </Card>
+            </div>
           </Col>
           <Col span={4}>
-            <Card>
+            <div className="bg-white p-4 rounded-lg shadow">
               <Statistic title="ร่าง" value={stats.draft} />
-            </Card>
+            </div>
           </Col>
           <Col span={4}>
-            <Card>
+            <div className="bg-white p-4 rounded-lg shadow">
               <Statistic title="ส่งแล้ว" value={stats.submitted} />
-            </Card>
+            </div>
           </Col>
           <Col span={4}>
-            <Card>
+            <div className="bg-white p-4 rounded-lg shadow">
               <Statistic title="อนุมัติแล้ว" value={stats.approved} />
-            </Card>
+            </div>
           </Col>
           <Col span={4}>
-            <Card>
+            <div className="bg-white p-4 rounded-lg shadow">
               <Statistic title="ไม่อนุมัติ" value={stats.rejected} />
-            </Card>
+            </div>
           </Col>
           <Col span={4}>
-            <Card>
+            <div className="bg-white p-4 rounded-lg shadow">
               <Statistic title="ชั่วโมงรวม" value={stats.totalHours} suffix="h" />
-            </Card>
+            </div>
           </Col>
         </Row>
 
@@ -353,7 +392,7 @@ const Timesheets: React.FC = () => {
         </Button>
       </div>
 
-      <Card>
+      <div className="bg-white p-6 rounded-lg shadow">
         <Table
           columns={columns}
           dataSource={timesheets}
@@ -363,10 +402,10 @@ const Timesheets: React.FC = () => {
             pageSize: 10,
             showSizeChanger: true,
             showQuickJumper: true,
-            showTotal: (total, range) => `${range[0]}-${range[1]} จาก ${total} รายการ`
+            showTotal: (total: number, range: [number, number]) => `${range[0]}-${range[1]} จาก ${total} รายการ`
           }}
         />
-      </Card>
+      </div>
 
       {/* Create/Edit Modal */}
       <Modal
@@ -379,6 +418,7 @@ const Timesheets: React.FC = () => {
         }}
         footer={null}
         width={800}
+        confirmLoading={submitting}
       >
         <Form
           form={form}
@@ -411,7 +451,7 @@ const Timesheets: React.FC = () => {
               >
                 <Select
                   options={workTypeOptions}
-                  onChange={(value) => {
+                  onChange={(value: string) => {
                     form.setFieldsValue({
                       sub_work_type: subWorkTypeOptions[value as keyof typeof subWorkTypeOptions][0]?.value,
                       project_id: value === 'NON_PROJECT' ? null : undefined
@@ -432,13 +472,12 @@ const Timesheets: React.FC = () => {
               showSearch
               optionFilterProp="children"
               disabled={form.getFieldValue('work_type') === 'NON_PROJECT'}
-            >
-              {projects.map(project => (
-                <Option key={project.id} value={project.id}>
-                  {project.name} ({project.code})
-                </Option>
-              ))}
-            </Select>
+              options={projects.map(project => ({
+                key: project.id,
+                value: project.id,
+                label: `${project.name} (${project.code})`
+              }))}
+            />
           </Form.Item>
 
           <Row gutter={16}>
@@ -450,7 +489,7 @@ const Timesheets: React.FC = () => {
               >
                 <Select
                   options={subWorkTypeOptions[form.getFieldValue('work_type') as keyof typeof subWorkTypeOptions] || []}
-                  onChange={(value) => {
+                  onChange={(value: string) => {
                     const activities = activityOptions[value as keyof typeof activityOptions];
                     if (activities && activities.length > 0) {
                       form.setFieldsValue({ activity: activities[0].value });
@@ -505,10 +544,12 @@ const Timesheets: React.FC = () => {
             label="สามารถเรียกเก็บเงินได้"
             valuePropName="checked"
           >
-            <Select>
-              <Option value={true}>ใช่</Option>
-              <Option value={false}>ไม่</Option>
-            </Select>
+            <Select
+              options={[
+                { value: true, label: 'ใช่' },
+                { value: false, label: 'ไม่' }
+              ]}
+            />
           </Form.Item>
 
           <Form.Item>

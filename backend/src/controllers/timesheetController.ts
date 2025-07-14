@@ -116,6 +116,51 @@ export const getPendingTimesheets = async (req: Request, res: Response) => {
   }
 };
 
+// Get all timesheets (admin/manager)
+export const getAllTimesheets = async (req: Request, res: Response) => {
+  try {
+    const { page = 1, limit = 10, status, project_id, user_id, start_date, end_date } = req.query;
+    const skip = (Number(page) - 1) * Number(limit);
+    const where: any = {};
+    if (status) where.status = status;
+    if (project_id) where.project_id = project_id;
+    if (user_id) where.user_id = user_id;
+    if (start_date && end_date) {
+      where.date = {
+        gte: new Date(start_date as string),
+        lte: new Date(end_date as string),
+      };
+    }
+    const [timesheets, total] = await Promise.all([
+      prisma.timesheet.findMany({
+        where,
+        include: {
+          user: { select: { id: true, name: true, email: true } },
+          project: { select: { id: true, name: true } },
+          approver: { select: { id: true, name: true } },
+        },
+        orderBy: { date: 'desc' },
+        skip,
+        take: Number(limit),
+      }),
+      prisma.timesheet.count({ where }),
+    ]);
+    res.json({
+      success: true,
+      data: timesheets,
+      pagination: {
+        page: Number(page),
+        limit: Number(limit),
+        total,
+        pages: Math.ceil(total / Number(limit)),
+      },
+    });
+  } catch (error) {
+    console.error('Get all timesheets error:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
 // Create new timesheet
 export const createTimesheet = async (req: Request, res: Response) => {
   try {
@@ -239,6 +284,18 @@ export const updateTimesheet = async (req: Request, res: Response) => {
       },
     });
 
+    // Save edit history
+    await prisma.timesheetEditHistory.create({
+      data: {
+        timesheetId: id,
+        userId,
+        action: 'edit',
+        oldValue: existingTimesheet,
+        newValue: updateData,
+        createdAt: new Date(),
+      },
+    });
+
     res.json({
       message: 'Timesheet updated successfully',
       timesheet,
@@ -330,6 +387,18 @@ export const submitTimesheet = async (req: Request, res: Response) => {
       },
     });
 
+    // Save submit history
+    await prisma.timesheetEditHistory.create({
+      data: {
+        timesheetId: id,
+        userId,
+        action: 'submit',
+        oldValue: existingTimesheet,
+        newValue: { status: 'submitted' },
+        createdAt: new Date(),
+      },
+    });
+
     res.json({
       message: 'Timesheet submitted successfully',
       timesheet,
@@ -400,12 +469,40 @@ export const approveTimesheet = async (req: Request, res: Response) => {
       },
     });
 
+    // Save approve/reject history
+    await prisma.timesheetEditHistory.create({
+      data: {
+        timesheetId: id,
+        userId: approverId,
+        action: status === 'approved' ? 'approve' : 'reject',
+        oldValue: existingTimesheet,
+        newValue: updateData,
+        createdAt: new Date(),
+      },
+    });
+
     res.json({
       message: `Timesheet ${status} successfully`,
       timesheet,
     });
   } catch (error) {
     console.error('Approve timesheet error:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+}; 
+
+// Get timesheet edit history
+export const getTimesheetHistory = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const history = await prisma.timesheetEditHistory.findMany({
+      where: { timesheetId: id },
+      include: { user: { select: { id: true, name: true, email: true } } },
+      orderBy: { createdAt: 'desc' },
+    });
+    res.json({ success: true, data: history });
+  } catch (error) {
+    console.error('Get timesheet history error:', error);
     res.status(500).json({ message: 'Internal server error' });
   }
 }; 

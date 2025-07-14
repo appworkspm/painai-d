@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { ApiResponse, LoginRequest, AuthResponse, Timesheet, CreateTimesheetForm, UpdateTimesheetForm, PaginatedResponse } from '../types';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+const API_BASE_URL = (import.meta as any).env?.VITE_API_URL || 'http://localhost:8000';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -96,6 +96,54 @@ export const adminAPI = {
     const response = await api.get('/api/users/stats/overview');
     return response.data;
   },
+
+  getProjects: async (): Promise<ApiResponse<any[]>> => {
+    const response = await api.get('/api/projects');
+    return response.data;
+  },
+
+  getRoles: async (): Promise<ApiResponse<any[]>> => {
+    const response = await api.get('/api/users/roles');
+    return response.data;
+  },
+
+  deleteRole: async (roleId: string): Promise<ApiResponse<void>> => {
+    const response = await api.delete(`/api/users/roles/${roleId}`);
+    return response.data;
+  },
+
+  getUserActivities: async (): Promise<ApiResponse<any[]>> => {
+    const response = await api.get('/api/users/activities');
+    return response.data;
+  },
+};
+
+// Project API
+export const projectAPI = {
+  getProjects: async (): Promise<ApiResponse<any[]>> => {
+    const response = await api.get('/api/projects');
+    return response.data;
+  },
+
+  getProject: async (id: string): Promise<ApiResponse<any>> => {
+    const response = await api.get(`/api/projects/${id}`);
+    return response.data;
+  },
+
+  createProject: async (projectData: { name: string; description: string; status: string; managerId: string }): Promise<ApiResponse<any>> => {
+    const response = await api.post('/api/projects', projectData);
+    return response.data;
+  },
+
+  updateProject: async (id: string, projectData: { name?: string; description?: string; status?: string; managerId?: string }): Promise<ApiResponse<any>> => {
+    const response = await api.put(`/api/projects/${id}`, projectData);
+    return response.data;
+  },
+
+  deleteProject: async (id: string): Promise<ApiResponse<void>> => {
+    const response = await api.delete(`/api/projects/${id}`);
+    return response.data;
+  },
 };
 
 // Timesheet API
@@ -122,6 +170,29 @@ export const timesheetAPI = {
 
   deleteTimesheet: async (id: string): Promise<ApiResponse<void>> => {
     const response = await api.delete(`/api/timesheets/${id}`);
+    return response.data;
+  },
+};
+
+// Report API
+export const reportAPI = {
+  getWorkloadReport: async (params?: any): Promise<ApiResponse<any>> => {
+    const response = await api.get('/api/reports/workload', { params });
+    return response.data;
+  },
+
+  getTimesheetReport: async (params?: any): Promise<ApiResponse<any>> => {
+    const response = await api.get('/api/reports/timesheet', { params });
+    return response.data;
+  },
+
+  getProjectReport: async (params?: any): Promise<ApiResponse<any>> => {
+    const response = await api.get('/api/reports/project', { params });
+    return response.data;
+  },
+
+  getUserActivityReport: async (params?: any): Promise<ApiResponse<any>> => {
+    const response = await api.get('/api/reports/user-activity', { params });
     return response.data;
   },
 };

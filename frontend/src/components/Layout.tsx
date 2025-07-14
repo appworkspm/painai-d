@@ -1,7 +1,22 @@
 import React from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { Clock, Calendar, BarChart3, LogOut, User, Shield } from 'lucide-react';
+import { 
+  Clock, 
+  Calendar, 
+  BarChart3, 
+  LogOut, 
+  User, 
+  Shield, 
+  FileText, 
+  CheckCircle, 
+  Settings, 
+  Users, 
+  FolderOpen,
+  TrendingUp,
+  Activity,
+  Home
+} from 'lucide-react';
 import { useState } from 'react';
 
 const Layout: React.FC = () => {
@@ -15,14 +30,33 @@ const Layout: React.FC = () => {
   };
 
   const navigation = [
-    { name: 'Dashboard', href: '/', icon: BarChart3 },
-    { name: 'Timesheets', href: '/timesheets', icon: Clock },
+    { name: 'Dashboard', href: '/', icon: Home },
     {
-      name: 'Report',
+      name: 'Timesheet Systems',
+      icon: Clock,
+      children: [
+        { name: 'My Timesheets', href: '/timesheets' },
+        { name: 'Create Timesheet', href: '/timesheets/create' },
+        { name: 'Timesheet Approval', href: '/timesheets/approval' },
+        { name: 'Timesheet History', href: '/timesheets/history' },
+      ],
+    },
+    {
+      name: 'Project Management',
+      icon: FolderOpen,
+      children: [
+        { name: 'All Projects', href: '/projects' },
+        { name: 'Project Details', href: '/projects/details' },
+      ],
+    },
+    {
+      name: 'Reports',
       icon: BarChart3,
       children: [
         { name: 'Workload Report', href: '/report' },
         { name: 'Timesheet Report', href: '/report/timesheet' },
+        { name: 'Project Report', href: '/report/project' },
+        { name: 'User Activity Report', href: '/report/activity' },
       ],
     },
     { name: 'Profile', href: '/profile', icon: User },
@@ -44,7 +78,7 @@ const Layout: React.FC = () => {
           </div>
 
           {/* Navigation */}
-          <nav className="flex-1 space-y-1 px-4 py-4">
+          <nav className="flex-1 space-y-1 px-4 py-4 overflow-y-auto">
             {navigation.map((item) => {
               if (!item.children) {
                 const isActive = location.pathname === item.href;
@@ -64,7 +98,10 @@ const Layout: React.FC = () => {
                 );
               } else {
                 // submenu
-                const [open, setOpen] = useState(true);
+                const [open, setOpen] = useState(() => {
+                  // Auto-expand if current path matches any child
+                  return item.children.some((c) => location.pathname === c.href);
+                });
                 const isParentActive = item.children.some((c) => location.pathname === c.href);
                 return (
                   <div key={item.name}>
