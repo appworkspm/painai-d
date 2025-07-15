@@ -19,6 +19,7 @@ const Dashboard: React.FC = () => {
   const totalHours = timesheets.reduce((sum: number, ts: any) => sum + Number(ts.hours_worked || 0) + Number(ts.overtime_hours || 0), 0);
   const projectWork = timesheets.filter((ts: any) => ts.work_type === 'PROJECT').length;
   const nonProjectWork = timesheets.filter((ts: any) => ts.work_type === 'NON_PROJECT').length;
+  const leaveWork = timesheets.filter((ts: any) => ts.work_type === 'LEAVE').length;
 
   const stats = [
     {
@@ -44,6 +45,12 @@ const Dashboard: React.FC = () => {
       value: nonProjectWork,
       icon: Users,
       color: 'bg-orange-500',
+    },
+    {
+      name: 'Leave Days',
+      value: leaveWork,
+      icon: Calendar,
+      color: 'bg-red-500',
     },
   ];
 

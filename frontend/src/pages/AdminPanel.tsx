@@ -1,9 +1,236 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNotification } from '../contexts/NotificationContext';
-import { User, Settings, Users, BarChart3, Shield, Activity, FolderOpen, Plus, Edit, Trash2, X, Save } from 'lucide-react';
+import { User, Settings, Users, BarChart3, Shield, Activity, FolderOpen, Plus, Edit, Trash2, X, Save, Calendar } from 'lucide-react';
 import { User as UserType } from '../types';
-import { adminAPI } from '../services/api';
+import { adminAPI, projectAPI } from '../services/api';
+import { Table, Button, Modal, Form, Input, DatePicker, Select, message, Popconfirm } from 'antd';
+import dayjs from 'dayjs';
+import api from '../services/api';
+
+const holidayTypes = [
+  { label: 'วันหยุดราชการ', value: 'PUBLIC_HOLIDAY' },
+  { label: 'วันหยุดหน่วยงานรัฐ', value: 'GOVERNMENT_HOLIDAY' },
+  { label: 'วันหยุดธนาคาร', value: 'BANK_HOLIDAY' },
+];
+
+const HolidayManagement: React.FC = () => {
+  const [holidays, setHolidays] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [editingHoliday, setEditingHoliday] = useState<any>(null);
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [form] = Form.useForm();
+
+  const fetchHolidays = async () => {
+    setLoading(true);
+    try {
+      const res = await api.get('/api/holidays/holidays');
+      const allHolidays = res.data.data || [];
+      // Filter holidays by selected year
+      const filteredHolidays = allHolidays.filter((holiday: any) => {
+        const holidayYear = new Date(holiday.date).getFullYear();
+        return holidayYear === selectedYear;
+      });
+      setHolidays(filteredHolidays);
+    } catch (e: any) {
+      console.error('Error fetching holidays:', e);
+      if (e.response?.status === 401) {
+        message.error('ไม่มีสิทธิ์เข้าถึงข้อมูลวันหยุด');
+      } else {
+        message.error('โหลดข้อมูลวันหยุดไม่สำเร็จ');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchHolidays();
+  }, [selectedYear]);
+
+  const handleAdd = () => {
+    setEditingHoliday(null);
+    form.resetFields();
+    setModalVisible(true);
+  };
+
+  const handleEdit = (record: any) => {
+    setEditingHoliday(record);
+    form.setFieldsValue({
+      ...record,
+      date: dayjs(record.date),
+    });
+    setModalVisible(true);
+  };
+
+  const handleDelete = async (id: string) => {
+    try {
+      await api.delete(`/api/holidays/holidays/${id}`);
+      message.success('ลบวันหยุดสำเร็จ');
+      fetchHolidays();
+    } catch (e) {
+      message.error('ลบวันหยุดไม่สำเร็จ');
+    }
+  };
+
+  const handleSeedThaiHolidays = async () => {
+    try {
+      setLoading(true);
+      // สร้างวันหยุดไทยตามปีที่เลือก
+      const thaiHolidays = [
+        // วันหยุดประจำปีที่แน่นอน
+        { date: `${selectedYear}-01-01`, name: 'วันขึ้นปีใหม่', nameEn: 'New Year\'s Day', type: 'PUBLIC_HOLIDAY' },
+        { date: `${selectedYear}-04-06`, name: 'วันจักรี', nameEn: 'Chakri Memorial Day', type: 'PUBLIC_HOLIDAY' },
+        { date: `${selectedYear}-05-01`, name: 'วันแรงงานแห่งชาติ', nameEn: 'National Labour Day', type: 'PUBLIC_HOLIDAY' },
+        { date: `${selectedYear}-05-05`, name: 'วันฉัตรมงคล', nameEn: 'Coronation Day', type: 'PUBLIC_HOLIDAY' },
+        { date: `${selectedYear}-07-28`, name: 'วันเฉลิมพระชนมพรรษาพระบาทสมเด็จพระเจ้าอยู่หัว', nameEn: 'King\'s Birthday', type: 'PUBLIC_HOLIDAY' },
+        { date: `${selectedYear}-08-12`, name: 'วันเฉลิมพระชนมพรรษาสมเด็จพระนางเจ้าสิริกิติ์ พระบรมราชินีนาถ', nameEn: 'Queen\'s Birthday', type: 'PUBLIC_HOLIDAY' },
+        { date: `${selectedYear}-10-13`, name: 'วันคล้ายวันสวรรคตพระบาทสมเด็จพระจุลจอมเกล้าเจ้าอยู่หัว', nameEn: 'King Chulalongkorn Memorial Day', type: 'PUBLIC_HOLIDAY' },
+        { date: `${selectedYear}-12-05`, name: 'วันเฉลิมพระชนมพรรษาพระบาทสมเด็จพระบรมชนกาธิเบศร มหาภูมิพลอดุลยเดชมหาราช', nameEn: 'King Bhumibol Memorial Day', type: 'PUBLIC_HOLIDAY' },
+        { date: `${selectedYear}-12-10`, name: 'วันรัฐธรรมนูญ', nameEn: 'Constitution Day', type: 'PUBLIC_HOLIDAY' },
+        { date: `${selectedYear}-12-31`, name: 'วันสิ้นปี', nameEn: 'New Year\'s Eve', type: 'PUBLIC_HOLIDAY' },
+      ];
+
+      // เพิ่มวันหยุดจันทรคติตามปี (ประมาณการ)
+      const lunarHolidays = getLunarHolidays(selectedYear);
+      const allHolidays = [...thaiHolidays, ...lunarHolidays];
+
+      // สร้างวันหยุดทั้งหมด
+      for (const holiday of allHolidays) {
+        await api.post('/api/holidays/holidays', holiday);
+      }
+
+      message.success(`สร้างวันหยุดไทยปี ${selectedYear} สำเร็จ`);
+      fetchHolidays();
+    } catch (e) {
+      message.error('สร้างวันหยุดไม่สำเร็จ');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ฟังก์ชันคำนวณวันหยุดจันทรคติ (ประมาณการ)
+  const getLunarHolidays = (year: number) => {
+    const lunarHolidays: { [key: number]: any[] } = {
+      2024: [
+        { date: '2024-02-24', name: 'วันมาฆบูชา', nameEn: 'Makha Bucha Day', type: 'PUBLIC_HOLIDAY' },
+        { date: '2024-05-22', name: 'วันวิสาขบูชา', nameEn: 'Visakha Bucha Day', type: 'PUBLIC_HOLIDAY' },
+        { date: '2024-07-20', name: 'วันอาสาฬหบูชา', nameEn: 'Asarnha Bucha Day', type: 'PUBLIC_HOLIDAY' },
+        { date: '2024-07-21', name: 'วันเข้าพรรษา', nameEn: 'Khao Phansa Day', type: 'PUBLIC_HOLIDAY' },
+        { date: '2024-10-17', name: 'วันออกพรรษา', nameEn: 'Ok Phansa Day', type: 'PUBLIC_HOLIDAY' },
+      ],
+      2025: [
+        { date: '2025-02-13', name: 'วันมาฆบูชา', nameEn: 'Makha Bucha Day', type: 'PUBLIC_HOLIDAY' },
+        { date: '2025-05-11', name: 'วันวิสาขบูชา', nameEn: 'Visakha Bucha Day', type: 'PUBLIC_HOLIDAY' },
+        { date: '2025-07-09', name: 'วันอาสาฬหบูชา', nameEn: 'Asarnha Bucha Day', type: 'PUBLIC_HOLIDAY' },
+        { date: '2025-07-10', name: 'วันเข้าพรรษา', nameEn: 'Khao Phansa Day', type: 'PUBLIC_HOLIDAY' },
+        { date: '2025-10-06', name: 'วันออกพรรษา', nameEn: 'Ok Phansa Day', type: 'PUBLIC_HOLIDAY' },
+      ],
+      2026: [
+        { date: '2026-03-03', name: 'วันมาฆบูชา', nameEn: 'Makha Bucha Day', type: 'PUBLIC_HOLIDAY' },
+        { date: '2026-05-30', name: 'วันวิสาขบูชา', nameEn: 'Visakha Bucha Day', type: 'PUBLIC_HOLIDAY' },
+        { date: '2026-07-28', name: 'วันอาสาฬหบูชา', nameEn: 'Asarnha Bucha Day', type: 'PUBLIC_HOLIDAY' },
+        { date: '2026-07-29', name: 'วันเข้าพรรษา', nameEn: 'Khao Phansa Day', type: 'PUBLIC_HOLIDAY' },
+        { date: '2026-10-25', name: 'วันออกพรรษา', nameEn: 'Ok Phansa Day', type: 'PUBLIC_HOLIDAY' },
+      ],
+    };
+
+    return lunarHolidays[year] || [];
+  };
+
+  const handleOk = async () => {
+    try {
+      const values = await form.validateFields();
+      const data = {
+        ...values,
+        date: values.date.format('YYYY-MM-DD'),
+      };
+      if (editingHoliday) {
+        await api.put(`/api/holidays/holidays/${editingHoliday.id}`, data);
+        message.success('แก้ไขวันหยุดสำเร็จ');
+      } else {
+        await api.post('/api/holidays/holidays', data);
+        message.success('เพิ่มวันหยุดสำเร็จ');
+      }
+      setModalVisible(false);
+      fetchHolidays();
+    } catch (e) {
+      message.error('บันทึกวันหยุดไม่สำเร็จ');
+    }
+  };
+
+  const columns = [
+    { title: 'วันที่', dataIndex: 'date', key: 'date', render: (d: string) => dayjs(d).format('YYYY-MM-DD') },
+    { title: 'ชื่อวันหยุด', dataIndex: 'name', key: 'name' },
+    { title: 'ชื่ออังกฤษ', dataIndex: 'nameEn', key: 'nameEn' },
+    { title: 'ประเภท', dataIndex: 'type', key: 'type', render: (t: string) => holidayTypes.find(ht => ht.value === t)?.label || t },
+    { title: 'หมายเหตุ', dataIndex: 'description', key: 'description' },
+    {
+      title: 'การจัดการ',
+      key: 'action',
+      render: (_: any, record: any) => (
+        <>
+          <Button size="small" onClick={() => handleEdit(record)} style={{ marginRight: 8 }}>แก้ไข</Button>
+          <Popconfirm title="ยืนยันลบวันหยุด?" onConfirm={() => handleDelete(record.id)} okText="ใช่" cancelText="ไม่">
+            <Button size="small" danger>ลบ</Button>
+          </Popconfirm>
+        </>
+      ),
+    },
+  ];
+
+  const yearOptions = Array.from({ length: 10 }, (_, i) => {
+    const year = new Date().getFullYear() - 2 + i;
+    return { label: year.toString(), value: year };
+  });
+
+  return (
+    <div style={{ margin: '32px 0' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+        <h2>จัดการวันหยุดราชการ/นักขัตฤกษ์</h2>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <span>ปี:</span>
+          <Select
+            value={selectedYear}
+            onChange={setSelectedYear}
+            options={yearOptions}
+            style={{ width: 100 }}
+          />
+          <Button onClick={handleSeedThaiHolidays} loading={loading}>สร้างวันหยุดไทย</Button>
+          <Button type="primary" onClick={handleAdd}>เพิ่มวันหยุด</Button>
+        </div>
+      </div>
+      <Table columns={columns} dataSource={holidays} rowKey="id" loading={loading} pagination={false} />
+      <Modal
+        title={editingHoliday ? 'แก้ไขวันหยุด' : 'เพิ่มวันหยุด'}
+        open={modalVisible}
+        onOk={handleOk}
+        onCancel={() => setModalVisible(false)}
+        okText="บันทึก"
+        cancelText="ยกเลิก"
+      >
+        <Form form={form} layout="vertical">
+          <Form.Item name="date" label="วันที่" rules={[{ required: true, message: 'กรุณาเลือกวันที่' }]}> 
+            <DatePicker format="YYYY-MM-DD" style={{ width: '100%' }} />
+          </Form.Item>
+          <Form.Item name="name" label="ชื่อวันหยุด (TH)" rules={[{ required: true, message: 'กรุณากรอกชื่อวันหยุด' }]}> 
+            <Input />
+          </Form.Item>
+          <Form.Item name="nameEn" label="ชื่อวันหยุด (EN)" rules={[{ required: true, message: 'กรุณากรอกชื่ออังกฤษ' }]}> 
+            <Input />
+          </Form.Item>
+          <Form.Item name="type" label="ประเภทวันหยุด" rules={[{ required: true, message: 'กรุณาเลือกประเภท' }]}> 
+            <Select options={holidayTypes} />
+          </Form.Item>
+          <Form.Item name="description" label="หมายเหตุ"> 
+            <Input.TextArea rows={2} />
+          </Form.Item>
+        </Form>
+      </Modal>
+    </div>
+  );
+};
 
 const AdminPanel: React.FC = () => {
   const { user } = useAuth();
@@ -19,7 +246,8 @@ const AdminPanel: React.FC = () => {
     name: '',
     email: '',
     role: '',
-    isActive: true
+    isActive: true,
+    employeeCode: ''
   });
   const [submitting, setSubmitting] = useState(false);
   const [showCreateUserModal, setShowCreateUserModal] = useState(false);
@@ -28,7 +256,8 @@ const AdminPanel: React.FC = () => {
     email: '',
     role: '',
     password: '',
-    isActive: true
+    isActive: true,
+    employeeCode: ''
   });
   const [creatingUser, setCreatingUser] = useState(false);
   const [showCreateProjectModal, setShowCreateProjectModal] = useState(false);
@@ -42,26 +271,76 @@ const AdminPanel: React.FC = () => {
     endDate: ''
   });
   const [creatingProject, setCreatingProject] = useState(false);
+  const [showEditProjectModal, setShowEditProjectModal] = useState(false);
+  const [editingProject, setEditingProject] = useState<any>(null);
+  const [editProjectForm, setEditProjectForm] = useState({
+    name: '',
+    description: '',
+    status: '',
+    managerId: '',
+    budget: 0,
+    startDate: '',
+    endDate: ''
+  });
+  const [submittingProject, setSubmittingProject] = useState(false);
+  const [searchUsers, setSearchUsers] = useState('');
+  const [filterUserRole, setFilterUserRole] = useState('all');
+  const [searchProjects, setSearchProjects] = useState('');
+  const [filterProjectStatus, setFilterProjectStatus] = useState('all');
+  const [systemSettings, setSystemSettings] = useState({
+    systemName: 'ไปไหน (Painai)',
+    sessionTimeout: 30,
+    maxLoginAttempts: 5
+  });
+  const [savingSettings, setSavingSettings] = useState(false);
+  const [activityLogs, setActivityLogs] = useState<any[]>([]);
+  const [filterActivityType, setFilterActivityType] = useState('all');
+  const [filterActivityDate, setFilterActivityDate] = useState('');
 
   const tabs = [
     { id: 'dashboard', name: 'Dashboard', icon: BarChart3 },
     { id: 'users', name: 'User Management', icon: Users },
     { id: 'projects', name: 'Project Management', icon: FolderOpen },
+    { id: 'holidays', name: 'Holiday Management', icon: Calendar },
     { id: 'system', name: 'System Settings', icon: Settings },
     { id: 'activity', name: 'Activity Logs', icon: Activity },
   ];
 
   useEffect(() => {
-    loadAdminData();
-  }, []);
+    // รอให้ token พร้อมก่อนเรียก API
+    const loadDataWhenReady = () => {
+      const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+      if (token) {
+        console.log('Token ready, loading admin data');
+        loadAdminData();
+        addActivityLog('admin_panel_accessed', `${user?.name} accessed Admin Panel`, 'info');
+      } else {
+        console.log('No token yet, retrying in 1 second');
+        setTimeout(loadDataWhenReady, 1000);
+      }
+    };
+    
+    loadDataWhenReady();
+  }, [user]);
 
   const loadAdminData = async () => {
     setLoading(true);
     try {
-      const [usersResponse, statsResponse, projectsResponse] = await Promise.all([
+      // ตรวจสอบ token ก่อนเรียก API
+      const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+      if (!token) {
+        console.warn('No token found, skipping admin data load');
+        setLoading(false);
+        return;
+      }
+
+      console.log('Loading admin data with token:', { tokenLength: token.length });
+
+      const [usersResponse, statsResponse, projectsResponse, activitiesResponse] = await Promise.all([
         adminAPI.getUsers(),
         adminAPI.getSystemStats(),
-        adminAPI.getProjects()
+        adminAPI.getProjects(),
+        adminAPI.getUserActivities()
       ]);
 
       if (usersResponse.success && usersResponse.data) {
@@ -74,6 +353,10 @@ const AdminPanel: React.FC = () => {
 
       if (projectsResponse.success && projectsResponse.data) {
         setProjects(projectsResponse.data);
+      }
+
+      if (activitiesResponse.success && activitiesResponse.data) {
+        setActivityLogs(activitiesResponse.data);
       }
     } catch (error) {
       console.error('Error loading admin data:', error);
@@ -93,7 +376,8 @@ const AdminPanel: React.FC = () => {
       name: user.name,
       email: user.email,
       role: user.role,
-      isActive: user.isActive
+      isActive: user.isActive,
+      employeeCode: user.employeeCode || ''
     });
     setShowEditModal(true);
   };
@@ -106,6 +390,7 @@ const AdminPanel: React.FC = () => {
       const response = await adminAPI.updateUser(editingUser!.id, editForm);
       
       if (response.success) {
+        addActivityLog('user_updated', `User updated: ${editForm.email}`, 'info');
         showNotification({
           message: 'User updated successfully',
           type: 'success'
@@ -141,6 +426,7 @@ const AdminPanel: React.FC = () => {
       try {
         const response = await adminAPI.deleteUser(userId);
         if (response.success) {
+          addActivityLog('user_deleted', `User deleted: ${userId}`, 'warning');
           setUsers(prev => prev.filter(u => u.id !== userId));
           showNotification({
             message: 'User deleted successfully',
@@ -167,7 +453,8 @@ const AdminPanel: React.FC = () => {
       email: '',
       role: '',
       password: '',
-      isActive: true
+      isActive: true,
+      employeeCode: ''
     });
     setShowCreateUserModal(true);
   };
@@ -193,6 +480,7 @@ const AdminPanel: React.FC = () => {
       const response = await adminAPI.createUser(createUserForm);
       
       if (response.success) {
+        addActivityLog('user_created', `New user created: ${createUserForm.email}`, 'success');
         showNotification({
           message: 'User created successfully',
           type: 'success'
@@ -223,6 +511,7 @@ const AdminPanel: React.FC = () => {
       const response = await adminAPI.createProject(createProjectForm);
       
       if (response.success) {
+        addActivityLog('project_created', `New project created: ${createProjectForm.name}`, 'success');
         showNotification({
           message: 'Project created successfully',
           type: 'success'
@@ -258,6 +547,167 @@ const AdminPanel: React.FC = () => {
       [field]: value
     }));
   };
+
+  const handleEditProject = (project: any) => {
+    setEditingProject(project);
+    setEditProjectForm({
+      name: project.name,
+      description: project.description,
+      status: project.status,
+      managerId: project.managerId || '',
+      budget: project.budget || 0,
+      startDate: project.startDate || '',
+      endDate: project.endDate || ''
+    });
+    setShowEditProjectModal(true);
+  };
+
+  const handleSubmitEditProject = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSubmittingProject(true);
+
+    try {
+      const response = await projectAPI.updateProject(editingProject.id, editProjectForm);
+      
+      if (response.success) {
+        addActivityLog('project_updated', `Project updated: ${editProjectForm.name}`, 'info');
+        showNotification({
+          message: 'Project updated successfully',
+          type: 'success'
+        });
+        setShowEditProjectModal(false);
+        setEditingProject(null);
+        loadAdminData(); // Reload data
+      } else {
+        showNotification({
+          message: response.message || 'Failed to update project',
+          type: 'error'
+        });
+      }
+    } catch (error: any) {
+      showNotification({
+        message: error.response?.data?.message || 'Failed to update project',
+        type: 'error'
+      });
+    } finally {
+      setSubmittingProject(false);
+    }
+  };
+
+  const handleDeleteProject = async (projectId: string) => {
+    if (window.confirm('Are you sure you want to delete this project?')) {
+      try {
+        const response = await projectAPI.deleteProject(projectId);
+        if (response.success) {
+          addActivityLog('project_deleted', `Project deleted: ${projectId}`, 'warning');
+          setProjects(prev => prev.filter(p => p.id !== projectId));
+          showNotification({
+            message: 'Project deleted successfully',
+            type: 'success'
+          });
+        } else {
+          showNotification({
+            message: response.message || 'Failed to delete project',
+            type: 'error'
+          });
+        }
+      } catch (error: any) {
+        showNotification({
+          message: error.response?.data?.message || 'Failed to delete project',
+          type: 'error'
+        });
+      }
+    }
+  };
+
+  const handleEditProjectInputChange = (field: string, value: string | number) => {
+    setEditProjectForm(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
+  // Filter functions
+  const filteredUsers = users.filter(user => {
+    const matchesSearch = user.name.toLowerCase().includes(searchUsers.toLowerCase()) ||
+                         user.email.toLowerCase().includes(searchUsers.toLowerCase());
+    const matchesRole = filterUserRole === 'all' || user.role === filterUserRole;
+    return matchesSearch && matchesRole;
+  });
+
+  const filteredProjects = projects.filter(project => {
+    const matchesSearch = project.name.toLowerCase().includes(searchProjects.toLowerCase()) ||
+                         project.description.toLowerCase().includes(searchProjects.toLowerCase());
+    const matchesStatus = filterProjectStatus === 'all' || project.status === filterProjectStatus;
+    return matchesSearch && matchesStatus;
+  });
+
+  const handleSaveSettings = async () => {
+    setSavingSettings(true);
+    try {
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      addActivityLog('settings_updated', 'System settings updated', 'info');
+      showNotification({
+        message: 'Settings saved successfully',
+        type: 'success'
+      });
+    } catch (error) {
+      showNotification({
+        message: 'Failed to save settings',
+        type: 'error'
+      });
+    } finally {
+      setSavingSettings(false);
+    }
+  };
+
+  const handleSettingsChange = (field: string, value: string | number) => {
+    setSystemSettings(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
+  const addActivityLog = (type: string, message: string, severity: string = 'info') => {
+    const newLog = {
+      id: Date.now(),
+      type,
+      message,
+      timestamp: new Date(),
+      severity
+    };
+    setActivityLogs(prev => [newLog, ...prev.slice(0, 49)]); // Keep only last 50 logs
+  };
+
+  const getSeverityColor = (severity: string) => {
+    switch (severity) {
+      case 'success': return 'bg-green-400';
+      case 'warning': return 'bg-yellow-400';
+      case 'error': return 'bg-red-400';
+      default: return 'bg-blue-400';
+    }
+  };
+
+  const formatTimeAgo = (timestamp: Date) => {
+    const now = new Date();
+    const diffInMinutes = Math.floor((now.getTime() - timestamp.getTime()) / (1000 * 60));
+    
+    if (diffInMinutes < 1) return 'Just now';
+    if (diffInMinutes < 60) return `${diffInMinutes} minutes ago`;
+    
+    const diffInHours = Math.floor(diffInMinutes / 60);
+    if (diffInHours < 24) return `${diffInHours} hours ago`;
+    
+    const diffInDays = Math.floor(diffInHours / 24);
+    return `${diffInDays} days ago`;
+  };
+
+  const filteredActivityLogs = activityLogs.filter(log => {
+    const matchesType = filterActivityType === 'all' || log.type.includes(filterActivityType.toLowerCase());
+    const matchesDate = !filterActivityDate || log.timestamp.toDateString() === new Date(filterActivityDate).toDateString();
+    return matchesType && matchesDate;
+  });
 
   const renderDashboard = () => (
     <div className="space-y-6">
@@ -317,27 +767,15 @@ const AdminPanel: React.FC = () => {
         </div>
         <div className="p-6">
           <div className="space-y-4">
-            <div className="flex items-center space-x-4">
-              <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-              <div className="flex-1">
-                <p className="text-sm text-gray-900">New user registered: john.doe@example.com</p>
-                <p className="text-xs text-gray-500">2 minutes ago</p>
+            {activityLogs.slice(0, 3).map((log) => (
+              <div key={log.id} className="flex items-center space-x-4">
+                <div className={`w-2 h-2 ${getSeverityColor(log.severity)} rounded-full`}></div>
+                <div className="flex-1">
+                  <p className="text-sm text-gray-900">{log.message}</p>
+                  <p className="text-xs text-gray-500">{formatTimeAgo(log.timestamp)}</p>
+                </div>
               </div>
-            </div>
-            <div className="flex items-center space-x-4">
-              <div className="w-2 h-2 bg-blue-400 rounded-full"></div>
-              <div className="flex-1">
-                <p className="text-sm text-gray-900">System backup completed successfully</p>
-                <p className="text-xs text-gray-500">1 hour ago</p>
-              </div>
-            </div>
-            <div className="flex items-center space-x-4">
-              <div className="w-2 h-2 bg-yellow-400 rounded-full"></div>
-              <div className="flex-1">
-                <p className="text-sm text-gray-900">User role updated: jane.smith@example.com</p>
-                <p className="text-xs text-gray-500">3 hours ago</p>
-              </div>
-            </div>
+            ))}
           </div>
         </div>
       </div>
@@ -361,13 +799,19 @@ const AdminPanel: React.FC = () => {
               <input
                 type="text"
                 placeholder="Search users..."
+                value={searchUsers}
+                onChange={(e) => setSearchUsers(e.target.value)}
                 className="px-3 py-1 border border-gray-300 rounded-md text-sm"
               />
-              <select className="px-3 py-1 border border-gray-300 rounded-md text-sm">
-                <option>All Roles</option>
-                <option>Admin</option>
-                <option>Manager</option>
-                <option>User</option>
+              <select 
+                value={filterUserRole}
+                onChange={(e) => setFilterUserRole(e.target.value)}
+                className="px-3 py-1 border border-gray-300 rounded-md text-sm"
+              >
+                <option value="all">All Roles</option>
+                <option value="ADMIN">Admin</option>
+                <option value="MANAGER">Manager</option>
+                <option value="USER">User</option>
               </select>
             </div>
           </div>
@@ -394,7 +838,7 @@ const AdminPanel: React.FC = () => {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {users.map((user) => (
+              {filteredUsers.map((user) => (
                 <tr key={user.id}>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
@@ -469,13 +913,22 @@ const AdminPanel: React.FC = () => {
               <input
                 type="text"
                 placeholder="Search projects..."
+                value={searchProjects}
+                onChange={(e) => setSearchProjects(e.target.value)}
                 className="px-3 py-1 border border-gray-300 rounded-md text-sm"
               />
-              <select className="px-3 py-1 border border-gray-300 rounded-md text-sm">
-                <option>All Status</option>
-                <option>Active</option>
-                <option>Completed</option>
-                <option>On Hold</option>
+              <select 
+                value={filterProjectStatus}
+                onChange={(e) => setFilterProjectStatus(e.target.value)}
+                className="px-3 py-1 border border-gray-300 rounded-md text-sm"
+              >
+                <option value="all">All Status</option>
+                <option value="ACTIVE">Active</option>
+                <option value="ON_HOLD">On Hold</option>
+                <option value="COMPLETED">Completed</option>
+                <option value="CANCELLED">Cancelled</option>
+                <option value="ESCALATED_TO_SUPPORT">Escalated to Support</option>
+                <option value="SIGNED_CONTRACT">Signed Contract</option>
               </select>
             </div>
           </div>
@@ -502,7 +955,7 @@ const AdminPanel: React.FC = () => {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {projects.map((project) => (
+              {filteredProjects.map((project) => (
                 <tr key={project.id}>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
@@ -525,9 +978,13 @@ const AdminPanel: React.FC = () => {
                     <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
                       project.status === 'ACTIVE' ? 'bg-green-100 text-green-800' :
                       project.status === 'COMPLETED' ? 'bg-blue-100 text-blue-800' :
-                      'bg-yellow-100 text-yellow-800'
+                      project.status === 'ON_HOLD' ? 'bg-yellow-100 text-yellow-800' :
+                      project.status === 'CANCELLED' ? 'bg-red-100 text-red-800' :
+                      project.status === 'ESCALATED_TO_SUPPORT' ? 'bg-orange-100 text-orange-800' :
+                      project.status === 'SIGNED_CONTRACT' ? 'bg-purple-100 text-purple-800' :
+                      'bg-gray-100 text-gray-800'
                     }`}>
-                      {project.status}
+                      {project.status.replace('_', ' ')}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
@@ -543,11 +1000,17 @@ const AdminPanel: React.FC = () => {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                     <div className="flex space-x-2">
-                      <button className="text-primary-600 hover:text-primary-900 flex items-center">
+                      <button 
+                        className="text-primary-600 hover:text-primary-900 flex items-center"
+                        onClick={() => handleEditProject(project)}
+                      >
                         <Edit className="h-4 w-4 mr-1" />
                         Edit
                       </button>
-                      <button className="text-red-600 hover:text-red-900 flex items-center">
+                      <button 
+                        className="text-red-600 hover:text-red-900 flex items-center"
+                        onClick={() => handleDeleteProject(project.id)}
+                      >
                         <Trash2 className="h-4 w-4 mr-1" />
                         Delete
                       </button>
@@ -576,7 +1039,8 @@ const AdminPanel: React.FC = () => {
                 <label className="block text-sm font-medium text-gray-700">System Name</label>
                 <input
                   type="text"
-                  defaultValue="ไปไหน (Painai)"
+                  value={systemSettings.systemName}
+                  onChange={(e) => handleSettingsChange('systemName', e.target.value)}
                   className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
                 />
               </div>
@@ -584,7 +1048,8 @@ const AdminPanel: React.FC = () => {
                 <label className="block text-sm font-medium text-gray-700">Session Timeout (minutes)</label>
                 <input
                   type="number"
-                  defaultValue="30"
+                  value={systemSettings.sessionTimeout}
+                  onChange={(e) => handleSettingsChange('sessionTimeout', parseInt(e.target.value) || 30)}
                   className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
                 />
               </div>
@@ -592,44 +1057,42 @@ const AdminPanel: React.FC = () => {
                 <label className="block text-sm font-medium text-gray-700">Max Login Attempts</label>
                 <input
                   type="number"
-                  defaultValue="5"
+                  value={systemSettings.maxLoginAttempts}
+                  onChange={(e) => handleSettingsChange('maxLoginAttempts', parseInt(e.target.value) || 5)}
                   className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
                 />
               </div>
-            </div>
-          </div>
-
-          <div>
-            <h4 className="text-md font-medium text-gray-900 mb-4">Security Settings</h4>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-700">Two-Factor Authentication</p>
-                  <p className="text-sm text-gray-500">Require 2FA for all users</p>
-                </div>
-                <button className="relative inline-flex h-6 w-11 items-center rounded-full bg-gray-200">
-                  <span className="inline-block h-4 w-4 transform rounded-full bg-white transition"></span>
-                </button>
-              </div>
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-700">Password Policy</p>
-                  <p className="text-sm text-gray-500">Enforce strong passwords</p>
-                </div>
-                <button className="relative inline-flex h-6 w-11 items-center rounded-full bg-primary-600">
-                  <span className="inline-block h-4 w-4 transform rounded-full bg-white transition translate-x-5"></span>
+              <div className="pt-4">
+                <button
+                  onClick={handleSaveSettings}
+                  disabled={savingSettings}
+                  className="bg-primary-600 text-white px-4 py-2 rounded-md hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+                >
+                  {savingSettings ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="h-4 w-4 mr-2" />
+                      Save Settings
+                    </>
+                  )}
                 </button>
               </div>
             </div>
           </div>
 
-          <div className="pt-4">
-            <button className="bg-primary-600 text-white px-4 py-2 rounded-md hover:bg-primary-700 transition-colors">
-              Save Settings
-            </button>
-          </div>
+
         </div>
       </div>
+    </div>
+  );
+
+  const renderHolidayManagement = () => (
+    <div className="space-y-6">
+      <HolidayManagement />
     </div>
   );
 
@@ -640,14 +1103,21 @@ const AdminPanel: React.FC = () => {
           <div className="flex items-center justify-between">
             <h3 className="text-lg font-medium text-gray-900">Activity Logs</h3>
             <div className="flex space-x-2">
-              <select className="px-3 py-1 border border-gray-300 rounded-md text-sm">
-                <option>All Activities</option>
-                <option>Login/Logout</option>
-                <option>User Management</option>
-                <option>System Changes</option>
+              <select 
+                value={filterActivityType}
+                onChange={(e) => setFilterActivityType(e.target.value)}
+                className="px-3 py-1 border border-gray-300 rounded-md text-sm"
+              >
+                <option value="all">All Activities</option>
+                <option value="user">User Management</option>
+                <option value="project">Project Management</option>
+                <option value="settings">System Settings</option>
+                <option value="admin">Admin Access</option>
               </select>
               <input
                 type="date"
+                value={filterActivityDate}
+                onChange={(e) => setFilterActivityDate(e.target.value)}
                 className="px-3 py-1 border border-gray-300 rounded-md text-sm"
               />
             </div>
@@ -655,42 +1125,25 @@ const AdminPanel: React.FC = () => {
         </div>
         <div className="p-6">
           <div className="space-y-4">
-            <div className="flex items-center space-x-4 p-4 bg-gray-50 rounded-lg">
-              <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-              <div className="flex-1">
-                <p className="text-sm text-gray-900">
-                  <span className="font-medium">john.doe@example.com</span> logged in successfully
-                </p>
-                <p className="text-xs text-gray-500">2024-01-15 14:30:25</p>
+            {filteredActivityLogs.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                <p>No activity logs found for the selected filters.</p>
               </div>
-            </div>
-            <div className="flex items-center space-x-4 p-4 bg-gray-50 rounded-lg">
-              <div className="w-2 h-2 bg-blue-400 rounded-full"></div>
-              <div className="flex-1">
-                <p className="text-sm text-gray-900">
-                  <span className="font-medium">admin@example.com</span> created new user: jane.smith@example.com
-                </p>
-                <p className="text-xs text-gray-500">2024-01-15 13:45:12</p>
-              </div>
-            </div>
-            <div className="flex items-center space-x-4 p-4 bg-gray-50 rounded-lg">
-              <div className="w-2 h-2 bg-yellow-400 rounded-full"></div>
-              <div className="flex-1">
-                <p className="text-sm text-gray-900">
-                  <span className="font-medium">admin@example.com</span> updated system settings
-                </p>
-                <p className="text-xs text-gray-500">2024-01-15 12:20:45</p>
-              </div>
-            </div>
-            <div className="flex items-center space-x-4 p-4 bg-gray-50 rounded-lg">
-              <div className="w-2 h-2 bg-red-400 rounded-full"></div>
-              <div className="flex-1">
-                <p className="text-sm text-gray-900">
-                  <span className="font-medium">user@example.com</span> failed login attempt
-                </p>
-                <p className="text-xs text-gray-500">2024-01-15 11:15:30</p>
-              </div>
-            </div>
+            ) : (
+              <>
+                {filteredActivityLogs.map((log) => (
+                  <div key={log.id} className="flex items-center space-x-4 p-4 bg-gray-50 rounded-lg">
+                    <div className={`w-2 h-2 ${getSeverityColor(log.severity)} rounded-full`}></div>
+                    <div className="flex-1">
+                      <p className="text-sm text-gray-900">
+                        {log.message}
+                      </p>
+                      <p className="text-xs text-gray-500">{formatTimeAgo(log.timestamp)}</p>
+                    </div>
+                  </div>
+                ))}
+              </>
+            )}
           </div>
         </div>
       </div>
@@ -705,6 +1158,8 @@ const AdminPanel: React.FC = () => {
         return renderUserManagement();
       case 'projects':
         return renderProjectManagement();
+      case 'holidays':
+        return renderHolidayManagement();
       case 'system':
         return renderSystemSettings();
       case 'activity':
@@ -810,6 +1265,19 @@ const AdminPanel: React.FC = () => {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Employee Code
+                  </label>
+                  <input
+                    type="text"
+                    value={editForm.employeeCode}
+                    onChange={(e) => handleInputChange('employeeCode', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
                     Role
                   </label>
                   <select
@@ -861,6 +1329,445 @@ const AdminPanel: React.FC = () => {
                     onClick={() => {
                       setShowEditModal(false);
                       setEditingUser(null);
+                    }}
+                    className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 flex items-center"
+                  >
+                    <X className="h-4 w-4 mr-2" />
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Create User Modal */}
+      {showCreateUserModal && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+            <div className="mt-3">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-medium text-gray-900">Create New User</h3>
+                <button
+                  onClick={() => setShowCreateUserModal(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+              
+              <form onSubmit={handleSubmitCreateUser} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Name
+                  </label>
+                  <input
+                    type="text"
+                    value={createUserForm.name}
+                    onChange={(e) => handleCreateUserInputChange('name', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Email
+                  </label>
+                  <input
+                    type="email"
+                    value={createUserForm.email}
+                    onChange={(e) => handleCreateUserInputChange('email', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Password
+                  </label>
+                  <input
+                    type="password"
+                    value={createUserForm.password}
+                    onChange={(e) => handleCreateUserInputChange('password', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Employee Code
+                  </label>
+                  <input
+                    type="text"
+                    value={createUserForm.employeeCode}
+                    onChange={(e) => handleCreateUserInputChange('employeeCode', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Role
+                  </label>
+                  <select
+                    value={createUserForm.role}
+                    onChange={(e) => handleCreateUserInputChange('role', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                    required
+                  >
+                    <option value="">Select Role</option>
+                    <option value="ADMIN">Admin</option>
+                    <option value="MANAGER">Manager</option>
+                    <option value="USER">User</option>
+                  </select>
+                </div>
+
+                <div className="flex items-center">
+                  <input
+                    type="checkbox"
+                    id="createIsActive"
+                    checked={createUserForm.isActive}
+                    onChange={(e) => handleCreateUserInputChange('isActive', e.target.checked)}
+                    className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
+                  />
+                  <label htmlFor="createIsActive" className="ml-2 block text-sm text-gray-900">
+                    Active User
+                  </label>
+                </div>
+
+                <div className="flex space-x-3 pt-4">
+                  <button
+                    type="submit"
+                    disabled={creatingUser}
+                    className="flex-1 bg-primary-600 text-white px-4 py-2 rounded-md hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                  >
+                    {creatingUser ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                        Creating...
+                      </>
+                    ) : (
+                      <>
+                        <Plus className="h-4 w-4 mr-2" />
+                        Create User
+                      </>
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowCreateUserModal(false)}
+                    className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 flex items-center"
+                  >
+                    <X className="h-4 w-4 mr-2" />
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Create Project Modal */}
+      {showCreateProjectModal && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+            <div className="mt-3">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-medium text-gray-900">Create New Project</h3>
+                <button
+                  onClick={() => setShowCreateProjectModal(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+              
+              <form onSubmit={handleSubmitCreateProject} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Project Name
+                  </label>
+                  <input
+                    type="text"
+                    value={createProjectForm.name}
+                    onChange={(e) => handleCreateProjectInputChange('name', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Description
+                  </label>
+                  <textarea
+                    value={createProjectForm.description}
+                    onChange={(e) => handleCreateProjectInputChange('description', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                    rows={3}
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Status
+                  </label>
+                  <select
+                    value={createProjectForm.status}
+                    onChange={(e) => handleCreateProjectInputChange('status', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                    required
+                  >
+                    <option value="">Select Status</option>
+                    <option value="ACTIVE">Active</option>
+                    <option value="ON_HOLD">On Hold</option>
+                    <option value="COMPLETED">Completed</option>
+                    <option value="CANCELLED">Cancelled</option>
+                    <option value="ESCALATED_TO_SUPPORT">Escalated to Support</option>
+                    <option value="SIGNED_CONTRACT">Signed Contract</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Manager
+                  </label>
+                  <select
+                    value={createProjectForm.managerId}
+                    onChange={(e) => handleCreateProjectInputChange('managerId', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                    required
+                  >
+                    <option value="">Select Manager</option>
+                    {users.filter(user => user.role === 'MANAGER').map(user => (
+                      <option key={user.id} value={user.id}>{user.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Budget
+                  </label>
+                  <input
+                    type="number"
+                    value={createProjectForm.budget}
+                    onChange={(e) => handleCreateProjectInputChange('budget', parseFloat(e.target.value) || 0)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                    min="0"
+                    step="0.01"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Start Date
+                    </label>
+                    <input
+                      type="date"
+                      value={createProjectForm.startDate}
+                      onChange={(e) => handleCreateProjectInputChange('startDate', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      End Date
+                    </label>
+                    <input
+                      type="date"
+                      value={createProjectForm.endDate}
+                      onChange={(e) => handleCreateProjectInputChange('endDate', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex space-x-3 pt-4">
+                  <button
+                    type="submit"
+                    disabled={creatingProject}
+                    className="flex-1 bg-primary-600 text-white px-4 py-2 rounded-md hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                  >
+                    {creatingProject ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                        Creating...
+                      </>
+                    ) : (
+                      <>
+                        <Plus className="h-4 w-4 mr-2" />
+                        Create Project
+                      </>
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowCreateProjectModal(false)}
+                    className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 flex items-center"
+                  >
+                    <X className="h-4 w-4 mr-2" />
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Project Modal */}
+      {showEditProjectModal && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+            <div className="mt-3">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-medium text-gray-900">Edit Project</h3>
+                <button
+                  onClick={() => {
+                    setShowEditProjectModal(false);
+                    setEditingProject(null);
+                  }}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+              
+              <form onSubmit={handleSubmitEditProject} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Project Name
+                  </label>
+                  <input
+                    type="text"
+                    value={editProjectForm.name}
+                    onChange={(e) => handleEditProjectInputChange('name', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Description
+                  </label>
+                  <textarea
+                    value={editProjectForm.description}
+                    onChange={(e) => handleEditProjectInputChange('description', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                    rows={3}
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Status
+                  </label>
+                  <select
+                    value={editProjectForm.status}
+                    onChange={(e) => handleEditProjectInputChange('status', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                    required
+                  >
+                    <option value="">Select Status</option>
+                    <option value="ACTIVE">Active</option>
+                    <option value="ON_HOLD">On Hold</option>
+                    <option value="COMPLETED">Completed</option>
+                    <option value="CANCELLED">Cancelled</option>
+                    <option value="ESCALATED_TO_SUPPORT">Escalated to Support</option>
+                    <option value="SIGNED_CONTRACT">Signed Contract</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Manager
+                  </label>
+                  <select
+                    value={editProjectForm.managerId}
+                    onChange={(e) => handleEditProjectInputChange('managerId', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                    required
+                  >
+                    <option value="">Select Manager</option>
+                    {users.filter(user => user.role === 'MANAGER').map(user => (
+                      <option key={user.id} value={user.id}>{user.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Budget
+                  </label>
+                  <input
+                    type="number"
+                    value={editProjectForm.budget}
+                    onChange={(e) => handleEditProjectInputChange('budget', parseFloat(e.target.value) || 0)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                    min="0"
+                    step="0.01"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Start Date
+                    </label>
+                    <input
+                      type="date"
+                      value={editProjectForm.startDate}
+                      onChange={(e) => handleEditProjectInputChange('startDate', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      End Date
+                    </label>
+                    <input
+                      type="date"
+                      value={editProjectForm.endDate}
+                      onChange={(e) => handleEditProjectInputChange('endDate', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex space-x-3 pt-4">
+                  <button
+                    type="submit"
+                    disabled={submittingProject}
+                    className="flex-1 bg-primary-600 text-white px-4 py-2 rounded-md hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                  >
+                    {submittingProject ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                        Updating...
+                      </>
+                    ) : (
+                      <>
+                        <Save className="h-4 w-4 mr-2" />
+                        Update Project
+                      </>
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowEditProjectModal(false);
+                      setEditingProject(null);
                     }}
                     className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 flex items-center"
                   >

@@ -14,9 +14,17 @@ const api = axios.create({
 // Request interceptor to add auth token
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('token');
+    // ดึง token จาก localStorage ก่อน แล้วค่อย sessionStorage
+    const token = localStorage.getItem('token') || sessionStorage.getItem('token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
+      console.log('Adding token to request:', {
+        url: config.url,
+        hasToken: !!token,
+        tokenLength: token.length
+      });
+    } else {
+      console.warn('No token found for request:', config.url);
     }
     return config;
   },
@@ -30,9 +38,44 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-      window.location.href = '/login';
+      // ไม่ redirect ทันที แต่ให้ component จัดการเอง
+      console.warn('401 Unauthorized - Token may be invalid or expired', {
+        url: error.config.url,
+        isLoginRequest: error.config.url?.includes('/auth/login'),
+        hasToken: !!(localStorage.getItem('token') || sessionStorage.getItem('token'))
+      });
+      
+      // ลบ token เฉพาะเมื่อไม่ใช่ login request และมี token อยู่จริง
+      const isLoginRequest = error.config.url?.includes('/auth/login');
+      const isPublicEndpoint = error.config.url?.includes('/health') || 
+                              error.config.url?.includes('/api') === false;
+      const isFirstLoad = error.config.url?.includes('/users') || 
+                         error.config.url?.includes('/projects') || 
+                         error.config.url?.includes('/activities');
+      
+      // ไม่ลบ token สำหรับ request แรกหลัง login
+      if (!isLoginRequest && !isPublicEndpoint && !isFirstLoad) {
+        const hasToken = !!(localStorage.getItem('token') || sessionStorage.getItem('token'));
+        if (hasToken) {
+          console.log('Removing tokens due to 401 error from:', error.config.url);
+          sessionStorage.removeItem('token');
+          sessionStorage.removeItem('user');
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+        } else {
+          console.log('No token to remove for 401 error from:', error.config.url);
+        }
+      } else {
+        console.log('Skipping token removal for:', error.config.url, { 
+          isLoginRequest, 
+          isPublicEndpoint, 
+          isFirstLoad 
+        });
+        // ไม่ลบ token แต่ให้ retry request หลังจาก delay สักครู่
+        if (isFirstLoad) {
+          console.log('First load request failed, will retry later');
+        }
+      }
     }
     return Promise.reject(error);
   }
@@ -114,7 +157,7 @@ export const adminAPI = {
   },
 
   getUserActivities: async (): Promise<ApiResponse<any[]>> => {
-    const response = await api.get('/api/users/activities');
+    const response = await api.get('/api/activities');
     return response.data;
   },
 };

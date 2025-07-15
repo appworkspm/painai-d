@@ -7,19 +7,19 @@ import { UserRole } from '../types';
 export default function Login() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [remember, setRemember] = useState(false);
+  const [remember, setRemember] = useState(true);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
-  const { setUser } = useAuth();
+  const { login } = useAuth();
 
   const getRedirectPath = (role: string) => {
     switch (role) {
       case UserRole.ADMIN:
         return '/admin'; // Admin panel
       case UserRole.MANAGER:
-        return '/timesheet-approval'; // Manager sees approval page first
+        return '/timesheets/approval'; // Manager sees approval page first
       case UserRole.USER:
       default:
         return '/timesheets'; // Regular users see timesheets first
@@ -31,24 +31,13 @@ export default function Login() {
     setError('');
     setLoading(true);
     try {
-      // ใช้ email แทน username
-      const res = await authAPI.login({ email: username, password });
-      if (res.success && res.data?.token) {
-        if (remember) {
-          localStorage.setItem('token', res.data.token);
-          localStorage.setItem('user', JSON.stringify(res.data.user));
-        } else {
-          sessionStorage.setItem('token', res.data.token);
-          sessionStorage.setItem('user', JSON.stringify(res.data.user));
-        }
-        setUser(res.data.user); // อัปเดต AuthContext
-        
-        // Redirect based on user role
-        const redirectPath = getRedirectPath(res.data.user.role);
-        navigate(redirectPath);
-      } else {
-        setError(res.message || 'Login failed');
-      }
+      // ใช้ AuthContext login function พร้อม remember option
+      await login(username, password, remember);
+      
+      // Redirect based on user role (จะได้ user จาก AuthContext)
+      const currentUser = JSON.parse(sessionStorage.getItem('user') || localStorage.getItem('user') || '{}');
+      const redirectPath = getRedirectPath(currentUser.role);
+      navigate(redirectPath);
     } catch (err: any) {
       setError(err?.response?.data?.message || err.message || 'Network error');
     } finally {

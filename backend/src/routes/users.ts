@@ -19,6 +19,7 @@ router.get('/', requireAdmin, async (req: IAuthenticatedRequest, res) => {
         role: true,
         isActive: true,
         position: true,
+        employeeCode: true,
         createdAt: true,
         updatedAt: true
       },
@@ -54,6 +55,7 @@ router.get('/:id', requireAdmin, async (req: IAuthenticatedRequest, res) => {
         role: true,
         isActive: true,
         position: true,
+        employeeCode: true,
         createdAt: true,
         updatedAt: true
       }
@@ -82,12 +84,12 @@ router.get('/:id', requireAdmin, async (req: IAuthenticatedRequest, res) => {
 // Create new user (admin only)
 router.post('/', requireAdmin, async (req: IAuthenticatedRequest, res) => {
   try {
-    const { email, name, password, role, position } = req.body;
+    const { email, name, password, role, position, employeeCode } = req.body;
 
-    if (!email || !name || !password || !role) {
+    if (!email || !name || !password || !role || !employeeCode) {
       return res.status(400).json({
         success: false,
-        message: 'Email, name, password, and role are required'
+        message: 'Email, name, password, role, and employee code are required'
       });
     }
 
@@ -114,7 +116,8 @@ router.post('/', requireAdmin, async (req: IAuthenticatedRequest, res) => {
         password: hashedPassword,
         role,
         isActive: true,
-        position
+        position,
+        employeeCode
       },
       select: {
         id: true,
@@ -123,6 +126,7 @@ router.post('/', requireAdmin, async (req: IAuthenticatedRequest, res) => {
         role: true,
         isActive: true,
         position: true,
+        employeeCode: true,
         createdAt: true,
         updatedAt: true
       }
@@ -145,7 +149,7 @@ router.post('/', requireAdmin, async (req: IAuthenticatedRequest, res) => {
 router.put('/:id', requireAdmin, async (req: IAuthenticatedRequest, res) => {
   try {
     const { id } = req.params;
-    const { email, name, role, isActive, position } = req.body;
+    const { email, name, role, isActive, position, employeeCode } = req.body;
 
     const updateData: any = {};
     if (email) updateData.email = email;
@@ -153,6 +157,7 @@ router.put('/:id', requireAdmin, async (req: IAuthenticatedRequest, res) => {
     if (role) updateData.role = role;
     if (typeof isActive === 'boolean') updateData.isActive = isActive;
     if (position !== undefined) updateData.position = position;
+    if (employeeCode !== undefined) updateData.employeeCode = employeeCode;
 
     const user = await prisma.user.update({
       where: { id },
@@ -164,6 +169,7 @@ router.put('/:id', requireAdmin, async (req: IAuthenticatedRequest, res) => {
         role: true,
         isActive: true,
         position: true,
+        employeeCode: true,
         createdAt: true,
         updatedAt: true
       }

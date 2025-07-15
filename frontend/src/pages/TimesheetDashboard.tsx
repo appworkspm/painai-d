@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Card, Row, Col, Statistic, Table, Tag, Space, Button, DatePicker, Select, message } from 'antd';
 import { useAuth } from '../contexts/AuthContext';
-import { timesheetAPI } from '../services/api';
-import { Clock, CheckCircle, XCircle, Hourglass, Users, User } from 'lucide-react';
+import { timesheetAPI, reportAPI } from '../services/api';
+import { Clock, CheckCircle, XCircle, Hourglass, Users, User, Download } from 'lucide-react';
 import dayjs from 'dayjs';
 
 const { RangePicker } = DatePicker;
@@ -36,6 +36,13 @@ const TimesheetDashboard: React.FC = () => {
   const canViewAll = isAdmin || isManager;
 
   useEffect(() => {
+    // Set default dateRange to first and last day of current month
+    const startOfMonth = dayjs().startOf('month');
+    const endOfMonth = dayjs().endOf('month');
+    setDateRange([startOfMonth, endOfMonth]);
+  }, []);
+
+  useEffect(() => {
     fetchDashboardData();
   }, [dateRange, statusFilter]);
 
@@ -64,25 +71,53 @@ const TimesheetDashboard: React.FC = () => {
       }
       
       if (response.success && response.data) {
-        const data = response.data;
-        const timesheetsList = data.timesheets || data.data || [];
+        // เมื่อดึงข้อมูล timesheet
+        const timesheetsList = Array.isArray(response.data) ? response.data : (response.data.timesheets || response.data.data || []);
+        setTimesheets(timesheetsList);
         
         // Calculate stats from actual timesheet data
         const calculatedStats = timesheetsList.reduce((acc: TimesheetStats, timesheet: any) => {
           acc.total++;
           acc[timesheet.status]++;
-          acc.totalHours += (timesheet.hours_worked || 0) + (timesheet.overtime_hours || 0);
+          // แปลงค่าเป็น number ก่อนคำนวณ
+          const hoursWorked = Number(timesheet.hours_worked || 0);
+          const overtimeHours = Number(timesheet.overtime_hours || 0);
+          acc.totalHours += hoursWorked + overtimeHours;
           return acc;
         }, { total: 0, approved: 0, pending: 0, rejected: 0, totalHours: 0 });
         
         setStats(calculatedStats);
-        setTimesheets(timesheetsList);
       } else {
         message.error(response.message || 'ไม่สามารถโหลดข้อมูลได้');
       }
     } catch (error: any) {
       console.error('Error fetching dashboard data:', error);
       message.error('เกิดข้อผิดพลาดในการโหลดข้อมูล');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleExport = async () => {
+    try {
+      setLoading(true);
+      
+      // Build query parameters for export
+      const params: any = {};
+      if (dateRange) {
+        params.start = dateRange[0].format('YYYY-MM-DD');
+        params.end = dateRange[1].format('YYYY-MM-DD');
+      }
+      if (statusFilter !== 'all') {
+        params.status = statusFilter;
+      }
+
+      // Call the export API
+      await reportAPI.exportTimesheetCSV(params);
+      message.success('ส่งออกข้อมูลสำเร็จ');
+    } catch (error: any) {
+      console.error('Error exporting data:', error);
+      message.error('เกิดข้อผิดพลาดในการส่งออกข้อมูล');
     } finally {
       setLoading(false);
     }
@@ -133,8 +168,18 @@ const TimesheetDashboard: React.FC = () => {
         dataIndex: 'hours_worked',
         key: 'hours_worked',
         render: (hours: number, record: any) => {
-          const totalHours = (hours || 0) + (record.overtime_hours || 0);
-          return `${totalHours}h`;
+          const hoursWorked = Number(hours || 0);
+          const overtimeHours = Number(record.overtime_hours || 0);
+          const totalHours = hoursWorked + overtimeHours;
+          return (
+            <div>
+              <div>{hoursWorked % 1 === 0 ? hoursWorked : hoursWorked.toFixed(1)}h</div>
+              {overtimeHours > 0 && (
+                <div className="text-xs text-orange-600">+{overtimeHours % 1 === 0 ? overtimeHours : overtimeHours.toFixed(1)}h OT</div>
+              )}
+              <div className="text-xs text-gray-500">รวม: {totalHours % 1 === 0 ? totalHours : totalHours.toFixed(1)}h</div>
+            </div>
+          );
         }
       },
       {
@@ -188,6 +233,15 @@ const TimesheetDashboard: React.FC = () => {
             <p className="text-sm text-gray-600">{getDashboardDescription()}</p>
           </div>
         </div>
+        <Button
+          type="primary"
+          icon={<Download className="h-4 w-4" />}
+          onClick={handleExport}
+          loading={loading}
+          className="bg-blue-600 hover:bg-blue-700"
+        >
+          ส่งออก CSV
+        </Button>
       </div>
 
       {/* Filters */}
@@ -197,6 +251,7 @@ const TimesheetDashboard: React.FC = () => {
             <RangePicker
               style={{ width: '100%' }}
               placeholder={['วันที่เริ่มต้น', 'วันที่สิ้นสุด']}
+              value={dateRange}
               onChange={(dates) => setDateRange(dates)}
             />
           </Col>

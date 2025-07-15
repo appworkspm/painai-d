@@ -5,6 +5,8 @@ export interface User {
   name: string;
   role: string; // 'ADMIN' | 'MANAGER' | 'USER'
   isActive: boolean;
+  position?: string;
+  employeeCode?: string;
   createdAt: string;
   updatedAt: string;
 }

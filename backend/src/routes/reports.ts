@@ -11,7 +11,7 @@ router.use(authenticate);
 // Export timesheet data as CSV
 router.get('/export/timesheet/csv', async (req: IAuthenticatedRequest, res) => {
   try {
-    const { start, end, status, project } = req.query;
+    const { start, end, status, project, workType, subWorkType, activity } = req.query;
     const where: any = {};
     if (start && end) {
       where.date = {
@@ -24,6 +24,15 @@ router.get('/export/timesheet/csv', async (req: IAuthenticatedRequest, res) => {
     }
     if (project && project !== 'all') {
       where.project_id = project;
+    }
+    if (workType && workType !== 'all') {
+      where.work_type = workType;
+    }
+    if (subWorkType && subWorkType !== 'all') {
+      where.sub_work_type = subWorkType;
+    }
+    if (activity && activity !== 'all') {
+      where.activity = activity;
     }
 
     const timesheets = await prisma.timesheet.findMany({
@@ -52,7 +61,7 @@ router.get('/export/timesheet/csv', async (req: IAuthenticatedRequest, res) => {
       t.date ? t.date.toISOString().split('T')[0] : '',
       t.user?.name || '',
       t.project?.name || '',
-      t.activity_type || '',
+      t.activity || '',
       t.description || '',
       t.hours_worked || 0,
       t.overtime_hours || 0,
@@ -80,7 +89,7 @@ router.get('/export/timesheet/csv', async (req: IAuthenticatedRequest, res) => {
 // Export project data as CSV
 router.get('/export/project/csv', async (req: IAuthenticatedRequest, res) => {
   try {
-    const { status } = req.query;
+    const { status, workType, subWorkType, activity } = req.query;
     const where: any = {};
     if (status && status !== 'all') {
       where.status = status.toString().toUpperCase();
@@ -108,8 +117,8 @@ router.get('/export/project/csv', async (req: IAuthenticatedRequest, res) => {
       p.description || '',
       p.status || '',
       p.manager?.name || '',
-      p.created_at ? new Date(p.created_at).toISOString() : '',
-      p.updated_at ? new Date(p.updated_at).toISOString() : ''
+      p.createdAt ? new Date(p.createdAt).toISOString() : '',
+      p.updatedAt ? new Date(p.updatedAt).toISOString() : ''
     ]);
 
     const csvContent = [csvHeaders, ...csvRows]
@@ -131,7 +140,7 @@ router.get('/export/project/csv', async (req: IAuthenticatedRequest, res) => {
 // Export user activity data as CSV
 router.get('/export/user-activity/csv', async (req: IAuthenticatedRequest, res) => {
   try {
-    const { start, end, user } = req.query;
+    const { start, end, user, workType, subWorkType, activity } = req.query;
     const where: any = {};
     if (start && end) {
       where.date = {
@@ -141,6 +150,15 @@ router.get('/export/user-activity/csv', async (req: IAuthenticatedRequest, res) 
     }
     if (user && user !== 'all') {
       where.user_id = user;
+    }
+    if (workType && workType !== 'all') {
+      where.work_type = workType;
+    }
+    if (subWorkType && subWorkType !== 'all') {
+      where.sub_work_type = subWorkType;
+    }
+    if (activity && activity !== 'all') {
+      where.activity = activity;
     }
 
     const timesheets = await prisma.timesheet.findMany({
@@ -168,7 +186,7 @@ router.get('/export/user-activity/csv', async (req: IAuthenticatedRequest, res) 
       t.user?.name || '',
       t.date ? t.date.toISOString().split('T')[0] : '',
       t.project?.name || '',
-      t.activity_type || '',
+      t.activity || '',
       t.description || '',
       t.hours_worked || 0,
       t.overtime_hours || 0,
@@ -195,53 +213,381 @@ router.get('/export/user-activity/csv', async (req: IAuthenticatedRequest, res) 
 // Export workload data as CSV
 router.get('/export/workload/csv', async (req: IAuthenticatedRequest, res) => {
   try {
-    const { start, end, department } = req.query;
-    const where: any = {};
-    if (start && end) {
-      where.date = {
-        gte: new Date(start as string),
-        lte: new Date(end as string)
-      };
+    const { timeframe = 'week' } = req.query;
+    
+    // Calculate date range based on timeframe
+    const now = new Date();
+    let startDate: Date;
+    let endDate: Date = new Date(now);
+    
+    switch (timeframe) {
+      case 'week':
+        startDate = new Date(now);
+        startDate.setDate(now.getDate() - now.getDay());
+        startDate.setHours(0, 0, 0, 0);
+        break;
+      case 'month':
+        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+        break;
+      case 'quarter':
+        const quarter = Math.floor(now.getMonth() / 3);
+        startDate = new Date(now.getFullYear(), quarter * 3, 1);
+        break;
+      case 'year':
+        startDate = new Date(now.getFullYear(), 0, 1);
+        break;
+      default:
+        startDate = new Date(now);
+        startDate.setDate(now.getDate() - 7);
+        startDate.setHours(0, 0, 0, 0);
     }
 
-    const timesheets = await prisma.timesheet.findMany({
-      where,
-      include: {
-        user: true,
-        project: true
-      }
-    });
-
-    // Create CSV content
-    const csvHeaders = [
-      'Department',
-      'User',
-      'Project',
-      'Date',
-      'Hours Worked',
-      'Overtime Hours',
-      'Total Hours',
-      'Status'
-    ];
-
-    const csvRows = timesheets.map(t => [
-      t.user?.role || '',
-      t.user?.name || '',
-      t.project?.name || '',
-      t.date ? t.date.toISOString().split('T')[0] : '',
-      t.hours_worked || 0,
-      t.overtime_hours || 0,
-      (Number(t.hours_worked || 0) + Number(t.overtime_hours || 0)),
-      t.status || ''
+    // Get real data from database
+    const [
+      timesheets,
+      users,
+      projects,
+      totalHoursResult,
+      workTypeStats,
+      userStats,
+      projectStats
+    ] = await Promise.all([
+      // Get timesheets in date range
+      prisma.timesheet.findMany({
+        where: {
+          date: {
+            gte: startDate,
+            lte: endDate
+          },
+          status: {
+            in: ['submitted', 'approved']
+          }
+        },
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              role: true,
+              position: true
+            }
+          },
+          project: {
+            select: {
+              id: true,
+              name: true,
+              status: true,
+              customerName: true,
+              budget: true
+            }
+          }
+        }
+      }),
+      
+      // Get all active users
+      prisma.user.findMany({
+        where: {
+          isActive: true
+        },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          role: true,
+          position: true
+        }
+      }),
+      
+      // Get all active projects
+      prisma.project.findMany({
+        where: {
+          status: {
+            in: ['ACTIVE', 'ON_GOING', 'COMPLETED']
+          }
+        },
+        select: {
+          id: true,
+          name: true,
+          status: true,
+          budget: true,
+          customerName: true
+        }
+      }),
+      
+      // Get total hours
+      prisma.timesheet.aggregate({
+        where: {
+          date: {
+            gte: startDate,
+            lte: endDate
+          },
+          status: {
+            in: ['submitted', 'approved']
+          }
+        },
+        _sum: {
+          hours_worked: true,
+          overtime_hours: true
+        }
+      }),
+      
+      // Get work type statistics
+      prisma.timesheet.groupBy({
+        by: ['work_type'],
+        where: {
+          date: {
+            gte: startDate,
+            lte: endDate
+          },
+          status: {
+            in: ['submitted', 'approved']
+          }
+        },
+        _sum: {
+          hours_worked: true,
+          overtime_hours: true
+        },
+        _count: {
+          id: true
+        }
+      }),
+      
+      // Get user statistics
+      prisma.timesheet.groupBy({
+        by: ['user_id'],
+        where: {
+          date: {
+            gte: startDate,
+            lte: endDate
+          },
+          status: {
+            in: ['submitted', 'approved']
+          }
+        },
+        _sum: {
+          hours_worked: true,
+          overtime_hours: true
+        },
+        _count: {
+          id: true
+        }
+      }),
+      
+      // Get project statistics
+      prisma.timesheet.groupBy({
+        by: ['project_id'],
+        where: {
+          date: {
+            gte: startDate,
+            lte: endDate
+          },
+          status: {
+            in: ['submitted', 'approved']
+          }
+        },
+        _sum: {
+          hours_worked: true,
+          overtime_hours: true
+        },
+        _count: {
+          id: true
+        }
+      })
     ]);
 
-    const csvContent = [csvHeaders, ...csvRows]
-      .map(row => row.map(cell => `"${cell}"`).join(','))
-      .join('\n');
+    // Calculate total hours (regular + overtime)
+    const totalRegularHours = Number(totalHoursResult._sum?.hours_worked || 0);
+    const totalOvertimeHours = Number(totalHoursResult._sum?.overtime_hours || 0);
+    const totalHours = totalRegularHours + totalOvertimeHours;
+    
+    const totalUsers = users.length;
+    const totalProjects = projects.length;
+    const averageHoursPerUser = totalUsers > 0 ? totalHours / totalUsers : 0;
+
+    // Process work type data
+    const workTypes = workTypeStats.map(stat => {
+      const regularHours = Number(stat._sum?.hours_worked || 0);
+      const overtimeHours = Number(stat._sum?.overtime_hours || 0);
+      const totalWorkTypeHours = regularHours + overtimeHours;
+      const percentage = totalHours > 0 ? totalWorkTypeHours / totalHours * 100 : 0;
+      return {
+        name: stat.work_type || 'Unknown',
+        hours: totalWorkTypeHours,
+        percentage: Math.round(percentage * 100) / 100,
+        count: stat._count?.id || 0
+      };
+    }).sort((a, b) => b.hours - a.hours);
+
+    // Process user data
+    const userMap = new Map(users.map(user => [user.id, user]));
+    const userWorkload = userStats.map(stat => {
+      const user = userMap.get(stat.user_id || '');
+      if (!user) return null;
+      
+      // Count unique projects for this user
+      const userProjects = timesheets
+        .filter(ts => ts.user_id === stat.user_id)
+        .map(ts => ts.project_id)
+        .filter((id, index, arr) => id && arr.indexOf(id) === index);
+      
+      const regularHours = Number(stat._sum?.hours_worked || 0);
+      const overtimeHours = Number(stat._sum?.overtime_hours || 0);
+      const totalUserHours = regularHours + overtimeHours;
+      
+      return {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        position: user.position,
+        hours: totalUserHours,
+        projects: userProjects.length,
+        timesheetCount: stat._count?.id || 0
+      };
+    }).filter((user): user is NonNullable<typeof user> => user !== null).sort((a, b) => b.hours - a.hours);
+
+    // Get top users (top 10)
+    const topUsers = userWorkload.slice(0, 10);
+
+    // Process department/role data
+    const roleStats = new Map();
+    userWorkload.forEach(user => {
+      const role = user.role || 'Unknown';
+      if (!roleStats.has(role)) {
+        roleStats.set(role, { hours: 0, users: 0, userList: [] });
+      }
+      const roleData = roleStats.get(role);
+      roleData.hours += user.hours;
+      roleData.users += 1;
+      roleData.userList.push(user.name);
+    });
+
+    const departments = Array.from(roleStats.entries()).map(([name, data]) => ({
+      name,
+      hours: data.hours,
+      users: data.users,
+      userList: data.userList
+    })).sort((a, b) => b.hours - a.hours);
+
+    // Process project data
+    const projectMap = new Map(projects.map(project => [project.id, project]));
+    const projectWorkload = projectStats.map(stat => {
+      const project = projectMap.get(stat.project_id || '');
+      if (!project) return null;
+      
+      // Count unique users for this project
+      const projectUsers = timesheets
+        .filter(ts => ts.project_id === stat.project_id)
+        .map(ts => ts.user_id)
+        .filter((id, index, arr) => id && arr.indexOf(id) === index);
+      
+      const regularHours = Number(stat._sum?.hours_worked || 0);
+      const overtimeHours = Number(stat._sum?.overtime_hours || 0);
+      const totalProjectHours = regularHours + overtimeHours;
+      
+      return {
+        id: project.id,
+        name: project.name,
+        status: project.status,
+        budget: project.budget,
+        customer: project.customerName,
+        hours: totalProjectHours,
+        users: projectUsers.length,
+        timesheetCount: stat._count?.id || 0
+      };
+    }).filter((project): project is NonNullable<typeof project> => project !== null).sort((a, b) => b.hours - a.hours);
+
+    // Generate CSV content
+    const csvRows = [
+      ['Workload Report', ''],
+      ['Timeframe', timeframe],
+      ['Date Range', `${startDate.toISOString().split('T')[0]} to ${endDate.toISOString().split('T')[0]}`],
+      ['Generated', new Date().toLocaleString()],
+      [''],
+      ['Summary'],
+      ['Total Hours', totalHours],
+      ['Total Users', totalUsers],
+      ['Total Projects', totalProjects],
+      ['Active Users', userWorkload.filter(user => user.hours > 0).length],
+      ['Active Projects', projectWorkload.filter(project => project.hours > 0).length],
+      ['Average Hours per User', averageHoursPerUser.toFixed(2)],
+      [''],
+      ['Top Users'],
+      ['Name', 'Email', 'Role', 'Position', 'Hours', 'Projects', 'Timesheets'],
+      ...topUsers.map(user => [
+        user.name,
+        user.email,
+        user.role,
+        user.position,
+        user.hours,
+        user.projects,
+        user.timesheetCount
+      ]),
+      [''],
+      ['All Users'],
+      ['Name', 'Email', 'Role', 'Position', 'Hours', 'Projects', 'Timesheets'],
+      ...userWorkload.map(user => [
+        user.name,
+        user.email,
+        user.role,
+        user.position,
+        user.hours,
+        user.projects,
+        user.timesheetCount
+      ]),
+      [''],
+      ['Departments/Roles'],
+      ['Department', 'Hours', 'Users', 'User List'],
+      ...departments.map(dept => [
+        dept.name,
+        dept.hours,
+        dept.users,
+        dept.userList.join('; ')
+      ]),
+      [''],
+      ['Work Types'],
+      ['Type', 'Hours', 'Percentage', 'Count'],
+      ...workTypes.map(type => [
+        type.name,
+        type.hours,
+        `${type.percentage}%`,
+        type.count
+      ]),
+      [''],
+      ['Top Projects'],
+      ['Name', 'Status', 'Customer', 'Budget', 'Hours', 'Users', 'Timesheets'],
+      ...projectWorkload.slice(0, 10).map(project => [
+        project.name,
+        project.status,
+        project.customer,
+        project.budget,
+        project.hours,
+        project.users,
+        project.timesheetCount
+      ]),
+      [''],
+      ['All Projects'],
+      ['Name', 'Status', 'Customer', 'Budget', 'Hours', 'Users', 'Timesheets'],
+      ...projectWorkload.map(project => [
+        project.name,
+        project.status,
+        project.customer,
+        project.budget,
+        project.hours,
+        project.users,
+        project.timesheetCount
+      ])
+    ];
+
+    const csvContent = csvRows.map(row => 
+      row.map(cell => `"${cell}"`).join(',')
+    ).join('\n');
 
     res.setHeader('Content-Type', 'text/csv');
-    res.setHeader('Content-Disposition', `attachment; filename="workload-report-${new Date().toISOString().split('T')[0]}.csv"`);
+    res.setHeader('Content-Disposition', `attachment; filename="workload-report-${timeframe}-${new Date().toISOString().split('T')[0]}.csv"`);
     res.send(csvContent);
+
   } catch (error) {
     console.error('Error exporting workload CSV:', error);
     res.status(500).json({
@@ -251,106 +597,340 @@ router.get('/export/workload/csv', async (req: IAuthenticatedRequest, res) => {
   }
 });
 
-// Get workload report
+// Workload summary report for dashboard/charts
 router.get('/workload', async (req: IAuthenticatedRequest, res) => {
   try {
-    // รับ filter จาก query string
-    const { start, end, department } = req.query;
-    const where: any = {};
-    if (start && end) {
-      where.date = {
-        gte: new Date(start as string),
-        lte: new Date(end as string)
-      };
+    const { timeframe = 'week' } = req.query;
+    
+    // Calculate date range based on timeframe
+    const now = new Date();
+    let startDate: Date;
+    let endDate: Date = new Date(now);
+    
+    switch (timeframe) {
+      case 'week':
+        startDate = new Date(now);
+        startDate.setDate(now.getDate() - now.getDay());
+        startDate.setHours(0, 0, 0, 0);
+        break;
+      case 'month':
+        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+        break;
+      case 'quarter':
+        const quarter = Math.floor(now.getMonth() / 3);
+        startDate = new Date(now.getFullYear(), quarter * 3, 1);
+        break;
+      case 'year':
+        startDate = new Date(now.getFullYear(), 0, 1);
+        break;
+      default:
+        startDate = new Date(now);
+        startDate.setDate(now.getDate() - 7);
+        startDate.setHours(0, 0, 0, 0);
     }
 
-    // ดึง timesheet ทั้งหมดตาม filter
-    const timesheets = await prisma.timesheet.findMany({
-      where,
-      include: {
-        user: true,
-        project: true
+    // Get real data from database
+    const [
+      timesheets,
+      users,
+      projects,
+      totalHoursResult,
+      workTypeStats,
+      userStats,
+      projectStats
+    ] = await Promise.all([
+      // Get timesheets in date range
+      prisma.timesheet.findMany({
+        where: {
+          date: {
+            gte: startDate,
+            lte: endDate
+          },
+          status: {
+            in: ['submitted', 'approved']
+          }
+        },
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              role: true,
+              position: true
+            }
+          },
+          project: {
+            select: {
+              id: true,
+              name: true,
+              status: true,
+              customerName: true,
+              budget: true
+            }
+          }
+        }
+      }),
+      
+      // Get all active users
+      prisma.user.findMany({
+        where: {
+          isActive: true
+        },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          role: true,
+          position: true
+        }
+      }),
+      
+      // Get all active projects
+      prisma.project.findMany({
+        where: {
+          status: {
+            in: ['ACTIVE', 'ON_GOING', 'COMPLETED']
+          }
+        },
+        select: {
+          id: true,
+          name: true,
+          status: true,
+          budget: true,
+          customerName: true
+        }
+      }),
+      
+      // Get total hours
+      prisma.timesheet.aggregate({
+        where: {
+          date: {
+            gte: startDate,
+            lte: endDate
+          },
+          status: {
+            in: ['submitted', 'approved']
+          }
+        },
+        _sum: {
+          hours_worked: true,
+          overtime_hours: true
+        }
+      }),
+      
+      // Get work type statistics
+      prisma.timesheet.groupBy({
+        by: ['work_type'],
+        where: {
+          date: {
+            gte: startDate,
+            lte: endDate
+          },
+          status: {
+            in: ['submitted', 'approved']
+          }
+        },
+        _sum: {
+          hours_worked: true,
+          overtime_hours: true
+        },
+        _count: {
+          id: true
+        }
+      }),
+      
+      // Get user statistics
+      prisma.timesheet.groupBy({
+        by: ['user_id'],
+        where: {
+          date: {
+            gte: startDate,
+            lte: endDate
+          },
+          status: {
+            in: ['submitted', 'approved']
+          }
+        },
+        _sum: {
+          hours_worked: true,
+          overtime_hours: true
+        },
+        _count: {
+          id: true
+        }
+      }),
+      
+      // Get project statistics
+      prisma.timesheet.groupBy({
+        by: ['project_id'],
+        where: {
+          date: {
+            gte: startDate,
+            lte: endDate
+          },
+          status: {
+            in: ['submitted', 'approved']
+          }
+        },
+        _sum: {
+          hours_worked: true,
+          overtime_hours: true
+        },
+        _count: {
+          id: true
+        }
+      })
+    ]);
+
+    // Calculate total hours (regular + overtime)
+    const totalRegularHours = Number(totalHoursResult._sum?.hours_worked || 0);
+    const totalOvertimeHours = Number(totalHoursResult._sum?.overtime_hours || 0);
+    const totalHours = totalRegularHours + totalOvertimeHours;
+    
+    const totalUsers = users.length;
+    const totalProjects = projects.length;
+    const averageHoursPerUser = totalUsers > 0 ? totalHours / totalUsers : 0;
+
+    // Process work type data
+    const workTypes = workTypeStats.map(stat => {
+      const regularHours = Number(stat._sum?.hours_worked || 0);
+      const overtimeHours = Number(stat._sum?.overtime_hours || 0);
+      const totalWorkTypeHours = regularHours + overtimeHours;
+      const percentage = totalHours > 0 ? totalWorkTypeHours / totalHours * 100 : 0;
+      return {
+        name: stat.work_type || 'Unknown',
+        hours: totalWorkTypeHours,
+        percentage: Math.round(percentage * 100) / 100,
+        count: stat._count?.id || 0
+      };
+    }).sort((a, b) => b.hours - a.hours);
+
+    // Process user data
+    const userMap = new Map(users.map(user => [user.id, user]));
+    const userWorkload = userStats.map(stat => {
+      const user = userMap.get(stat.user_id || '');
+      if (!user) return null;
+      
+      // Count unique projects for this user
+      const userProjects = timesheets
+        .filter(ts => ts.user_id === stat.user_id)
+        .map(ts => ts.project_id)
+        .filter((id, index, arr) => id && arr.indexOf(id) === index);
+      
+      const regularHours = Number(stat._sum?.hours_worked || 0);
+      const overtimeHours = Number(stat._sum?.overtime_hours || 0);
+      const totalUserHours = regularHours + overtimeHours;
+      
+      return {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        position: user.position,
+        hours: totalUserHours,
+        projects: userProjects.length,
+        timesheetCount: stat._count?.id || 0
+      };
+    }).filter((user): user is NonNullable<typeof user> => user !== null).sort((a, b) => b.hours - a.hours);
+
+    // Get top users (top 10)
+    const topUsers = userWorkload.slice(0, 10);
+
+    // Process department/role data
+    const roleStats = new Map();
+    userWorkload.forEach(user => {
+      const role = user.role || 'Unknown';
+      if (!roleStats.has(role)) {
+        roleStats.set(role, { hours: 0, users: 0, userList: [] });
       }
+      const roleData = roleStats.get(role);
+      roleData.hours += user.hours;
+      roleData.users += 1;
+      roleData.userList.push(user.name);
     });
 
-    // สรุปข้อมูล
-    const totalHours = timesheets.reduce((sum, t) => sum + Number(t.hours_worked || 0) + Number(t.overtime_hours || 0), 0);
-    const uniqueUsers = new Set(timesheets.map(t => t.user_id)).size;
-    const activeUsers = uniqueUsers; // ใช้ unique users เป็น active users
+    const departments = Array.from(roleStats.entries()).map(([name, data]) => ({
+      name,
+      hours: data.hours,
+      users: data.users,
+      userList: data.userList
+    })).sort((a, b) => b.hours - a.hours);
 
-    // Group by department (ใช้ role ของ user เป็น department)
-    const deptMap: Record<string, any> = {};
-    timesheets.forEach(t => {
-      if (!t.user) return;
-      const dept = t.user.role || 'UNKNOWN';
-      if (!deptMap[dept]) {
-        deptMap[dept] = {
-          name: dept,
-          totalHours: 0,
-          averageHours: 0,
-          userCount: 0,
-          users: new Set()
-        };
+    // Process project data
+    const projectMap = new Map(projects.map(project => [project.id, project]));
+    const projectWorkload = projectStats.map(stat => {
+      const project = projectMap.get(stat.project_id || '');
+      if (!project) return null;
+      
+      // Count unique users for this project
+      const projectUsers = timesheets
+        .filter(ts => ts.project_id === stat.project_id)
+        .map(ts => ts.user_id)
+        .filter((id, index, arr) => id && arr.indexOf(id) === index);
+      
+      const regularHours = Number(stat._sum?.hours_worked || 0);
+      const overtimeHours = Number(stat._sum?.overtime_hours || 0);
+      const totalProjectHours = regularHours + overtimeHours;
+      
+      return {
+        id: project.id,
+        name: project.name,
+        status: project.status,
+        budget: project.budget,
+        customer: project.customerName,
+        hours: totalProjectHours,
+        users: projectUsers.length,
+        timesheetCount: stat._count?.id || 0
+      };
+    }).filter((project): project is NonNullable<typeof project> => project !== null).sort((a, b) => b.hours - a.hours);
+
+    // Get top projects (top 10)
+    const topProjects = projectWorkload.slice(0, 10);
+
+    // Calculate additional metrics
+    const activeUsers = userWorkload.filter(user => user.hours > 0).length;
+    const activeProjects = projectWorkload.filter(project => project.hours > 0).length;
+    const averageHoursPerProject = activeProjects > 0 ? totalHours / activeProjects : 0;
+
+    const workloadData = {
+      totalHours,
+      totalUsers,
+      totalProjects,
+      activeUsers,
+      activeProjects,
+      averageHoursPerUser: Math.round(averageHoursPerUser * 100) / 100,
+      averageHoursPerProject: Math.round(averageHoursPerProject * 100) / 100,
+      timeframe,
+      dateRange: {
+        start: startDate.toISOString(),
+        end: endDate.toISOString()
+      },
+      users: userWorkload,
+      departments,
+      workTypes,
+      topUsers,
+      topProjects,
+      projects: projectWorkload,
+      summary: {
+        totalTimesheets: timesheets.length,
+        averageHoursPerTimesheet: timesheets.length > 0 ? totalHours / timesheets.length : 0,
+        mostActiveUser: topUsers[0] || null,
+        mostActiveProject: topProjects[0] || null,
+        mostCommonWorkType: workTypes[0] || null
       }
-      deptMap[dept].totalHours += Number(t.hours_worked || 0) + Number(t.overtime_hours || 0);
-      deptMap[dept].users.add(t.user_id);
-    });
-
-    const departments = Object.values(deptMap).map((dept: any) => ({
-      name: dept.name,
-      totalHours: dept.totalHours,
-      averageHours: dept.users.size > 0 ? dept.totalHours / dept.users.size : 0,
-      userCount: dept.users.size
-    }));
-
-    // Weekly data (group by week)
-    const weeklyDataMap: Record<string, any> = {};
-    timesheets.forEach(t => {
-      const week = t.date ? `${t.date.getFullYear()}-W${getWeekNumber(t.date)}` : 'Unknown';
-      if (!weeklyDataMap[week]) weeklyDataMap[week] = { week, hours: 0, users: new Set() };
-      weeklyDataMap[week].hours += Number(t.hours_worked || 0) + Number(t.overtime_hours || 0);
-      weeklyDataMap[week].users.add(t.user_id);
-    });
-    const weeklyData = Object.values(weeklyDataMap).map((week: any) => ({
-      week: week.week,
-      hours: week.hours,
-      users: week.users.size
-    }));
-
-    // Top users
-    const userMap: Record<string, any> = {};
-    timesheets.forEach(t => {
-      if (!t.user) return;
-      if (!userMap[t.user.id]) {
-        userMap[t.user.id] = {
-          name: t.user.name,
-          hours: 0,
-          department: t.user.role
-        };
-      }
-      userMap[t.user.id].hours += Number(t.hours_worked || 0) + Number(t.overtime_hours || 0);
-    });
-    const topUsers = Object.values(userMap)
-      .sort((a: any, b: any) => b.hours - a.hours)
-      .slice(0, 5);
+    };
 
     res.json({
       success: true,
-      data: {
-        totalHours,
-        averageHoursPerWeek: weeklyData.length > 0 ? totalHours / weeklyData.length : 0,
-        totalUsers: uniqueUsers,
-        activeUsers,
-        departments,
-        weeklyData,
-        topUsers
-      }
+      data: workloadData
     });
+
   } catch (error) {
-    console.error('Error fetching workload report:', error);
+    console.error('Error generating workload report:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to fetch workload report'
+      message: 'Failed to generate workload report'
     });
   }
 });
@@ -359,7 +939,7 @@ router.get('/workload', async (req: IAuthenticatedRequest, res) => {
 router.get('/timesheet', async (req: IAuthenticatedRequest, res) => {
   try {
     // รับ filter จาก query string
-    const { start, end, status, project } = req.query;
+    const { start, end, status, project, workType, subWorkType, activity } = req.query;
     const where: any = {};
     if (start && end) {
       where.date = {
@@ -372,6 +952,15 @@ router.get('/timesheet', async (req: IAuthenticatedRequest, res) => {
     }
     if (project && project !== 'all') {
       where.project_id = project;
+    }
+    if (workType && workType !== 'all') {
+      where.work_type = workType;
+    }
+    if (subWorkType && subWorkType !== 'all') {
+      where.sub_work_type = subWorkType;
+    }
+    if (activity && activity !== 'all') {
+      where.activity = activity;
     }
 
     // ดึง timesheet ทั้งหมดตาม filter
@@ -476,7 +1065,7 @@ router.get('/timesheet', async (req: IAuthenticatedRequest, res) => {
 router.get('/project', async (req: IAuthenticatedRequest, res) => {
   try {
     // รับ filter จาก query string
-    const { start, end, status } = req.query;
+    const { start, end, status, workType, subWorkType, activity } = req.query;
     const where: any = { isDeleted: false };
     if (status && status !== 'all') {
       where.status = status.toString().toUpperCase();
@@ -503,7 +1092,19 @@ router.get('/project', async (req: IAuthenticatedRequest, res) => {
 
     // คำนวณ budget และ spent จาก timesheets
     const projectStats = projects.map(project => {
-      const timesheets = project.timesheets || [];
+      let timesheets = project.timesheets || [];
+      
+      // Filter timesheets based on work type, sub work type, and activity
+      if (workType && workType !== 'all') {
+        timesheets = timesheets.filter(t => t.work_type === workType);
+      }
+      if (subWorkType && subWorkType !== 'all') {
+        timesheets = timesheets.filter(t => t.sub_work_type === subWorkType);
+      }
+      if (activity && activity !== 'all') {
+        timesheets = timesheets.filter(t => t.activity === activity);
+      }
+      
       const totalHours = timesheets.reduce((sum, t) => sum + Number(t.hours_worked || 0) + Number(t.overtime_hours || 0), 0);
       const spent = timesheets.reduce((sum, t) => {
         const hourlyRate = Number(t.hourly_rate || 0);
@@ -576,7 +1177,7 @@ router.get('/project', async (req: IAuthenticatedRequest, res) => {
 router.get('/user-activity', async (req: IAuthenticatedRequest, res) => {
   try {
     // รับ filter จาก query string
-    const { start, end, user_id } = req.query;
+    const { start, end, user_id, workType, subWorkType, activity } = req.query;
     const where: any = {};
     if (start && end) {
       where.createdAt = {
@@ -615,7 +1216,20 @@ router.get('/user-activity', async (req: IAuthenticatedRequest, res) => {
 
     // สรุปข้อมูล user
     const userStats = users.map(user => {
-      const timesheetEntries = user.timesheets?.length || 0;
+      let timesheets = user.timesheets || [];
+      
+      // Filter timesheets based on work type, sub work type, and activity
+      if (workType && workType !== 'all') {
+        timesheets = timesheets.filter(t => t.work_type === workType);
+      }
+      if (subWorkType && subWorkType !== 'all') {
+        timesheets = timesheets.filter(t => t.sub_work_type === subWorkType);
+      }
+      if (activity && activity !== 'all') {
+        timesheets = timesheets.filter(t => t.activity === activity);
+      }
+      
+      const timesheetEntries = timesheets.length;
       const approvalActions = user.approved_timesheets?.length || 0;
       const userActivities = activities.filter(a => a.userId === user.id);
       

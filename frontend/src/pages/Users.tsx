@@ -19,7 +19,8 @@ const Users: React.FC = () => {
     email: '',
     role: '',
     isActive: true,
-    position: ''
+    position: '',
+    employeeCode: ''
   });
   const [submitting, setSubmitting] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -29,7 +30,8 @@ const Users: React.FC = () => {
     role: '',
     password: '',
     isActive: true,
-    position: ''
+    position: '',
+    employeeCode: ''
   });
   const [creating, setCreating] = useState(false);
   const [filterPosition, setFilterPosition] = useState('all');
@@ -95,7 +97,8 @@ const Users: React.FC = () => {
       email: user.email,
       role: user.role,
       isActive: user.isActive,
-      position: user.position || ''
+      position: user.position || '',
+      employeeCode: user.employeeCode || ''
     });
     setShowEditModal(true);
   };
@@ -107,7 +110,8 @@ const Users: React.FC = () => {
       role: '',
       password: '',
       isActive: true,
-      position: ''
+      position: '',
+      employeeCode: ''
     });
     setShowCreateModal(true);
   };
@@ -415,6 +419,19 @@ const Users: React.FC = () => {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Employee Code
+                  </label>
+                  <input
+                    type="text"
+                    value={editForm.employeeCode}
+                    onChange={(e) => handleInputChange('employeeCode', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
                     Role
                   </label>
                   <select
@@ -479,6 +496,149 @@ const Users: React.FC = () => {
                       setShowEditModal(false);
                       setEditingUser(null);
                     }}
+                    className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 flex items-center"
+                  >
+                    <X className="h-4 w-4 mr-2" />
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Create User Modal */}
+      {showCreateModal && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+            <div className="mt-3">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-medium text-gray-900">Create New User</h3>
+                <button
+                  onClick={() => setShowCreateModal(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+              
+              <form onSubmit={handleSubmitCreate} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Name
+                  </label>
+                  <input
+                    type="text"
+                    value={createForm.name}
+                    onChange={(e) => handleCreateInputChange('name', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Email
+                  </label>
+                  <input
+                    type="email"
+                    value={createForm.email}
+                    onChange={(e) => handleCreateInputChange('email', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Employee Code
+                  </label>
+                  <input
+                    type="text"
+                    value={createForm.employeeCode}
+                    onChange={(e) => handleCreateInputChange('employeeCode', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Password
+                  </label>
+                  <input
+                    type="password"
+                    value={createForm.password}
+                    onChange={(e) => handleCreateInputChange('password', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Role
+                  </label>
+                  <select
+                    value={createForm.role}
+                    onChange={(e) => handleCreateInputChange('role', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                    required
+                  >
+                    <option value="">Select Role</option>
+                    <option value="ADMIN">Admin</option>
+                    <option value="MANAGER">Manager</option>
+                    <option value="USER">User</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Position
+                  </label>
+                  <input
+                    type="text"
+                    value={createForm.position || ''}
+                    onChange={(e) => handleCreateInputChange('position', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                  />
+                </div>
+
+                <div className="flex items-center">
+                  <input
+                    type="checkbox"
+                    id="createIsActive"
+                    checked={createForm.isActive}
+                    onChange={(e) => handleCreateInputChange('isActive', e.target.checked)}
+                    className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
+                  />
+                  <label htmlFor="createIsActive" className="ml-2 block text-sm text-gray-900">
+                    Active User
+                  </label>
+                </div>
+
+                <div className="flex space-x-3 pt-4">
+                  <button
+                    type="submit"
+                    disabled={creating}
+                    className="flex-1 bg-primary-600 text-white px-4 py-2 rounded-md hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                  >
+                    {creating ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                        Creating...
+                      </>
+                    ) : (
+                      <>
+                        <Plus className="h-4 w-4 mr-2" />
+                        Create User
+                      </>
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowCreateModal(false)}
                     className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 flex items-center"
                   >
                     <X className="h-4 w-4 mr-2" />

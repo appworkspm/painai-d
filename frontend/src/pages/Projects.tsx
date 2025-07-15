@@ -4,6 +4,7 @@ import { useNotification } from '../contexts/NotificationContext';
 import { FolderOpen, Plus, Edit, Trash2, Users, Calendar, X, Save } from 'lucide-react';
 import { projectAPI } from '../services/api';
 import { adminAPI } from '../services/api';
+import { Pagination } from 'antd';
 
 const Projects: React.FC = () => {
   const { user } = useAuth();
@@ -44,6 +45,8 @@ const Projects: React.FC = () => {
   });
   const [creating, setCreating] = useState(false);
   const [users, setUsers] = useState<any[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   useEffect(() => {
     loadProjects();
@@ -229,6 +232,10 @@ const Projects: React.FC = () => {
         return 'bg-blue-100 text-blue-800';
       case 'CANCELLED':
         return 'bg-red-100 text-red-800';
+      case 'ESCALATED_TO_SUPPORT':
+        return 'bg-orange-100 text-orange-800';
+      case 'SIGNED_CONTRACT':
+        return 'bg-purple-100 text-purple-800';
       default:
         return 'bg-gray-100 text-gray-800';
     }
@@ -244,6 +251,8 @@ const Projects: React.FC = () => {
     if (filter === 'all') return true;
     return project.status === filter.toUpperCase();
   });
+
+  const paginatedProjects = filteredProjects.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   return (
     <div className="space-y-6">
@@ -273,6 +282,8 @@ const Projects: React.FC = () => {
                 <option value="ON_HOLD">On Hold</option>
                 <option value="COMPLETED">Completed</option>
                 <option value="CANCELLED">Cancelled</option>
+                <option value="ESCALATED_TO_SUPPORT">Escalated to Support</option>
+                <option value="SIGNED_CONTRACT">Signed Contract</option>
               </select>
             </div>
           </div>
@@ -318,7 +329,7 @@ const Projects: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {filteredProjects.map((project) => (
+                {paginatedProjects.map((project) => (
                   <tr key={project.id}>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div>
@@ -378,6 +389,22 @@ const Projects: React.FC = () => {
                 ))}
               </tbody>
             </table>
+          )}
+          {filteredProjects.length > 0 && (
+            <div className="flex justify-end p-4">
+              <Pagination
+                current={currentPage}
+                pageSize={pageSize}
+                total={filteredProjects.length}
+                showSizeChanger
+                showQuickJumper
+                onChange={(page, size) => {
+                  setCurrentPage(page);
+                  setPageSize(size);
+                }}
+                showTotal={(total, range) => `${range[0]}-${range[1]} จาก ${total} รายการ`}
+              />
+            </div>
           )}
         </div>
       </div>
@@ -442,6 +469,8 @@ const Projects: React.FC = () => {
                     <option value="ON_HOLD">On Hold</option>
                     <option value="COMPLETED">Completed</option>
                     <option value="CANCELLED">Cancelled</option>
+                    <option value="ESCALATED_TO_SUPPORT">Escalated to Support</option>
+                    <option value="SIGNED_CONTRACT">Signed Contract</option>
                   </select>
                 </div>
 
@@ -649,6 +678,8 @@ const Projects: React.FC = () => {
                     <option value="ON_HOLD">On Hold</option>
                     <option value="COMPLETED">Completed</option>
                     <option value="CANCELLED">Cancelled</option>
+                    <option value="ESCALATED_TO_SUPPORT">Escalated to Support</option>
+                    <option value="SIGNED_CONTRACT">Signed Contract</option>
                   </select>
                 </div>
 

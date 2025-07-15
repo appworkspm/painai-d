@@ -3,19 +3,15 @@ import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { 
   Clock, 
-  Calendar, 
   BarChart3, 
   LogOut, 
   User, 
   Shield, 
   FileText, 
-  CheckCircle, 
-  Settings, 
-  Users, 
   FolderOpen,
-  TrendingUp,
-  Activity,
-  Home
+  Home,
+  Users,
+  Activity
 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -59,10 +55,7 @@ const Layout: React.FC = () => {
       name: 'Reports',
       icon: BarChart3,
       children: [
-        { name: 'Workload Report', href: '/report' },
-        { name: 'Timesheet Report', href: '/report/timesheet' },
-        { name: 'Project Report', href: '/report/project' },
-        { name: 'User Activity Report', href: '/report/activity' },
+        { name: 'Workload Report', href: '/report/workload' },
       ],
     },
     { name: 'Profile', href: '/profile', icon: User },

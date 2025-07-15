@@ -51,8 +51,8 @@ const WorkloadReport: React.FC = () => {
 
   // Map timesheet data to CSV structure
   const csvRows = filteredTimesheets.map((t: any) => ({
-    'Project': t.project?.name || 'ไม่ผูกกับโครงการ',
-    'Work Type': t.project ? 'Project' : 'Non Project',
+    'Project': t.work_type === 'LEAVE' ? 'Leave' : (t.project?.name || 'ไม่ผูกกับโครงการ'),
+    'Work Type': t.work_type === 'LEAVE' ? 'Leave' : (t.work_type === 'PROJECT' ? 'Project' : 'Non Project'),
     'Activity': t.description || '',
     'Employee': t.user?.name || '',
     'Role': t.user?.role || '',

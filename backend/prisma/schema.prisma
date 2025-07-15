@@ -12,6 +12,7 @@ datasource db {
 
 model User {
   id                  String    @id @default(uuid()) @db.Uuid
+  employeeCode        String?   @unique // Employee code from original system
   email               String    @unique
   password            String
   name                String
@@ -36,6 +37,7 @@ model User {
   assignedTasks          ProjectTask[]          @relation("TaskAssignee")
   projectTeamMembers     ProjectTeamMember[]
   projectTimelines       ProjectTimeline[]
+  activityLogs           ActivityLog[]
 
   @@map("users")
 }
@@ -44,8 +46,8 @@ model Project {
   id          String   @id @default(uuid()) @db.Uuid
   name        String
   description String?
-  status      String   @default("ACTIVE") // ACTIVE, COMPLETED, ON_HOLD, CANCELLED
-  managerId   String   @db.Uuid
+  status      String   @default("ACTIVE") // ACTIVE, COMPLETED, ON_HOLD, CANCELLED, ESCALATED_TO_SUPPORT, SIGNED_CONTRACT
+  managerId   String?  @db.Uuid
   startDate   DateTime?
   endDate     DateTime?
   budget      Decimal? @db.Decimal(15, 2)
@@ -58,7 +60,7 @@ model Project {
   isDeleted   Boolean  @default(false)
 
   // Relations
-  manager      User          @relation("ProjectManager", fields: [managerId], references: [id])
+  manager      User?         @relation("ProjectManager", fields: [managerId], references: [id])
   timesheets   Timesheet[]
   projectTasks ProjectTask[]
   projectTeamMembers ProjectTeamMember[]
@@ -200,4 +202,25 @@ model ProjectTimeline {
   user    User    @relation(fields: [userId], references: [id])
 
   @@map("project_timelines")
+}
+
+model ActivityLog {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String?  @db.Uuid
+  user      User?    @relation(fields: [userId], references: [id])
+  type      String
+  message   String
+  severity  String   @default("info")
+  createdAt DateTime @default(now())
+}
+
+model Holiday {
+  id          String   @id @default(uuid())
+  date        DateTime
+  name        String
+  nameEn      String
+  type        String   // PUBLIC_HOLIDAY, GOVERNMENT_HOLIDAY, BANK_HOLIDAY
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }

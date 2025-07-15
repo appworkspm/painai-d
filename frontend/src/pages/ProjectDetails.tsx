@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useNotification } from '../contexts/NotificationContext';
-import { FolderOpen, Users, Calendar, Clock, CheckCircle, AlertCircle, BarChart3, Edit, Plus, Circle, X, Save, Trash2, Search, Filter } from 'lucide-react';
+import { FolderOpen, Users, Calendar, Clock, CheckCircle, AlertCircle, BarChart3, Edit, Plus, Circle, X, Save, Trash2, Search, Filter, Download } from 'lucide-react';
 import { projectAPI, projectTeamAPI, projectTaskAPI, projectTimelineAPI, adminAPI } from '../services/api';
 import { Card, Row, Col, Statistic, Table, Tag, Space, Button, Input, Select, DatePicker, message, Spin, Empty, Skeleton } from 'antd';
 import dayjs from 'dayjs';
@@ -36,6 +36,75 @@ const ProjectDetails: React.FC = () => {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('ACTIVE');
   const [error, setError] = useState<string | null>(null);
+
+  // Export functionality
+  const exportProjectsToCSV = () => {
+    try {
+      // Build filter info first
+      const filterInfo = [];
+      if (search) filterInfo.push(`ค้นหา: "${search}"`);
+      if (statusFilter !== 'all') {
+        const statusText = statusFilter === 'ACTIVE' ? 'กำลังดำเนินการ' :
+                          statusFilter === 'COMPLETED' ? 'เสร็จสิ้น' :
+                          statusFilter === 'ON_HOLD' ? 'ระงับ' :
+                          statusFilter === 'CANCELLED' ? 'ยกเลิก' : statusFilter;
+        filterInfo.push(`สถานะ: ${statusText}`);
+      }
+
+      const headers = [
+        'ชื่อโครงการ',
+        'คำอธิบาย', 
+        'ผู้จัดการ',
+        'สถานะ',
+        'วันที่เริ่มต้น',
+        'วันที่สิ้นสุด',
+        'งบประมาณ',
+        'วันที่สร้าง'
+      ];
+
+      const csvData = filteredProjects.map(project => [
+        project.name || '',
+        project.description || '',
+        project.manager?.name || '',
+        project.status === 'ACTIVE' ? 'กำลังดำเนินการ' :
+        project.status === 'COMPLETED' ? 'เสร็จสิ้น' :
+        project.status === 'ON_HOLD' ? 'ระงับ' :
+        project.status === 'CANCELLED' ? 'ยกเลิก' : project.status || '',
+        project.startDate ? dayjs(project.startDate).format('DD/MM/YYYY') : '',
+        project.endDate ? dayjs(project.endDate).format('DD/MM/YYYY') : '',
+        project.budget ? Number(project.budget).toLocaleString() : '',
+        project.createdAt ? dayjs(project.createdAt).format('DD/MM/YYYY') : ''
+      ]);
+
+      const csvContent = [
+        headers.join(','),
+        ...csvData.map(row => row.map(cell => `"${cell}"`).join(','))
+      ].join('\n');
+
+      const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      const filterSuffix = filterInfo.length > 0 ? `_${filterInfo.join('_').replace(/[^a-zA-Z0-9]/g, '')}` : '';
+      link.setAttribute('download', `รายการโครงการ${filterSuffix}_${dayjs().format('YYYY-MM-DD_HH-mm')}.csv`);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      const filterMessage = filterInfo.length > 0 ? ` (${filterInfo.join(', ')})` : '';
+      
+      showNotification({ 
+        message: `ส่งออกรายการโครงการสำเร็จ${filterMessage} - ${filteredProjects.length} รายการ`, 
+        type: 'success' 
+      });
+    } catch (error) {
+      showNotification({ 
+        message: 'เกิดข้อผิดพลาดในการส่งออกรายการ', 
+        type: 'error' 
+      });
+    }
+  };
 
   useEffect(() => {
     if (!id) {
@@ -600,6 +669,13 @@ const ProjectDetails: React.FC = () => {
             <p className="text-sm text-gray-600">ค้นหาและดูรายละเอียดโครงการทั้งหมด</p>
           </div>
         </div>
+        <Button 
+          type="primary" 
+          icon={<Download className="h-4 w-4" />}
+          onClick={exportProjectsToCSV}
+        >
+          ส่งออกรายการ
+        </Button>
       </div>
 
       {/* Search and Filter */}
@@ -627,6 +703,8 @@ const ProjectDetails: React.FC = () => {
               <Select.Option value="ON_HOLD">ระงับ</Select.Option>
               <Select.Option value="COMPLETED">เสร็จสิ้น</Select.Option>
               <Select.Option value="CANCELLED">ยกเลิก</Select.Option>
+              <Select.Option value="ESCALATED_TO_SUPPORT">Escalated to Support</Select.Option>
+              <Select.Option value="SIGNED_CONTRACT">Signed Contract</Select.Option>
             </Select>
           </Col>
           <Col span={8}>
@@ -640,49 +718,83 @@ const ProjectDetails: React.FC = () => {
 
       {/* Project Statistics */}
       <Row gutter={16}>
-        <Col span={6}>
+        <Col span={4}>
           <Card>
             <Statistic
               title="โครงการทั้งหมด"
-              value={allProjects.length}
+              value={filteredProjects.length}
               prefix={<FolderOpen className="h-4 w-4" />}
             />
           </Card>
         </Col>
-        <Col span={6}>
+        <Col span={4}>
           <Card>
             <Statistic
-              title="โครงการที่กำลังดำเนินการ"
-              value={allProjects.filter(p => p.status === 'ACTIVE').length}
+              title="กำลังดำเนินการ"
+              value={filteredProjects.filter(p => p.status === 'ACTIVE').length}
               valueStyle={{ color: '#3f8600' }}
               prefix={<CheckCircle className="h-4 w-4" />}
             />
           </Card>
         </Col>
-        <Col span={6}>
+        <Col span={4}>
           <Card>
             <Statistic
-              title="โครงการที่เสร็จสิ้น"
-              value={allProjects.filter(p => p.status === 'COMPLETED').length}
+              title="ระงับ"
+              value={filteredProjects.filter(p => p.status === 'ON_HOLD').length}
+              valueStyle={{ color: '#faad14' }}
+              prefix={<AlertCircle className="h-4 w-4" />}
+            />
+          </Card>
+        </Col>
+        <Col span={4}>
+          <Card>
+            <Statistic
+              title="เสร็จสิ้น"
+              value={filteredProjects.filter(p => p.status === 'COMPLETED').length}
               valueStyle={{ color: '#1890ff' }}
               prefix={<BarChart3 className="h-4 w-4" />}
             />
           </Card>
         </Col>
-        <Col span={6}>
+        <Col span={4}>
           <Card>
             <Statistic
-              title="โครงการที่ระงับ"
-              value={allProjects.filter(p => p.status === 'ON_HOLD').length}
-              valueStyle={{ color: '#faad14' }}
+              title="Escalated to Support"
+              value={filteredProjects.filter(p => p.status === 'ESCALATED_TO_SUPPORT').length}
+              valueStyle={{ color: '#722ed1' }}
               prefix={<AlertCircle className="h-4 w-4" />}
+            />
+          </Card>
+        </Col>
+        <Col span={4}>
+          <Card>
+            <Statistic
+              title="Signed Contract"
+              value={filteredProjects.filter(p => p.status === 'SIGNED_CONTRACT').length}
+              valueStyle={{ color: '#b37feb' }}
+              prefix={<CheckCircle className="h-4 w-4" />}
             />
           </Card>
         </Col>
       </Row>
 
       {/* Project Table */}
-      <Card title="รายการโครงการ">
+      <Card 
+        title={
+          <div className="flex items-center justify-between">
+            <span>รายการโครงการ</span>
+            <Button 
+              type="default" 
+              icon={<Download className="h-4 w-4" />}
+              onClick={exportProjectsToCSV}
+              size="small"
+            >
+              ส่งออก CSV
+            </Button>
+          </div>
+        }
+      >
         <Table
           dataSource={filteredProjects}
           rowKey="id"
@@ -718,8 +830,11 @@ const ProjectDetails: React.FC = () => {
               render: (status: string) => {
                 const statusConfig = {
                   ACTIVE: { color: 'success', text: 'กำลังดำเนินการ' },
+                  ON_HOLD: { color: 'warning', text: 'ระงับ' },
                   COMPLETED: { color: 'default', text: 'เสร็จสิ้น' },
-                  ON_HOLD: { color: 'warning', text: 'ระงับ' }
+                  CANCELLED: { color: 'error', text: 'ยกเลิก' },
+                  ESCALATED_TO_SUPPORT: { color: 'processing', text: 'Escalated to Support' },
+                  SIGNED_CONTRACT: { color: 'purple', text: 'Signed Contract' }
                 };
                 const config = statusConfig[status as keyof typeof statusConfig] || { color: 'default', text: status };
                 return <Tag color={config.color}>{config.text}</Tag>;

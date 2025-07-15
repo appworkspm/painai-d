@@ -1,322 +1,462 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../contexts/AuthContext';
-import { useNotification } from '../contexts/NotificationContext';
-import { BarChart3, TrendingUp, Users, Clock, Download, Calendar } from 'lucide-react';
+import { 
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
+  PieChart, Pie, Cell, AreaChart, Area, LineChart, Line
+} from 'recharts';
+import { 
+  CalendarDays, Users, Clock, TrendingUp, Download, Filter,
+  BarChart3, PieChart as PieChartIcon, Activity, Target, Building2, UserCheck
+} from 'lucide-react';
 import { reportAPI } from '../services/api';
 
+interface WorkloadData {
+  totalHours: number;
+  totalUsers: number;
+  totalProjects: number;
+  activeUsers: number;
+  activeProjects: number;
+  averageHoursPerUser: number;
+  averageHoursPerProject: number;
+  timeframe: string;
+  dateRange: {
+    start: string;
+    end: string;
+  };
+  users: Array<{
+    id: string;
+    name: string;
+    email: string;
+    role: string;
+    position: string;
+    hours: number;
+    projects: number;
+    timesheetCount: number;
+  }>;
+  departments: Array<{
+    name: string;
+    hours: number;
+    users: number;
+    userList: string[];
+  }>;
+  workTypes: Array<{
+    name: string;
+    hours: number;
+    percentage: number;
+    count: number;
+  }>;
+  topUsers: Array<{
+    id: string;
+    name: string;
+    email: string;
+    role: string;
+    position: string;
+    hours: number;
+    projects: number;
+    timesheetCount: number;
+  }>;
+  topProjects: Array<{
+    id: string;
+    name: string;
+    status: string;
+    budget: number;
+    customer: string;
+    hours: number;
+    users: number;
+    timesheetCount: number;
+  }>;
+  projects: Array<{
+    id: string;
+    name: string;
+    status: string;
+    budget: number;
+    customer: string;
+    hours: number;
+    users: number;
+    timesheetCount: number;
+  }>;
+  summary: {
+    totalTimesheets: number;
+    averageHoursPerTimesheet: number;
+    mostActiveUser: any;
+    mostActiveProject: any;
+    mostCommonWorkType: any;
+  };
+}
+
+const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#06B6D4', '#84CC16', '#F97316'];
+
 const WorkloadReport: React.FC = () => {
-  const { user } = useAuth();
-  const { showNotification } = useNotification();
-  const [reportData, setReportData] = useState<any>(null);
-  const [loading, setLoading] = useState(false);
-  const [dateRange, setDateRange] = useState({ start: '', end: '' });
-  const [selectedDepartment, setSelectedDepartment] = useState('all');
+  const [data, setData] = useState<WorkloadData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [timeframe, setTimeframe] = useState('week');
+  const [showCharts, setShowCharts] = useState(true);
+  const [selectedDepartment, setSelectedDepartment] = useState<string>('all');
+  const [selectedWorkType, setSelectedWorkType] = useState<string>('all');
 
   useEffect(() => {
-    loadWorkloadReport();
-    // eslint-disable-next-line
-  }, [dateRange, selectedDepartment]);
+    fetchWorkloadData();
+  }, [timeframe]);
 
-  const loadWorkloadReport = async () => {
-    setLoading(true);
-    try {
-      const params: any = {};
-      if (dateRange.start && dateRange.end) {
-        params.start = dateRange.start;
-        params.end = dateRange.end;
-      }
-      if (selectedDepartment && selectedDepartment !== 'all') {
-        params.department = selectedDepartment;
-      }
-      const response = await api.get('/reports/workload', { params });
-      if (response.data.success) {
-        setReportData(response.data.data);
-      } else {
-        setReportData(null);
-        showNotification({
-          message: response.data.message || 'ไม่สามารถโหลดรายงานได้',
-          type: 'error'
-        });
-      }
-    } catch (error) {
-      setReportData(null);
-      showNotification({
-        message: 'ไม่สามารถโหลดรายงานได้',
-        type: 'error'
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleExport = async () => {
+  const fetchWorkloadData = async () => {
     try {
       setLoading(true);
-      const params = {
-        start: dateRange.start,
-        end: dateRange.end,
-        department: selectedDepartment
-      };
-      await reportAPI.exportWorkloadCSV(params);
-      showNotification({
-        message: 'Export completed successfully',
-        type: 'success'
-      });
-    } catch (error: any) {
-      showNotification({
-        message: error.response?.data?.message || 'Failed to export report',
-        type: 'error'
-      });
+      const response = await reportAPI.getWorkloadReport({ timeframe });
+      setData(response.data);
+      setError(null);
+    } catch (err) {
+      setError('Failed to load workload data');
+      console.error('Error fetching workload data:', err);
     } finally {
       setLoading(false);
     }
   };
 
-  const filteredDepartments = reportData?.departments?.filter((dept: any) => 
-    selectedDepartment === 'all' || dept.name.toLowerCase().includes(selectedDepartment.toLowerCase())
-  ) || [];
+  const exportToCSV = async () => {
+    try {
+      await reportAPI.exportWorkloadCSV({ timeframe });
+    } catch (err) {
+      console.error('Error exporting CSV:', err);
+    }
+  };
+
+  const filteredData = data ? {
+    ...data,
+    users: (data.users ?? []).filter(user => 
+      (selectedDepartment === 'all' || user.role === selectedDepartment) && 
+      (selectedWorkType === 'all' || true) // Work type filtering can be added later
+    ),
+    departments: (data.departments ?? []).filter(dept => 
+      selectedDepartment === 'all' || dept.name === selectedDepartment
+    ),
+    workTypes: (data.workTypes ?? []).filter(type => 
+      selectedWorkType === 'all' || type.name === selectedWorkType
+    ),
+    topUsers: (data.topUsers ?? []),
+    topProjects: (data.topProjects ?? [])
+  } : null;
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-6">
+        <div className="max-w-7xl mx-auto">
+          <div className="animate-pulse">
+            <div className="h-8 bg-gray-200 rounded w-1/4 mb-6"></div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+              {[1, 2, 3, 4].map(i => (
+                <div key={i} className="bg-white rounded-xl p-6 shadow-sm">
+                  <div className="h-4 bg-gray-200 rounded w-1/2 mb-2"></div>
+                  <div className="h-8 bg-gray-200 rounded w-1/3"></div>
+                </div>
+              ))}
+            </div>
+            <div className="bg-white rounded-xl p-6 shadow-sm">
+              <div className="h-64 bg-gray-200 rounded"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-red-50 to-pink-100 p-6">
+        <div className="max-w-7xl mx-auto">
+          <div className="bg-white rounded-xl p-8 shadow-sm text-center">
+            <div className="text-red-500 text-6xl mb-4">⚠️</div>
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">Error Loading Data</h2>
+            <p className="text-gray-600 mb-6">{error}</p>
+            <button
+              onClick={fetchWorkloadData}
+              className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              Try Again
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!data) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-6">
+        <div className="max-w-7xl mx-auto">
+          <div className="bg-white rounded-xl p-8 shadow-sm text-center">
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">No Data Available</h2>
+            <p className="text-gray-600">No workload data found for the selected timeframe.</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <BarChart3 className="h-8 w-8 text-primary-600" />
-          <h1 className="text-2xl font-bold text-gray-900">Workload Report</h1>
-        </div>
-        <button 
-          onClick={handleExport}
-          className="bg-primary-600 text-white px-4 py-2 rounded-md hover:bg-primary-700 transition-colors flex items-center"
-          disabled={loading || !reportData}
-        >
-          <Download className="h-4 w-4 mr-2" />
-          Export Report
-        </button>
-      </div>
-
-      {/* Filters */}
-      <div className="bg-white shadow rounded-lg p-6">
-        <div className="flex items-center space-x-4">
-          <div className="flex items-center space-x-2">
-            <Calendar className="h-4 w-4 text-gray-400" />
-            <input
-              type="date"
-              value={dateRange.start}
-              onChange={(e) => setDateRange(prev => ({ ...prev, start: e.target.value }))}
-              className="px-3 py-1 border border-gray-300 rounded-md text-sm"
-            />
-            <span className="text-gray-500">to</span>
-            <input
-              type="date"
-              value={dateRange.end}
-              onChange={(e) => setDateRange(prev => ({ ...prev, end: e.target.value }))}
-              className="px-3 py-1 border border-gray-300 rounded-md text-sm"
-            />
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 p-6">
+      <div className="max-w-7xl mx-auto">
+        {/* Header */}
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-8">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">Workload Report</h1>
+            <p className="text-gray-600">Comprehensive analysis of team workload and productivity</p>
+            {data.dateRange && (
+              <p className="text-sm text-gray-500 mt-1">
+                {new Date(data.dateRange.start).toLocaleDateString()} - {new Date(data.dateRange.end).toLocaleDateString()}
+              </p>
+            )}
           </div>
-          <select
-            value={selectedDepartment}
-            onChange={(e) => setSelectedDepartment(e.target.value)}
-            className="px-3 py-1 border border-gray-300 rounded-md text-sm"
-          >
-            <option value="all">All Departments</option>
-            <option value="ADMIN">Admin</option>
-            <option value="MANAGER">Manager</option>
-            <option value="USER">User</option>
-          </select>
-        </div>
-      </div>
-
-      {/* Loading/Error State */}
-      {loading && <div className="text-center py-10 text-gray-500">Loading...</div>}
-      {!loading && !reportData && <div className="text-center py-10 text-red-500">ไม่พบข้อมูลรายงาน</div>}
-
-      {/* Key Metrics */}
-      {!loading && reportData && (
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          <div className="bg-white p-6 rounded-lg shadow">
-            <div className="flex items-center">
-              <div className="p-2 bg-blue-100 rounded-lg">
-                <Clock className="h-6 w-6 text-blue-600" />
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-500">Total Hours</p>
-                <p className="text-2xl font-bold text-gray-900">{reportData?.totalHours?.toLocaleString() || 0}</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white p-6 rounded-lg shadow">
-            <div className="flex items-center">
-              <div className="p-2 bg-green-100 rounded-lg">
-                <TrendingUp className="h-6 w-6 text-green-600" />
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-500">Avg Hours/Week</p>
-                <p className="text-2xl font-bold text-gray-900">{reportData?.averageHoursPerWeek || 0}</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white p-6 rounded-lg shadow">
-            <div className="flex items-center">
-              <div className="p-2 bg-yellow-100 rounded-lg">
-                <Users className="h-6 w-6 text-yellow-600" />
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-500">Total Users</p>
-                <p className="text-2xl font-bold text-gray-900">{reportData?.totalUsers || 0}</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white p-6 rounded-lg shadow">
-            <div className="flex items-center">
-              <div className="p-2 bg-purple-100 rounded-lg">
-                <BarChart3 className="h-6 w-6 text-purple-600" />
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-500">Active Users</p>
-                <p className="text-2xl font-bold text-gray-900">{reportData?.activeUsers || 0}</p>
-              </div>
-            </div>
+          <div className="flex items-center gap-4 mt-4 lg:mt-0">
+            <button
+              onClick={exportToCSV}
+              className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
+            >
+              <Download size={18} />
+              Export CSV
+            </button>
+            <button
+              onClick={() => setShowCharts(!showCharts)}
+              className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              {showCharts ? <BarChart3 size={18} /> : <PieChartIcon size={18} />}
+              {showCharts ? 'Hide Charts' : 'Show Charts'}
+            </button>
           </div>
         </div>
-      )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Department Workload */}
-        <div className="bg-white shadow rounded-lg">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <h3 className="text-lg font-medium text-gray-900">Workload by Department</h3>
+        {/* Quick Timeframe Selector */}
+        <div className="bg-white rounded-xl p-4 shadow-sm mb-6">
+          <div className="flex items-center gap-2 mb-4">
+            <CalendarDays className="text-blue-600" size={20} />
+            <span className="font-semibold text-gray-700">Timeframe</span>
           </div>
-          <div className="p-6">
-            <div className="space-y-4">
-              {filteredDepartments.map((dept: any) => (
-                <div key={dept.name} className="border border-gray-200 rounded-lg p-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <h4 className="text-sm font-medium text-gray-900">{dept.name}</h4>
-                    <span className="text-sm text-gray-500">{dept.userCount} users</span>
-                  </div>
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-500">Total Hours</span>
-                      <span className="font-medium">{dept.totalHours}</span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-500">Average Hours</span>
-                      <span className="font-medium">{dept.averageHours}</span>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div 
-                        className="bg-primary-600 h-2 rounded-full" 
-                        style={{ width: `${(dept.totalHours / reportData?.totalHours) * 100}%` }}
-                      ></div>
-                    </div>
-                  </div>
-                </div>
-              ))}
+          <div className="flex flex-wrap gap-2">
+            {[
+              { key: 'week', label: 'This Week', icon: '📅' },
+              { key: 'month', label: 'This Month', icon: '📆' },
+              { key: 'quarter', label: 'This Quarter', icon: '📊' },
+              { key: 'year', label: 'This Year', icon: '📈' }
+            ].map(period => (
+              <button
+                key={period.key}
+                onClick={() => setTimeframe(period.key)}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all ${
+                  timeframe === period.key
+                    ? 'bg-blue-600 text-white shadow-lg scale-105'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                <span>{period.icon}</span>
+                {period.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Summary Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <div className="bg-white rounded-xl p-6 shadow-sm border-l-4 border-blue-500">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Total Hours</p>
+                <p className="text-2xl font-bold text-gray-900">{data.totalHours.toLocaleString()}</p>
+              </div>
+              <Clock className="text-blue-500" size={24} />
+            </div>
+          </div>
+
+          <div className="bg-white rounded-xl p-6 shadow-sm border-l-4 border-green-500">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Active Users</p>
+                <p className="text-2xl font-bold text-gray-900">{data.activeUsers} / {data.totalUsers}</p>
+              </div>
+              <UserCheck className="text-green-500" size={24} />
+            </div>
+          </div>
+
+          <div className="bg-white rounded-xl p-6 shadow-sm border-l-4 border-purple-500">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Active Projects</p>
+                <p className="text-2xl font-bold text-gray-900">{data.activeProjects} / {data.totalProjects}</p>
+              </div>
+              <Building2 className="text-purple-500" size={24} />
+            </div>
+          </div>
+
+          <div className="bg-white rounded-xl p-6 shadow-sm border-l-4 border-orange-500">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Avg Hours/User</p>
+                <p className="text-2xl font-bold text-gray-900">{data.averageHoursPerUser.toFixed(1)}</p>
+              </div>
+              <TrendingUp className="text-orange-500" size={24} />
             </div>
           </div>
         </div>
 
-        {/* Weekly Trend */}
-        <div className="bg-white shadow rounded-lg">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <h3 className="text-lg font-medium text-gray-900">Weekly Trend</h3>
-          </div>
-          <div className="p-6">
-            <div className="space-y-4">
-              {reportData?.weeklyData?.map((week: any) => (
-                <div key={week.week} className="border border-gray-200 rounded-lg p-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <h4 className="text-sm font-medium text-gray-900">{week.week}</h4>
-                    <span className="text-sm text-gray-500">{week.users} users</span>
-                  </div>
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-500">Total Hours</span>
-                      <span className="font-medium">{week.hours}</span>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div 
-                        className="bg-green-600 h-2 rounded-full" 
-                        style={{ width: `${(week.hours / Math.max(...reportData?.weeklyData?.map((w: any) => w.hours) || [0])) * 100}%` }}
-                      ></div>
-                    </div>
-                  </div>
-                </div>
-              ))}
+        {/* Charts Section */}
+        {showCharts && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            {/* Work Types Chart */}
+            <div className="bg-white rounded-xl p-6 shadow-sm">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Work Type Distribution</h3>
+              <ResponsiveContainer width="100%" height={300}>
+                <PieChart>
+                  <Pie
+                    data={data.workTypes}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    label={({ name, percentage }) => `${name} (${percentage}%)`}
+                    outerRadius={80}
+                    fill="#8884d8"
+                    dataKey="hours"
+                  >
+                    {data.workTypes.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+
+            {/* Top Users Chart */}
+            <div className="bg-white rounded-xl p-6 shadow-sm">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Top Users by Hours</h3>
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={data.topUsers.slice(0, 8)}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="name" angle={-45} textAnchor="end" height={80} />
+                  <YAxis />
+                  <Tooltip />
+                  <Bar dataKey="hours" fill="#3B82F6" />
+                </BarChart>
+              </ResponsiveContainer>
             </div>
           </div>
-        </div>
-      </div>
+        )}
 
-      {/* Top Users */}
-      <div className="bg-white shadow rounded-lg">
-        <div className="px-6 py-4 border-b border-gray-200">
-          <h3 className="text-lg font-medium text-gray-900">Top Users by Hours</h3>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Rank
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  User
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Department
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Hours
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Percentage
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {reportData?.topUsers?.map((user: any, index: number) => (
-                <tr key={user.name}>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    #{index + 1}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center">
-                      <div className="flex-shrink-0 h-10 w-10">
-                        <div className="h-10 w-10 rounded-full bg-primary-100 flex items-center justify-center">
-                          <Users className="h-5 w-5 text-primary-600" />
+        {/* Detailed Tables */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+          {/* Top Users Table */}
+          <div className="bg-white rounded-xl p-6 shadow-sm">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Top Users</h3>
+            <div className="overflow-x-auto">
+              <table className="min-w-full">
+                <thead>
+                  <tr className="border-b">
+                    <th className="text-left py-2">Name</th>
+                    <th className="text-left py-2">Role</th>
+                    <th className="text-right py-2">Hours</th>
+                    <th className="text-right py-2">Projects</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.topUsers.map((user, index) => (
+                    <tr key={user.id} className="border-b hover:bg-gray-50">
+                      <td className="py-2">
+                        <div>
+                          <div className="font-medium">{user.name}</div>
+                          <div className="text-sm text-gray-500">{user.email}</div>
                         </div>
-                      </div>
-                      <div className="ml-4">
-                        <div className="text-sm font-medium text-gray-900">{user.name}</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {user.department}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {user.hours} hours
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center">
-                      <div className="w-16 bg-gray-200 rounded-full h-2 mr-2">
-                        <div 
-                          className="bg-primary-600 h-2 rounded-full" 
-                          style={{ width: `${(user.hours / Math.max(...reportData?.topUsers?.map((u: any) => u.hours) || [0])) * 100}%` }}
-                        ></div>
-                      </div>
-                      <span className="text-sm text-gray-500">
-                        {((user.hours / reportData?.totalHours) * 100).toFixed(1)}%
-                      </span>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                      </td>
+                      <td className="py-2 text-sm text-gray-600">{user.role}</td>
+                      <td className="py-2 text-right font-medium">{user.hours}</td>
+                      <td className="py-2 text-right text-sm text-gray-600">{user.projects}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Top Projects Table */}
+          <div className="bg-white rounded-xl p-6 shadow-sm">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Top Projects</h3>
+            <div className="overflow-x-auto">
+              <table className="min-w-full">
+                <thead>
+                  <tr className="border-b">
+                    <th className="text-left py-2">Project</th>
+                    <th className="text-left py-2">Status</th>
+                    <th className="text-right py-2">Hours</th>
+                    <th className="text-right py-2">Users</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.topProjects.map((project, index) => (
+                    <tr key={project.id} className="border-b hover:bg-gray-50">
+                      <td className="py-2">
+                        <div>
+                          <div className="font-medium">{project.name}</div>
+                          <div className="text-sm text-gray-500">{project.customer}</div>
+                        </div>
+                      </td>
+                      <td className="py-2">
+                        <span className={`px-2 py-1 text-xs rounded-full ${
+                          project.status === 'ACTIVE' || project.status === 'ON_GOING' 
+                            ? 'bg-green-100 text-green-800'
+                            : project.status === 'COMPLETED'
+                            ? 'bg-blue-100 text-blue-800'
+                            : 'bg-gray-100 text-gray-800'
+                        }`}>
+                          {project.status}
+                        </span>
+                      </td>
+                      <td className="py-2 text-right font-medium">{project.hours}</td>
+                      <td className="py-2 text-right text-sm text-gray-600">{project.users}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        {/* Department Summary */}
+        <div className="bg-white rounded-xl p-6 shadow-sm mb-8">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Department Summary</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {data.departments.map((dept, index) => (
+              <div key={dept.name} className="border rounded-lg p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="font-medium text-gray-900">{dept.name}</h4>
+                  <span className="text-sm text-gray-500">{dept.users} users</span>
+                </div>
+                <div className="text-2xl font-bold text-blue-600 mb-2">{dept.hours} hours</div>
+                <div className="text-sm text-gray-600">
+                  {dept.userList.slice(0, 3).join(', ')}
+                  {dept.userList.length > 3 && ` +${dept.userList.length - 3} more`}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Summary Statistics */}
+        <div className="bg-white rounded-xl p-6 shadow-sm">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Summary Statistics</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="text-center">
+              <div className="text-2xl font-bold text-blue-600">{data.summary.totalTimesheets}</div>
+              <div className="text-sm text-gray-600">Total Timesheets</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-green-600">{data.summary.averageHoursPerTimesheet.toFixed(1)}</div>
+              <div className="text-sm text-gray-600">Avg Hours/Timesheet</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-purple-600">{data.summary.mostActiveUser?.name || 'N/A'}</div>
+              <div className="text-sm text-gray-600">Most Active User</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-orange-600">{data.summary.mostActiveProject?.name || 'N/A'}</div>
+              <div className="text-sm text-gray-600">Most Active Project</div>
+            </div>
+          </div>
         </div>
       </div>
     </div>

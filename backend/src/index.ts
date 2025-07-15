@@ -13,6 +13,8 @@ import userRoutes from './routes/users';
 import projectRoutes from './routes/projects';
 import timesheetRoutes from './routes/timesheets';
 import reportRoutes from './routes/reports';
+import activityRoutes from './routes/activities';
+import holidayRoutes from './routes/holidays';
 
 // Load environment variables
 dotenv.config();
@@ -59,6 +61,9 @@ app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/projects', projectRoutes);
 app.use('/api/timesheets', timesheetRoutes);
+app.use('/api/reports', reportRoutes);
+app.use('/api/activities', activityRoutes);
+app.use('/api/holidays', holidayRoutes);
 
 // API documentation
 app.get('/api', (req, res) => {
@@ -68,7 +73,10 @@ app.get('/api', (req, res) => {
       auth: '/api/auth',
       users: '/api/users',
       projects: '/api/projects',
-      timesheets: '/api/timesheets'
+      timesheets: '/api/timesheets',
+      reports: '/api/reports',
+      activities: '/api/activities',
+      holidays: '/api/holidays'
     }
   });
 });

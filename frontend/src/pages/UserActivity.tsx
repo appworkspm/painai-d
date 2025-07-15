@@ -15,6 +15,13 @@ const UserActivity: React.FC = () => {
   const [selectedUser, setSelectedUser] = useState('all');
 
   useEffect(() => {
+    // Set default dateRange to today
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
+    const dd = String(today.getDate()).padStart(2, '0');
+    const todayStr = `${yyyy}-${mm}-${dd}`;
+    setDateRange({ start: todayStr, end: todayStr });
     loadUserActivities();
   }, []);
 

@@ -1,336 +1,149 @@
-# 📚 Painai API Documentation
+# Painai API Documentation
 
-## 🔗 Base URL
+## Base URL
 ```
 http://localhost:8000/api
 ```
 
-## 🔐 Authentication
-
-API ใช้ JWT (JSON Web Token) สำหรับ authentication
-
-### Headers
+## Authentication
+All protected routes require a valid JWT token in the Authorization header:
 ```
 Authorization: Bearer <token>
-Content-Type: application/json
 ```
 
-## 📋 Endpoints
+## Routes Overview
 
-### Authentication
+### 🔐 Authentication (`/api/auth`)
+| Method | Endpoint | Description | Auth Required |
+|--------|----------|-------------|---------------|
+| POST | `/auth/register` | Register new user | No |
+| POST | `/auth/login` | Login user | No |
+| POST | `/auth/forgot-password` | Request password reset | No |
+| GET | `/auth/profile` | Get user profile | Yes |
+| PATCH | `/auth/profile` | Update user profile | Yes |
 
-#### POST /auth/login
-เข้าสู่ระบบ
+### 👥 Users (`/api/users`)
+| Method | Endpoint | Description | Auth Required | Role Required |
+|--------|----------|-------------|---------------|---------------|
+| GET | `/users` | Get all users | Yes | Admin |
+| GET | `/users/:id` | Get user by ID | Yes | Admin |
+| POST | `/users` | Create new user | Yes | Admin |
+| PUT | `/users/:id` | Update user | Yes | Admin |
+| DELETE | `/users/:id` | Delete user | Yes | Admin |
 
-**Request Body:**
-```json
-{
-  "email": "admin@painai.com",
-  "password": "admin123"
-}
+### 📋 Projects (`/api/projects`)
+| Method | Endpoint | Description | Auth Required | Role Required |
+|--------|----------|-------------|---------------|---------------|
+| GET | `/projects` | Get all projects | Yes | Any |
+| GET | `/projects/:id` | Get project by ID | Yes | Any |
+| POST | `/projects` | Create new project | Yes | Manager/Admin |
+| PUT | `/projects/:id` | Update project | Yes | Manager/Admin |
+| DELETE | `/projects/:id` | Delete project | Yes | Manager/Admin |
+
+### ⏰ Timesheets (`/api/timesheets`)
+| Method | Endpoint | Description | Auth Required | Role Required |
+|--------|----------|-------------|---------------|---------------|
+| GET | `/timesheets/my` | Get user's own timesheets | Yes | Any |
+| GET | `/timesheets/history` | Get user's timesheet history | Yes | Any |
+| GET | `/timesheets/pending` | Get pending timesheets | Yes | Any |
+| GET | `/timesheets` | Get all timesheets | Yes | Manager/Admin |
+| POST | `/timesheets` | Create timesheet | Yes | Any |
+| PUT | `/timesheets/:id` | Update timesheet | Yes | Any |
+| DELETE | `/timesheets/:id` | Delete timesheet | Yes | Any |
+| GET | `/timesheets/:id/history` | Get timesheet history | Yes | Any |
+| PATCH | `/timesheets/:id/submit` | Submit timesheet | Yes | Any |
+| PATCH | `/timesheets/:id/approve` | Approve timesheet | Yes | Manager/Admin |
+
+### 📊 Reports (`/api/reports`)
+
+#### Data Reports
+| Method | Endpoint | Description | Auth Required | Role Required |
+|--------|----------|-------------|---------------|---------------|
+| GET | `/reports/workload` | Get workload report | Yes | Any |
+| GET | `/reports/timesheet` | Get timesheet report | Yes | Any |
+| GET | `/reports/project` | Get project report | Yes | Any |
+| GET | `/reports/user-activity` | Get user activity report | Yes | Any |
+
+#### CSV Export
+| Method | Endpoint | Description | Auth Required | Role Required |
+|--------|----------|-------------|---------------|---------------|
+| GET | `/reports/export/workload/csv` | Export workload data as CSV | Yes | Any |
+| GET | `/reports/export/timesheet/csv` | Export timesheet data as CSV | Yes | Any |
+| GET | `/reports/export/project/csv` | Export project data as CSV | Yes | Any |
+| GET | `/reports/export/user-activity/csv` | Export user activity data as CSV | Yes | Any |
+
+## Query Parameters
+
+### Reports Filters
+All report endpoints support the following query parameters:
+
+#### Common Filters
+- `start`: Start date (YYYY-MM-DD)
+- `end`: End date (YYYY-MM-DD)
+- `workType`: Work type filter (PROJECT, NON_PROJECT)
+- `subWorkType`: Sub work type filter
+- `activity`: Activity filter
+
+#### Specific Filters
+- **Timesheet Report**: `status`, `project`
+- **User Activity Report**: `user`
+- **Workload Report**: `department`
+
+#### Examples
+```
+GET /api/reports/workload?start=2024-01-01&end=2024-01-31&workType=PROJECT
+GET /api/reports/timesheet?status=approved&project=123
+GET /api/reports/user-activity?user=456&start=2024-01-01
 ```
 
-**Response:**
+## Response Format
+
+### Success Response
 ```json
 {
   "success": true,
-  "message": "Login successful",
-  "data": {
-    "user": {
-      "id": "user_id",
-      "email": "admin@painai.com",
-      "name": "Admin User",
-      "role": "ADMIN",
-      "isActive": true,
-      "createdAt": "2024-01-01T00:00:00.000Z",
-      "updatedAt": "2024-01-01T00:00:00.000Z"
-    },
-    "token": "jwt_token_here"
-  }
+  "data": {...},
+  "message": "Operation successful"
 }
 ```
 
-#### POST /auth/register
-สมัครสมาชิกใหม่
-
-**Request Body:**
+### Error Response
 ```json
 {
-  "email": "newuser@example.com",
-  "password": "password123",
-  "name": "New User",
-  "role": "USER"
+  "success": false,
+  "message": "Error description",
+  "error": "Detailed error information"
 }
 ```
 
-#### GET /auth/profile
-ดูข้อมูลผู้ใช้ปัจจุบัน
-
-**Headers:** `Authorization: Bearer <token>`
-
-**Response:**
+### Paginated Response
 ```json
 {
   "success": true,
-  "message": "Profile retrieved successfully",
-  "data": {
-    "id": "user_id",
-    "email": "admin@painai.com",
-    "name": "Admin User",
-    "role": "ADMIN",
-    "isActive": true,
-    "createdAt": "2024-01-01T00:00:00.000Z",
-    "updatedAt": "2024-01-01T00:00:00.000Z"
-  }
-}
-```
-
-### Timesheets
-
-#### GET /timesheets
-ดึงรายการ timesheets
-
-**Headers:** `Authorization: Bearer <token>`
-
-**Query Parameters:**
-- `page` (optional): หน้า (default: 1)
-- `limit` (optional): จำนวนรายการต่อหน้า (default: 10)
-- `search` (optional): ค้นหาจาก description
-- `startDate` (optional): วันที่เริ่มต้น (YYYY-MM-DD)
-- `endDate` (optional): วันที่สิ้นสุด (YYYY-MM-DD)
-- `userId` (optional): ID ของผู้ใช้ (Admin only)
-- `projectId` (optional): ID ของโครงการ
-- `activityType` (optional): ประเภทกิจกรรม
-
-**Response:**
-```json
-{
-  "success": true,
-  "message": "Timesheets retrieved successfully",
-  "data": [
-    {
-      "id": "timesheet_id",
-      "userId": "user_id",
-      "projectId": "project_id",
-      "activityType": "PROJECT_WORK",
-      "description": "Frontend development",
-      "startTime": "2024-01-01T09:00:00.000Z",
-      "endTime": "2024-01-01T12:00:00.000Z",
-      "duration": 180,
-      "isActive": true,
-      "createdAt": "2024-01-01T00:00:00.000Z",
-      "updatedAt": "2024-01-01T00:00:00.000Z",
-      "user": {
-        "id": "user_id",
-        "name": "User Name",
-        "email": "user@example.com"
-      },
-      "project": {
-        "id": "project_id",
-        "name": "Project Name"
-      }
-    }
-  ],
+  "data": [...],
   "pagination": {
     "page": 1,
     "limit": 10,
-    "total": 50,
-    "totalPages": 5
+    "total": 100,
+    "totalPages": 10
   }
 }
 ```
 
-#### POST /timesheets
-สร้าง timesheet ใหม่
-
-**Headers:** `Authorization: Bearer <token>`
-
-**Request Body:**
-```json
-{
-  "projectId": "project_id", // optional
-  "activityType": "PROJECT_WORK",
-  "description": "Working on frontend components",
-  "startTime": "2024-01-01T09:00:00.000Z",
-  "endTime": "2024-01-01T12:00:00.000Z", // optional
-  "duration": 180 // optional, in minutes
-}
-```
-
-**Activity Types:**
-- `PROJECT_WORK`: งานโครงการ
-- `NON_PROJECT_WORK`: งานไม่เกี่ยวกับโครงการ
-- `MEETING`: การประชุม
-- `BREAK`: พัก
-- `OTHER`: อื่นๆ
-
-#### GET /timesheets/:id
-ดูข้อมูล timesheet เฉพาะ
-
-**Headers:** `Authorization: Bearer <token>`
-
-#### PUT /timesheets/:id
-อัปเดต timesheet
-
-**Headers:** `Authorization: Bearer <token>`
-
-**Request Body:** (same as POST, but all fields optional)
-
-#### DELETE /timesheets/:id
-ลบ timesheet (soft delete)
-
-**Headers:** `Authorization: Bearer <token>`
-
-### Users (Admin Only)
-
-#### GET /users
-ดึงรายการผู้ใช้ (Admin only)
-
-**Headers:** `Authorization: Bearer <token>`
-
-### Projects (Manager+ Only)
-
-#### GET /projects
-ดึงรายการโครงการ (Manager+ only)
-
-**Headers:** `Authorization: Bearer <token>`
-
-## 🔒 Role-based Access Control
-
-### User Roles
-- **ADMIN**: เข้าถึงทุกฟีเจอร์
-- **MANAGER**: จัดการโครงการและดูรายงาน
-- **USER**: บันทึก timesheet ของตัวเอง
-
-### Permission Matrix
-
-| Endpoint | ADMIN | MANAGER | USER |
-|----------|-------|---------|------|
-| /auth/* | ✅ | ✅ | ✅ |
-| /timesheets (GET) | ✅ All | ✅ Own | ✅ Own |
-| /timesheets (POST) | ✅ | ✅ | ✅ |
-| /timesheets (PUT) | ✅ All | ✅ Own | ✅ Own |
-| /timesheets (DELETE) | ✅ All | ✅ Own | ✅ Own |
-| /users/* | ✅ | ❌ | ❌ |
-| /projects/* | ✅ | ✅ | ❌ |
-
-## 📊 Error Responses
-
-### 400 Bad Request
-```json
-{
-  "success": false,
-  "message": "Validation failed",
-  "errors": [
-    {
-      "field": "email",
-      "message": "Please provide a valid email"
-    }
-  ]
-}
-```
-
-### 401 Unauthorized
-```json
-{
-  "success": false,
-  "message": "Access token required"
-}
-```
-
-### 403 Forbidden
-```json
-{
-  "success": false,
-  "message": "Insufficient permissions"
-}
-```
-
-### 404 Not Found
-```json
-{
-  "success": false,
-  "message": "Timesheet not found"
-}
-```
-
-### 500 Internal Server Error
-```json
-{
-  "success": false,
-  "message": "Internal server error"
-}
-```
-
-## 🚀 Rate Limiting
-
-- **Limit**: 100 requests per 15 minutes per IP
-- **Headers**: 
-  - `X-RateLimit-Limit`
-  - `X-RateLimit-Remaining`
-  - `X-RateLimit-Reset`
-
-## 📝 Data Models
-
-### User
-```typescript
-interface User {
-  id: string;
-  email: string;
-  name: string;
-  role: 'ADMIN' | 'MANAGER' | 'USER';
-  isActive: boolean;
-  createdAt: string;
-  updatedAt: string;
-}
-```
-
-### Timesheet
-```typescript
-interface Timesheet {
-  id: string;
-  userId: string;
-  projectId?: string;
-  activityType: 'PROJECT_WORK' | 'NON_PROJECT_WORK' | 'MEETING' | 'BREAK' | 'OTHER';
-  description: string;
-  startTime: string;
-  endTime?: string;
-  duration?: number; // in minutes
-  isActive: boolean;
-  createdAt: string;
-  updatedAt: string;
-  user?: User;
-  project?: Project;
-}
-```
-
-### Project
-```typescript
-interface Project {
-  id: string;
-  name: string;
-  description?: string;
-  status: 'ACTIVE' | 'COMPLETED' | 'ON_HOLD' | 'CANCELLED';
-  managerId: string;
-  createdAt: string;
-  updatedAt: string;
-  manager?: User;
-}
-```
-
-## 🔧 Development
-
-### Health Check
+## Health Check
 ```
 GET /health
 ```
 
-### API Info
-```
-GET /api
-```
+Returns server status and environment information.
 
-### Database Status
-```
-GET /api/db/status
-``` 
+## Error Codes
+- `400`: Bad Request - Invalid input data
+- `401`: Unauthorized - Missing or invalid authentication
+- `403`: Forbidden - Insufficient permissions
+- `404`: Not Found - Resource not found
+- `500`: Internal Server Error - Server error
+
+## Rate Limiting
+- 1000 requests per 15 minutes per IP address
+- Exceeded limit returns 429 status code 

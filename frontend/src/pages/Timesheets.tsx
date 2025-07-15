@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Button, Table, Tag, Space, Modal, Form, Input, Select, DatePicker, message, Row, Col, Statistic, Card } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined, SendOutlined } from '@ant-design/icons';
+import { Button, Table, Tag, Space, Modal, Form, Input, Select, DatePicker, message, Row, Col, Statistic, Card, List, Typography } from 'antd';
+import { PlusOutlined, EditOutlined, DeleteOutlined, SendOutlined, CalendarOutlined, CheckCircleOutlined, ClockCircleOutlined } from '@ant-design/icons';
 import { useAuth } from '../contexts/AuthContext';
 import api from '../services/api';
 import dayjs from 'dayjs';
@@ -8,6 +8,7 @@ import { Clock, CheckCircle, XCircle, Hourglass, FileText, User } from 'lucide-r
 import TimesheetForm from '../components/TimesheetForm';
 
 const { TextArea } = Input;
+const { Text } = Typography;
 
 
 interface Timesheet {
@@ -72,62 +73,100 @@ const Timesheets: React.FC = () => {
     rejected: 0,
     totalHours: 0
   });
+  
+  // เพิ่ม state สำหรับสถิติการทำงาน
+  const [workStats, setWorkStats] = useState({
+    totalWorkingDays: 0,
+    recordedDays: 0,
+    leaveDays: 0,
+    actualWorkDays: 0,
+    missingDays: 0,
+    missingDates: [] as string[]
+  });
 
-  // Work type options
+  // Work type options - ใช้จาก TimesheetForm แทน
   const workTypeOptions = [
     { label: 'งานโครงการ', value: 'PROJECT' },
-    { label: 'งานไม่เกี่ยวกับโครงการ', value: 'NON_PROJECT' }
+    { label: 'ไม่ใช่งานโครงการ', value: 'NON_PROJECT' },
+    { label: 'ลางาน', value: 'LEAVE' }
   ];
-
-  const subWorkTypeOptions = {
-    PROJECT: [
-      { label: 'ซอฟต์แวร์', value: 'SOFTWARE' },
-      { label: 'ฮาร์ดแวร์', value: 'HARDWARE' },
-      { label: 'การประชุม', value: 'MEETING' },
-      { label: 'การทดสอบ', value: 'TESTING' },
-      { label: 'เอกสาร', value: 'DOCUMENTATION' }
-    ],
-    NON_PROJECT: [
-      { label: 'การประชุม', value: 'MEETING' },
-      { label: 'การฝึกอบรม', value: 'TRAINING' },
-      { label: 'การบริหาร', value: 'ADMINISTRATION' },
-      { label: 'อื่นๆ', value: 'OTHER' }
-    ]
-  };
-
-  const activityOptions = {
-    SOFTWARE: [
-      { label: 'การพัฒนา', value: 'DEVELOPMENT' },
-      { label: 'การออกแบบ', value: 'DESIGN' },
-      { label: 'การแก้ไขบั๊ก', value: 'BUG_FIX' },
-      { label: 'การทดสอบ', value: 'TESTING' }
-    ],
-    HARDWARE: [
-      { label: 'การติดตั้ง', value: 'INSTALLATION' },
-      { label: 'การบำรุงรักษา', value: 'MAINTENANCE' },
-      { label: 'การแก้ไข', value: 'REPAIR' }
-    ],
-    MEETING: [
-      { label: 'การประชุมทีม', value: 'TEAM_MEETING' },
-      { label: 'การประชุมลูกค้า', value: 'CLIENT_MEETING' },
-      { label: 'การประชุมโครงการ', value: 'PROJECT_MEETING' }
-    ]
-  };
 
   useEffect(() => {
     fetchTimesheets();
     fetchProjects();
   }, []);
 
+  // เพิ่มฟังก์ชันคำนวณวันทำงานในเดือน
+  const calculateWorkingDays = (year: number, month: number) => {
+    const startDate = dayjs(`${year}-${month.toString().padStart(2, '0')}-01`);
+    const endDate = startDate.endOf('month');
+    const workingDays = [];
+    
+    let currentDate = startDate;
+    while (currentDate.isBefore(endDate) || currentDate.isSame(endDate, 'day')) {
+      // นับเฉพาะวันจันทร์-ศุกร์ (1-5)
+      if (currentDate.day() >= 1 && currentDate.day() <= 5) {
+        workingDays.push(currentDate.format('YYYY-MM-DD'));
+      }
+      currentDate = currentDate.add(1, 'day');
+    }
+    
+    return workingDays;
+  };
+
+  // เพิ่มฟังก์ชันคำนวณสถิติการทำงาน
+  const calculateWorkStats = (timesheets: Timesheet[]) => {
+    const now = dayjs();
+    const currentYear = now.year();
+    const currentMonth = now.month() + 1; // dayjs month เริ่มจาก 0
+    
+    // คำนวณวันทำงานทั้งหมดในเดือนนี้
+    const workingDays = calculateWorkingDays(currentYear, currentMonth);
+    
+    // หาวันที่มีการบันทึก timesheet แล้ว (รวมวันลา)
+    const recordedDates = timesheets
+      .filter(ts => {
+        const tsDate = dayjs(ts.date);
+        return tsDate.year() === currentYear && tsDate.month() + 1 === currentMonth;
+      })
+      .map(ts => dayjs(ts.date).format('YYYY-MM-DD'));
+    
+    // หาวันลาที่มีการบันทึก
+    const leaveDates = timesheets
+      .filter(ts => {
+        const tsDate = dayjs(ts.date);
+        return tsDate.year() === currentYear && 
+               tsDate.month() + 1 === currentMonth && 
+               ts.work_type === 'LEAVE';
+      })
+      .map(ts => dayjs(ts.date).format('YYYY-MM-DD'));
+    
+    // หาวันทำงานที่ยังไม่ได้บันทึก (ไม่รวมวันลา)
+    const missingDates = workingDays.filter(date => !recordedDates.includes(date));
+    
+    // คำนวณวันทำงานจริง (ไม่รวมวันลา)
+    const actualWorkDays = recordedDates.filter(date => !leaveDates.includes(date));
+    
+    setWorkStats({
+      totalWorkingDays: workingDays.length,
+      recordedDays: recordedDates.length,
+      leaveDays: leaveDates.length,
+      actualWorkDays: actualWorkDays.length,
+      missingDays: missingDates.length,
+      missingDates: missingDates
+    });
+  };
+
   const fetchTimesheets = async () => {
     try {
       setLoading(true);
       const response = await api.get('/api/timesheets/my');
       if (response.data.success) {
-        setTimesheets(response.data.data || []);
+        const timesheetsData = response.data.data || [];
+        setTimesheets(timesheetsData);
         
         // Calculate stats
-        const stats = response.data.data.reduce((acc: any, timesheet: Timesheet) => {
+        const stats = timesheetsData.reduce((acc: any, timesheet: Timesheet) => {
           acc.total++;
           acc[timesheet.status]++;
           acc.totalHours += timesheet.hours_worked + (timesheet.overtime_hours || 0);
@@ -135,6 +174,9 @@ const Timesheets: React.FC = () => {
         }, { total: 0, draft: 0, submitted: 0, approved: 0, rejected: 0, totalHours: 0 });
         
         setStats(stats);
+        
+        // คำนวณสถิติการทำงาน
+        calculateWorkStats(timesheetsData);
       } else {
         message.error(response.data.message || 'ไม่สามารถโหลดข้อมูล timesheet ได้');
       }
@@ -166,7 +208,8 @@ const Timesheets: React.FC = () => {
         date: values.date.format('YYYY-MM-DD'),
         hours_worked: parseFloat(values.hours_worked),
         overtime_hours: parseFloat(values.overtime_hours || 0),
-        billable: values.billable ?? true
+        billable: values.work_type === 'PROJECT', // งานโครงการจะ billable เสมอ
+        project_id: values.work_type === 'NON_PROJECT' ? null : values.project_id
       };
 
       if (editingTimesheet) {
@@ -178,7 +221,7 @@ const Timesheets: React.FC = () => {
           return;
         }
       } else {
-        const response = await api.post('/timesheets', data);
+        const response = await api.post('/api/timesheets', data);
         if (response.data.success) {
           message.success('สร้าง timesheet สำเร็จ');
         } else {
@@ -218,7 +261,7 @@ const Timesheets: React.FC = () => {
   const handleDelete = async (id: string) => {
     try {
       setDeleting(id);
-      const response = await api.delete(`/timesheets/${id}`);
+      const response = await api.delete(`/api/timesheets/${id}`);
       if (response.data.success) {
         message.success('ลบ timesheet สำเร็จ');
         fetchTimesheets();
@@ -235,7 +278,7 @@ const Timesheets: React.FC = () => {
   const handleSubmitTimesheet = async (id: string) => {
     try {
       setSubmitting(true);
-      const response = await api.patch(`/timesheets/${id}/submit`);
+      const response = await api.patch(`/api/timesheets/${id}/submit`);
       if (response.data.success) {
         message.success('ส่ง timesheet สำเร็จ');
         fetchTimesheets();
@@ -269,6 +312,149 @@ const Timesheets: React.FC = () => {
     }
   };
 
+  // ฟังก์ชันสำหรับการแสดงชื่อประเภทงานย่อย
+  const getSubWorkTypeLabel = (workType: string, subWorkType: string) => {
+    const subWorkTypeOptions = {
+      PROJECT: {
+        SOFTWARE: 'ซอฟต์แวร์',
+        HARDWARE: 'ฮาร์ดแวร์',
+        MEETING: 'การประชุม',
+        TESTING: 'การทดสอบ',
+        DOCUMENTATION: 'เอกสาร',
+        DESIGN: 'การออกแบบ',
+        DEPLOYMENT: 'การติดตั้ง'
+      },
+      NON_PROJECT: {
+        MEETING: 'การประชุม',
+        TRAINING: 'การฝึกอบรม',
+        ADMINISTRATION: 'การบริหาร',
+        MAINTENANCE: 'การบำรุงรักษา',
+        SUPPORT: 'การสนับสนุน',
+        OTHER: 'อื่นๆ'
+      }
+    };
+    return subWorkTypeOptions[workType as keyof typeof subWorkTypeOptions]?.[subWorkType as any] || subWorkType;
+  };
+
+  // ฟังก์ชันสำหรับการแสดงชื่อกิจกรรม
+  const getActivityLabel = (activity: string) => {
+    const activityLabels: Record<string, string> = {
+      // งานโครงการ - ซอฟต์แวร์
+      CODE_DEVELOPMENT: 'การพัฒนาโค้ด',
+      SYSTEM_DESIGN: 'การออกแบบระบบ',
+      BUG_FIX: 'การแก้ไขบั๊ก',
+      CODE_TESTING: 'การทดสอบโค้ด',
+      CODE_REVIEW: 'การรีวิวโค้ด',
+      PERFORMANCE_OPTIMIZATION: 'การปรับปรุงประสิทธิภาพ',
+      
+      // งานโครงการ - ฮาร์ดแวร์
+      EQUIPMENT_INSTALLATION: 'การติดตั้งอุปกรณ์',
+      HARDWARE_MAINTENANCE: 'การบำรุงรักษา',
+      HARDWARE_REPAIR: 'การแก้ไขอุปกรณ์',
+      HARDWARE_UPGRADE: 'การอัปเกรด',
+      HARDWARE_INSPECTION: 'การตรวจสอบ',
+      
+      // งานโครงการ - การประชุม
+      PROJECT_TEAM_MEETING: 'การประชุมทีมโครงการ',
+      CLIENT_MEETING: 'การประชุมลูกค้า',
+      PLANNING_MEETING: 'การประชุมวางแผน',
+      PROGRESS_MEETING: 'การประชุมติดตาม',
+      REVIEW_MEETING: 'การประชุมสรุป',
+      
+      // งานโครงการ - การทดสอบ
+      SYSTEM_TESTING: 'การทดสอบระบบ',
+      UNIT_TESTING: 'การทดสอบหน่วยงาน',
+      USER_ACCEPTANCE_TESTING: 'การทดสอบการใช้งาน',
+      PERFORMANCE_TESTING: 'การทดสอบประสิทธิภาพ',
+      SECURITY_TESTING: 'การทดสอบความปลอดภัย',
+      
+      // งานโครงการ - เอกสาร
+      TECHNICAL_DOCUMENTATION: 'การเขียนเอกสารเทคนิค',
+      USER_MANUAL: 'การเขียนคู่มือผู้ใช้',
+      PROJECT_DOCUMENTATION: 'การเขียนเอกสารโครงการ',
+      REPORT_WRITING: 'การเขียนรายงาน',
+      
+      // งานโครงการ - การออกแบบ
+      UI_UX_DESIGN: 'การออกแบบ UI/UX',
+      DATABASE_DESIGN: 'การออกแบบฐานข้อมูล',
+      ARCHITECTURE_DESIGN: 'การออกแบบสถาปัตยกรรม',
+      WORKFLOW_DESIGN: 'การออกแบบเวิร์กโฟลว์',
+      
+      // งานโครงการ - การติดตั้ง
+      SYSTEM_DEPLOYMENT: 'การติดตั้งระบบ',
+      SYSTEM_CONFIGURATION: 'การปรับแต่งระบบ',
+      DATA_MIGRATION: 'การย้ายข้อมูล',
+      DEPLOYMENT_TESTING: 'การทดสอบการติดตั้ง',
+      
+      // งานไม่เกี่ยวกับโครงการ - การประชุม
+      ORGANIZATION_MEETING: 'การประชุมองค์กร',
+      DEPARTMENT_MEETING: 'การประชุมแผนก',
+      COMMITTEE_MEETING: 'การประชุมคณะกรรมการ',
+      TRAINING_MEETING: 'การประชุมฝึกอบรม',
+      
+      // งานไม่เกี่ยวกับโครงการ - การฝึกอบรม
+      INTERNAL_TRAINING: 'การฝึกอบรมภายใน',
+      EXTERNAL_TRAINING: 'การฝึกอบรมภายนอก',
+      ONLINE_TRAINING: 'การฝึกอบรมออนไลน์',
+      TRAINING_PREPARATION: 'การเตรียมการฝึกอบรม',
+      
+      // งานไม่เกี่ยวกับโครงการ - การบริหาร
+      PLANNING: 'การวางแผน',
+      PROCUREMENT: 'การจัดซื้อ',
+      BUDGET_MANAGEMENT: 'การจัดการงบประมาณ',
+      REPORTING: 'การรายงาน',
+      COORDINATION: 'การประสานงาน',
+      
+      // งานไม่เกี่ยวกับโครงการ - การบำรุงรักษา
+      SYSTEM_MAINTENANCE: 'การบำรุงรักษาระบบ',
+      BACKUP: 'การสำรองข้อมูล',
+      SYSTEM_UPDATE: 'การอัปเดตระบบ',
+      SYSTEM_MONITORING: 'การตรวจสอบระบบ',
+      
+      // งานไม่เกี่ยวกับโครงการ - การสนับสนุน
+      USER_SUPPORT: 'การสนับสนุนผู้ใช้',
+      TROUBLESHOOTING: 'การแก้ไขปัญหา',
+      CONSULTATION: 'การให้คำปรึกษา',
+      USER_TRAINING: 'การฝึกอบรมผู้ใช้',
+      
+      // งานไม่เกี่ยวกับโครงการ - อื่นๆ
+      GENERAL_WORK: 'งานทั่วไป',
+      RESEARCH: 'การวิจัย',
+      PUBLIC_RELATIONS: 'การประชาสัมพันธ์',
+      
+      // การลางาน
+      SICK_LEAVE: 'ลาป่วย',
+      PERSONAL_LEAVE: 'ลากิจ',
+      ANNUAL_LEAVE: 'ลาพักร้อน',
+      MATERNITY_LEAVE: 'ลาคลอด',
+      ORDINATION_LEAVE: 'ลาบวช',
+      STUDY_LEAVE: 'ลาศึกษาต่อ',
+      MONK_LEAVE: 'ลาอุปสมบท',
+      SPECIAL_LEAVE: 'ลากิจพิเศษ',
+      REST_LEAVE: 'ลาพักผ่อน',
+      OTHER_LEAVE: 'ลาอื่นๆ'
+    };
+    return activityLabels[activity] || activity;
+  };
+
+  const handleCreateForDate = (date: string) => {
+    setEditingTimesheet(null);
+    form.resetFields();
+    // Set the date immediately and ensure it's not overridden
+    setTimeout(() => {
+      form.setFieldsValue({ 
+        date: dayjs(date),
+        work_type: 'PROJECT',
+        sub_work_type: 'SOFTWARE',
+        activity: 'CODE_DEVELOPMENT',
+        hours_worked: 8,
+        overtime_hours: 0,
+        billable: true
+      });
+    }, 0);
+    setModalVisible(true);
+  };
+
   const columns = [
     {
       title: 'วันที่',
@@ -283,21 +469,47 @@ const Timesheets: React.FC = () => {
       render: (workType: string) => workTypeOptions.find(opt => opt.value === workType)?.label || workType
     },
     {
+      title: 'ประเภทงานย่อย',
+      dataIndex: 'sub_work_type',
+      key: 'sub_work_type',
+      render: (subWorkType: string, record: Timesheet) => getSubWorkTypeLabel(record.work_type, subWorkType)
+    },
+    {
       title: 'โครงการ',
       dataIndex: 'project',
       key: 'project',
-      render: (project: any) => project ? `${project.name} (${project.code})` : '-'
+      render: (project: any, record: Timesheet) => {
+        if (record.work_type === 'NON_PROJECT') {
+          return <Tag color="orange">Non-Project</Tag>;
+        }
+        if (record.work_type === 'LEAVE') {
+          return <Tag color="red">Leave</Tag>;
+        }
+        return project ? `${project.name} (${project.code})` : '-';
+      }
     },
     {
       title: 'กิจกรรม',
       dataIndex: 'activity',
-      key: 'activity'
+      key: 'activity',
+      render: (activity: string) => getActivityLabel(activity)
     },
     {
       title: 'ชั่วโมงทำงาน',
       dataIndex: 'hours_worked',
       key: 'hours_worked',
-      render: (hours: number, record: Timesheet) => `${hours}h${record.overtime_hours ? ` + ${record.overtime_hours}h OT` : ''}`
+      render: (hours: number, record: Timesheet) => {
+        const totalHours = hours + (record.overtime_hours || 0);
+        return (
+          <div>
+            <div>{hours}h</div>
+            {record.overtime_hours > 0 && (
+              <div className="text-xs text-orange-600">+{record.overtime_hours}h OT</div>
+            )}
+            <div className="text-xs text-gray-500">รวม: {totalHours}h</div>
+          </div>
+        );
+      }
     },
     {
       title: 'สถานะ',
@@ -319,6 +531,7 @@ const Timesheets: React.FC = () => {
             icon={<EditOutlined />} 
             onClick={() => handleEdit(record)}
             disabled={record.status === 'approved' || record.status === 'rejected'}
+            title="แก้ไข"
           />
           <Button 
             type="text" 
@@ -327,6 +540,7 @@ const Timesheets: React.FC = () => {
             onClick={() => handleDelete(record.id)}
             loading={deleting === record.id}
             disabled={record.status === 'approved' || record.status === 'rejected'}
+            title="ลบ"
           />
           {record.status === 'draft' && (
             <Button 
@@ -334,6 +548,7 @@ const Timesheets: React.FC = () => {
               icon={<SendOutlined />} 
               onClick={() => handleSubmitTimesheet(record.id)}
               loading={submitting}
+              title="ส่งเพื่ออนุมัติ"
             />
           )}
         </Space>
@@ -424,6 +639,62 @@ const Timesheets: React.FC = () => {
         </Col>
       </Row>
 
+      {/* Work Statistics for Current Month */}
+      <Card 
+        title={
+          <div className="flex items-center gap-2">
+            <CalendarOutlined />
+            <span>สถิติการทำงานเดือน {dayjs().format('MMMM YYYY')}</span>
+          </div>
+        }
+        className="mb-6"
+      >
+        <Row gutter={16}>
+          <Col span={6}>
+            <Statistic title="วันทำงานทั้งหมด" value={workStats.totalWorkingDays} />
+          </Col>
+          <Col span={6}>
+            <Statistic title="วันที่บันทึกแล้ว" value={workStats.recordedDays} valueStyle={{ color: '#3f8600' }} />
+          </Col>
+          <Col span={6}>
+            <Statistic title="วันลา" value={workStats.leaveDays} valueStyle={{ color: '#1890ff' }} />
+          </Col>
+          <Col span={6}>
+            <Statistic title="วันทำงานจริง" value={workStats.actualWorkDays} valueStyle={{ color: '#52c41a' }} />
+          </Col>
+        </Row>
+        <Row gutter={16} style={{ marginTop: '16px' }}>
+          <Col span={12}>
+            <Statistic title="วันที่ยังไม่ได้บันทึก" value={workStats.missingDays} valueStyle={{ color: '#cf1322' }} />
+          </Col>
+          <Col span={12}>
+            <Statistic 
+              title="อัตราการทำงาน" 
+              value={workStats.totalWorkingDays > 0 ? Math.round((workStats.actualWorkDays / workStats.totalWorkingDays) * 100) : 0} 
+              suffix="%" 
+              valueStyle={{ color: '#722ed1' }} 
+            />
+          </Col>
+        </Row>
+        {workStats.missingDates.length > 0 && (
+          <div className="mt-4">
+            <div className="mb-2 text-sm text-gray-600">วันที่ยังไม่ได้บันทึก:</div>
+            <div className="flex flex-wrap gap-2">
+              {workStats.missingDates.map(date => (
+                <Button
+                  key={date}
+                  size="small"
+                  type="dashed"
+                  onClick={() => handleCreateForDate(date)}
+                >
+                  {dayjs(date).format('DD/MM/YYYY')}
+                </Button>
+              ))}
+            </div>
+          </div>
+        )}
+      </Card>
+
       {/* Timesheet Table */}
       <Card title="รายการ Timesheet ของฉัน">
         <Table
@@ -450,8 +721,9 @@ const Timesheets: React.FC = () => {
           form.resetFields();
         }}
         footer={null}
-        width={800}
+        width={1000}
         confirmLoading={submitting}
+        style={{ top: 20 }}
       >
         <TimesheetForm
           mode={editingTimesheet ? 'edit' : 'create'}
