@@ -1,422 +1,291 @@
 import React, { useState, useEffect } from 'react';
-import { Button, Table, Tag, Space, Modal, Form, Input, Select, DatePicker, message, Row, Col, Statistic } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined, SendOutlined, EyeOutlined, FilterOutlined } from '@ant-design/icons';
+import { Card, Row, Col, Statistic, Table, Tag, Space, Button, DatePicker, Select, message } from 'antd';
 import { useAuth } from '../contexts/AuthContext';
-import { useNotification } from '../contexts/NotificationContext';
 import { timesheetAPI } from '../services/api';
+import { Clock, CheckCircle, XCircle, Hourglass, Users, User } from 'lucide-react';
 import dayjs from 'dayjs';
-import { Clock, Users, CheckCircle, XCircle, AlertCircle, TrendingUp } from 'lucide-react';
 
-const { TextArea } = Input;
+const { RangePicker } = DatePicker;
 
-interface Timesheet {
-  id: string;
-  user_id: string;
-  project_id?: string;
-  work_type: string;
-  sub_work_type: string;
-  activity: string;
-  date: string;
-  hours_worked: number;
-  overtime_hours: number;
-  description: string;
-  status: 'draft' | 'submitted' | 'approved' | 'rejected';
-  submitted_at?: string;
-  approved_by?: string;
-  approved_at?: string;
-  rejection_reason?: string;
-  billable: boolean;
-  hourly_rate?: number;
-  created_at: string;
-  updated_at: string;
-  user?: {
-    id: string;
-    name: string;
-    email: string;
-  };
-  project?: {
-    id: string;
-    name: string;
-  };
-  approver?: {
-    id: string;
-    name: string;
-  };
+interface TimesheetStats {
+  total: number;
+  approved: number;
+  pending: number;
+  rejected: number;
+  totalHours: number;
 }
 
 const TimesheetDashboard: React.FC = () => {
   const { user } = useAuth();
-  const { showNotification } = useNotification();
-  const [timesheets, setTimesheets] = useState<Timesheet[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [stats, setStats] = useState({
+  const [stats, setStats] = useState<TimesheetStats>({
     total: 0,
-    draft: 0,
-    submitted: 0,
     approved: 0,
+    pending: 0,
     rejected: 0,
-    totalHours: 0,
-    pendingApproval: 0
+    totalHours: 0
   });
-  const [filter, setFilter] = useState('all');
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth() + 1);
-  const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
-  const [pagination, setPagination] = useState({
-    current: 1,
-    pageSize: 10,
-    total: 0
-  });
+  const [timesheets, setTimesheets] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [dateRange, setDateRange] = useState<[dayjs.Dayjs, dayjs.Dayjs] | null>(null);
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+
+  // Check user role for permissions
+  const isAdmin = user?.role === 'ADMIN';
+  const isManager = user?.role === 'MANAGER';
+  const isUser = user?.role === 'USER';
+  const canViewAll = isAdmin || isManager;
 
   useEffect(() => {
-    fetchTimesheets();
-  }, [selectedMonth, selectedYear, pagination.current, pagination.pageSize]);
+    fetchDashboardData();
+  }, [dateRange, statusFilter]);
 
-  const fetchTimesheets = async () => {
+  const fetchDashboardData = async () => {
     try {
       setLoading(true);
-      const params = {
-        page: pagination.current,
-        limit: pagination.pageSize,
-        month: selectedMonth,
-        year: selectedYear,
-        status: filter !== 'all' ? filter : undefined
-      };
+      
+      // Build query parameters based on user role
+      const params: any = {};
+      if (dateRange) {
+        params.start_date = dateRange[0].format('YYYY-MM-DD');
+        params.end_date = dateRange[1].format('YYYY-MM-DD');
+      }
+      if (statusFilter !== 'all') {
+        params.status = statusFilter;
+      }
 
-      const response = await timesheetAPI.getTimesheets(params);
-      if (response.success) {
-        setTimesheets(response.data.data || []);
-        setPagination(prev => ({ ...prev, total: response.data.pagination.total }));
+      // Different API calls based on role
+      let response;
+      if (canViewAll) {
+        // Admin/Manager can see all timesheets
+        response = await timesheetAPI.getTimesheets(params);
+      } else {
+        // Regular user can only see their own timesheets
+        response = await timesheetAPI.getMyTimesheets(params);
+      }
+      
+      if (response.success && response.data) {
+        const data = response.data;
+        const timesheetsList = data.timesheets || data.data || [];
         
-        // Calculate stats
-        const stats = response.data.data.reduce((acc: any, timesheet: Timesheet) => {
+        // Calculate stats from actual timesheet data
+        const calculatedStats = timesheetsList.reduce((acc: TimesheetStats, timesheet: any) => {
           acc.total++;
           acc[timesheet.status]++;
-          acc.totalHours += timesheet.hours_worked + (timesheet.overtime_hours || 0);
-          if (timesheet.status === 'submitted') {
-            acc.pendingApproval++;
-          }
+          acc.totalHours += (timesheet.hours_worked || 0) + (timesheet.overtime_hours || 0);
           return acc;
-        }, { total: 0, draft: 0, submitted: 0, approved: 0, rejected: 0, totalHours: 0, pendingApproval: 0 });
+        }, { total: 0, approved: 0, pending: 0, rejected: 0, totalHours: 0 });
         
-        setStats(stats);
+        setStats(calculatedStats);
+        setTimesheets(timesheetsList);
       } else {
-        showNotification({
-          message: response.message || 'ไม่สามารถโหลดข้อมูล timesheet ได้',
-          type: 'error'
-        });
+        message.error(response.message || 'ไม่สามารถโหลดข้อมูลได้');
       }
     } catch (error: any) {
-      showNotification({
-        message: error.response?.data?.message || 'ไม่สามารถโหลดข้อมูล timesheet ได้',
-        type: 'error'
-      });
+      console.error('Error fetching dashboard data:', error);
+      message.error('เกิดข้อผิดพลาดในการโหลดข้อมูล');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleApprove = async (id: string) => {
-    try {
-      const response = await timesheetAPI.approveTimesheet(id, 'approved');
-      if (response.success) {
-        showNotification({
-          message: 'อนุมัติ timesheet สำเร็จ',
-          type: 'success'
-        });
-        fetchTimesheets();
-      } else {
-        showNotification({
-          message: response.message || 'เกิดข้อผิดพลาดในการอนุมัติ',
-          type: 'error'
-        });
-      }
-    } catch (error: any) {
-      showNotification({
-        message: error.response?.data?.message || 'เกิดข้อผิดพลาดในการอนุมัติ',
-        type: 'error'
-      });
-    }
-  };
-
-  const handleReject = async (id: string, reason: string) => {
-    try {
-      const response = await timesheetAPI.approveTimesheet(id, 'rejected', reason);
-      if (response.success) {
-        showNotification({
-          message: 'ปฏิเสธ timesheet สำเร็จ',
-          type: 'success'
-        });
-        fetchTimesheets();
-      } else {
-        showNotification({
-          message: response.message || 'เกิดข้อผิดพลาดในการปฏิเสธ',
-          type: 'error'
-        });
-      }
-    } catch (error: any) {
-      showNotification({
-        message: error.response?.data?.message || 'เกิดข้อผิดพลาดในการปฏิเสธ',
-        type: 'error'
-      });
-    }
-  };
-
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'draft':
-        return 'default';
-      case 'submitted':
-        return 'processing';
-      case 'approved':
-        return 'success';
-      case 'rejected':
-        return 'error';
-      default:
-        return 'default';
+      case 'approved': return 'success';
+      case 'submitted': return 'processing';
+      case 'rejected': return 'error';
+      case 'draft': return 'default';
+      default: return 'default';
     }
   };
 
   const getStatusText = (status: string) => {
     switch (status) {
-      case 'draft':
-        return 'ร่าง';
-      case 'submitted':
-        return 'ส่งแล้ว';
-      case 'approved':
-        return 'อนุมัติแล้ว';
-      case 'rejected':
-        return 'ปฏิเสธ';
-      default:
-        return status;
+      case 'approved': return 'อนุมัติแล้ว';
+      case 'submitted': return 'ส่งแล้ว';
+      case 'rejected': return 'ไม่อนุมัติ';
+      case 'draft': return 'ร่าง';
+      default: return status;
     }
   };
 
-  const filteredTimesheets = timesheets.filter(timesheet => {
-    const matchesSearch = 
-      timesheet.user?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      timesheet.user?.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      timesheet.project?.name?.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    return matchesSearch;
-  });
+  // Dynamic columns based on user role
+  const getColumns = () => {
+    const baseColumns = [
+      {
+        title: 'วันที่',
+        dataIndex: 'date',
+        key: 'date',
+        render: (date: string) => dayjs(date).format('DD/MM/YYYY')
+      },
+      {
+        title: 'โครงการ',
+        dataIndex: 'project',
+        key: 'project',
+        render: (project: any) => project?.name || 'ไม่ผูกกับโครงการ'
+      },
+      {
+        title: 'กิจกรรม',
+        dataIndex: 'activity',
+        key: 'activity'
+      },
+      {
+        title: 'ชั่วโมง',
+        dataIndex: 'hours_worked',
+        key: 'hours_worked',
+        render: (hours: number, record: any) => {
+          const totalHours = (hours || 0) + (record.overtime_hours || 0);
+          return `${totalHours}h`;
+        }
+      },
+      {
+        title: 'สถานะ',
+        dataIndex: 'status',
+        key: 'status',
+        render: (status: string) => (
+          <Tag color={getStatusColor(status)}>
+            {getStatusText(status)}
+          </Tag>
+        )
+      }
+    ];
 
-  const columns = [
-    {
-      title: 'พนักงาน',
-      key: 'user',
-      render: (record: Timesheet) => (
-        <div>
-          <div className="font-medium">{record.user?.name}</div>
-          <div className="text-sm text-gray-500">{record.user?.email}</div>
-        </div>
-      )
-    },
-    {
-      title: 'วันที่',
-      dataIndex: 'date',
-      key: 'date',
-      render: (date: string) => dayjs(date).format('DD/MM/YYYY')
-    },
-    {
-      title: 'โครงการ',
-      key: 'project',
-      render: (record: Timesheet) => record.project?.name || '-'
-    },
-    {
-      title: 'กิจกรรม',
-      dataIndex: 'activity',
-      key: 'activity'
-    },
-    {
-      title: 'ชั่วโมงทำงาน',
-      key: 'hours',
-      render: (record: Timesheet) => `${record.hours_worked}h${record.overtime_hours ? ` + ${record.overtime_hours}h OT` : ''}`
-    },
-    {
-      title: 'สถานะ',
-      dataIndex: 'status',
-      key: 'status',
-      render: (status: string) => (
-        <Tag color={getStatusColor(status)}>
-          {getStatusText(status)}
-        </Tag>
-      )
-    },
-    {
-      title: 'การดำเนินการ',
-      key: 'actions',
-      render: (record: Timesheet) => (
-        <Space>
-          {record.status === 'submitted' && (user?.role === 'ADMIN' || user?.role === 'MANAGER') && (
-            <>
-              <Button 
-                type="primary" 
-                size="small" 
-                onClick={() => handleApprove(record.id)}
-              >
-                อนุมัติ
-              </Button>
-              <Button 
-                danger 
-                size="small" 
-                onClick={() => handleReject(record.id, '')}
-              >
-                ปฏิเสธ
-              </Button>
-            </>
-          )}
-        </Space>
-      )
+    // Add user column for Admin/Manager
+    if (canViewAll) {
+      baseColumns.splice(1, 0, {
+        title: 'ผู้ใช้',
+        dataIndex: 'user',
+        key: 'user',
+        render: (user: any) => user?.name || user?.first_name || 'ไม่ระบุ'
+      });
     }
-  ];
 
-  const monthOptions = [
-    { value: 1, label: 'มกราคม' },
-    { value: 2, label: 'กุมภาพันธ์' },
-    { value: 3, label: 'มีนาคม' },
-    { value: 4, label: 'เมษายน' },
-    { value: 5, label: 'พฤษภาคม' },
-    { value: 6, label: 'มิถุนายน' },
-    { value: 7, label: 'กรกฎาคม' },
-    { value: 8, label: 'สิงหาคม' },
-    { value: 9, label: 'กันยายน' },
-    { value: 10, label: 'ตุลาคม' },
-    { value: 11, label: 'พฤศจิกายน' },
-    { value: 12, label: 'ธันวาคม' }
-  ];
+    return baseColumns;
+  };
 
-  const yearOptions = Array.from({ length: 5 }, (_, i) => {
-    const year = new Date().getFullYear() - 2 + i;
-    return { value: year, label: year.toString() };
-  });
+  const getDashboardTitle = () => {
+    if (isAdmin) return 'Timesheet Dashboard (ทั้งหมด)';
+    if (isManager) return 'Timesheet Dashboard (ทีม)';
+    return 'Timesheet Dashboard (ของฉัน)';
+  };
+
+  const getDashboardDescription = () => {
+    if (isAdmin) return 'ดู timesheet ทั้งหมดในระบบ';
+    if (isManager) return 'ดู timesheet ของทีมในโครงการที่จัดการ';
+    return 'ดู timesheet ของตนเอง';
+  };
 
   return (
-    <div className="p-6">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">Timesheet Dashboard</h1>
-        <p className="text-gray-600">
-          {user?.role === 'ADMIN' ? 'ดู timesheet ทั้งหมด' : 
-           user?.role === 'MANAGER' ? 'ดู timesheet ของตนเองและทีมในโครงการที่จัดการ' : 
-           'ดู timesheet ของตนเอง'}
-        </p>
+    <div className="p-6 space-y-6">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          {canViewAll ? (
+            <Users className="h-8 w-8 text-primary-600" />
+          ) : (
+            <User className="h-8 w-8 text-primary-600" />
+          )}
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">{getDashboardTitle()}</h1>
+            <p className="text-sm text-gray-600">{getDashboardDescription()}</p>
+          </div>
+        </div>
       </div>
 
+      {/* Filters */}
+      <Card>
+        <Row gutter={16}>
+          <Col span={12}>
+            <RangePicker
+              style={{ width: '100%' }}
+              placeholder={['วันที่เริ่มต้น', 'วันที่สิ้นสุด']}
+              onChange={(dates) => setDateRange(dates)}
+            />
+          </Col>
+          <Col span={12}>
+            <Select
+              style={{ width: '100%' }}
+              placeholder="กรองตามสถานะ"
+              value={statusFilter}
+              onChange={setStatusFilter}
+              options={[
+                { label: 'ทั้งหมด', value: 'all' },
+                { label: 'ร่าง', value: 'draft' },
+                { label: 'ส่งแล้ว', value: 'submitted' },
+                { label: 'อนุมัติแล้ว', value: 'approved' },
+                { label: 'ไม่อนุมัติ', value: 'rejected' }
+              ]}
+            />
+          </Col>
+        </Row>
+      </Card>
+
       {/* Statistics */}
-      <Row gutter={16} className="mb-6">
-        <Col span={3}>
-          <div className="bg-white p-4 rounded-lg shadow">
-            <Statistic title="ทั้งหมด" value={stats.total} />
-          </div>
+      <Row gutter={16}>
+        <Col span={6}>
+          <Card>
+            <Statistic
+              title="รวมทั้งหมด"
+              value={stats.total}
+              prefix={<Clock className="h-4 w-4" />}
+            />
+          </Card>
         </Col>
-        <Col span={3}>
-          <div className="bg-white p-4 rounded-lg shadow">
-            <Statistic title="ร่าง" value={stats.draft} />
-          </div>
+        <Col span={6}>
+          <Card>
+            <Statistic
+              title="อนุมัติแล้ว"
+              value={stats.approved}
+              valueStyle={{ color: '#3f8600' }}
+              prefix={<CheckCircle className="h-4 w-4" />}
+            />
+          </Card>
         </Col>
-        <Col span={3}>
-          <div className="bg-white p-4 rounded-lg shadow">
-            <Statistic title="ส่งแล้ว" value={stats.submitted} />
-          </div>
+        <Col span={6}>
+          <Card>
+            <Statistic
+              title="รอการอนุมัติ"
+              value={stats.pending}
+              valueStyle={{ color: '#faad14' }}
+              prefix={<Hourglass className="h-4 w-4" />}
+            />
+          </Card>
         </Col>
-        <Col span={3}>
-          <div className="bg-white p-4 rounded-lg shadow">
-            <Statistic title="อนุมัติแล้ว" value={stats.approved} />
-          </div>
-        </Col>
-        <Col span={3}>
-          <div className="bg-white p-4 rounded-lg shadow">
-            <Statistic title="ปฏิเสธ" value={stats.rejected} />
-          </div>
-        </Col>
-        <Col span={3}>
-          <div className="bg-white p-4 rounded-lg shadow">
-            <Statistic title="ชั่วโมงรวม" value={stats.totalHours} suffix="h" />
-          </div>
-        </Col>
-        <Col span={3}>
-          <div className="bg-white p-4 rounded-lg shadow">
-            <Statistic title="รออนุมัติ" value={stats.pendingApproval} />
-          </div>
+        <Col span={6}>
+          <Card>
+            <Statistic
+              title="ไม่อนุมัติ"
+              value={stats.rejected}
+              valueStyle={{ color: '#cf1322' }}
+              prefix={<XCircle className="h-4 w-4" />}
+            />
+          </Card>
         </Col>
       </Row>
 
-      {/* Filters */}
-      <div className="bg-white p-4 rounded-lg shadow mb-6">
-        <div className="flex items-center space-x-4">
-          <div className="flex items-center space-x-2">
-            <FilterOutlined className="text-gray-500" />
-            <span className="text-sm font-medium text-gray-700">กรอง:</span>
-          </div>
-          
-          <Select
-            value={selectedMonth}
-            onChange={setSelectedMonth}
-            style={{ width: 120 }}
-            placeholder="เดือน"
-          >
-            {monthOptions.map(option => (
-              <Select.Option key={option.value} value={option.value}>
-                {option.label}
-              </Select.Option>
-            ))}
-          </Select>
+      {/* Total Hours */}
+      <Card>
+        <Statistic
+          title="ชั่วโมงทำงานรวม"
+          value={stats.totalHours}
+          suffix="ชั่วโมง"
+          precision={1}
+        />
+      </Card>
 
-          <Select
-            value={selectedYear}
-            onChange={setSelectedYear}
-            style={{ width: 100 }}
-            placeholder="ปี"
-          >
-            {yearOptions.map(option => (
-              <Select.Option key={option.value} value={option.value}>
-                {option.label}
-              </Select.Option>
-            ))}
-          </Select>
-
-          <Select
-            value={filter}
-            onChange={setFilter}
-            style={{ width: 120 }}
-            placeholder="สถานะ"
-          >
-            <Select.Option value="all">ทั้งหมด</Select.Option>
-            <Select.Option value="draft">ร่าง</Select.Option>
-            <Select.Option value="submitted">ส่งแล้ว</Select.Option>
-            <Select.Option value="approved">อนุมัติแล้ว</Select.Option>
-            <Select.Option value="rejected">ปฏิเสธ</Select.Option>
-          </Select>
-
-          <Input
-            placeholder="ค้นหา..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            style={{ width: 200 }}
-          />
-        </div>
-      </div>
-
-      {/* Table */}
-      <div className="bg-white rounded-lg shadow">
+      {/* Timesheet Table */}
+      <Card title={`รายการ Timesheet ${canViewAll ? 'ทั้งหมด' : 'ของฉัน'}`}>
         <Table
-          columns={columns}
-          dataSource={filteredTimesheets}
+          columns={getColumns()}
+          dataSource={timesheets}
           rowKey="id"
           loading={loading}
           pagination={{
-            current: pagination.current,
-            pageSize: pagination.pageSize,
-            total: pagination.total,
-            onChange: (page, pageSize) => {
-              setPagination(prev => ({ ...prev, current: page, pageSize: pageSize || 10 }));
-            },
+            pageSize: 10,
             showSizeChanger: true,
             showQuickJumper: true,
             showTotal: (total, range) => `${range[0]}-${range[1]} จาก ${total} รายการ`
           }}
         />
-      </div>
+      </Card>
     </div>
   );
 };

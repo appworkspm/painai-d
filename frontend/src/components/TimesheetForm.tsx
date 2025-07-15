@@ -72,7 +72,14 @@ const TimesheetForm: React.FC<TimesheetFormProps> = ({
     if (initialValues) {
       form.setFieldsValue(initialValues);
     } else {
-      form.resetFields();
+      form.setFieldsValue({
+        work_type: 'PROJECT',
+        sub_work_type: 'SOFTWARE',
+        activity: 'DEVELOPMENT',
+        hours_worked: 8,
+        overtime_hours: 0,
+        billable: true
+      });
     }
   }, [initialValues, form]);
 
@@ -81,16 +88,6 @@ const TimesheetForm: React.FC<TimesheetFormProps> = ({
       form={form}
       layout="vertical"
       onFinish={onSubmit}
-      initialValues={
-        initialValues || {
-          work_type: 'PROJECT',
-          sub_work_type: 'SOFTWARE',
-          activity: 'DEVELOPMENT',
-          hours_worked: 8,
-          overtime_hours: 0,
-          billable: true
-        }
-      }
     >
       <Row gutter={16}>
         <Col span={12}>
