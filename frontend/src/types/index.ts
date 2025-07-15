@@ -115,4 +115,39 @@ export interface UpdateTimesheetForm {
   endTime?: string;
   duration?: number;
   isActive?: boolean;
+}
+
+// Timesheet Approval types
+export interface TimesheetApproval {
+  id: string;
+  timesheetId: string;
+  approverId: string;
+  status: 'APPROVED' | 'REJECTED';
+  rejectionReason?: string;
+  approvedAt?: string;
+  createdAt: string;
+  timesheet?: Timesheet;
+  approver?: User;
+}
+
+export interface ApproveTimesheetRequest {
+  status: 'APPROVED' | 'REJECTED';
+  rejectionReason?: string;
+}
+
+export interface RejectTimesheetRequest {
+  reason: string;
+}
+
+// Enhanced Timesheet interface with approval fields
+export interface TimesheetWithApproval extends Timesheet {
+  status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  rejectionReason?: string;
+  approvedBy?: string;
+  approvedAt?: string;
+  submittedAt?: string;
+  hours_worked?: number;
+  overtime_hours?: number;
+  work_type?: 'PROJECT' | 'NON_PROJECT' | 'LEAVE';
+  date?: string;
 } 

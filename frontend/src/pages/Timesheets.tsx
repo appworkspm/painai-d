@@ -84,6 +84,11 @@ const Timesheets: React.FC = () => {
     missingDates: [] as string[]
   });
 
+  // เพิ่ม state สำหรับ modal รายละเอียดวันที่
+  const [dateDetailModalVisible, setDateDetailModalVisible] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<string>('');
+  const [selectedDateInfo, setSelectedDateInfo] = useState<any>(null);
+
   // Work type options - ใช้จาก TimesheetForm แทน
   const workTypeOptions = [
     { label: 'งานโครงการ', value: 'PROJECT' },
@@ -112,6 +117,65 @@ const Timesheets: React.FC = () => {
     }
     
     return workingDays;
+  };
+
+  // เพิ่มฟังก์ชันตรวจสอบวันหยุด
+  const isHoliday = (date: string) => {
+    const dateObj = dayjs(date);
+    const dayOfWeek = dateObj.day();
+    
+    // วันเสาร์-อาทิตย์
+    if (dayOfWeek === 0 || dayOfWeek === 6) {
+      return true;
+    }
+    
+    // วันหยุดนักขัตฤกษ์ (ตัวอย่าง - สามารถเพิ่มวันหยุดอื่นๆ ได้)
+    const holidays = [
+      '01-01', // วันขึ้นปีใหม่
+      '13-04', // วันสงกรานต์
+      '14-04', // วันสงกรานต์
+      '15-04', // วันสงกรานต์
+      '16-04', // วันสงกรานต์
+      '01-05', // วันแรงงาน
+      '05-05', // วันฉัตรมงคล
+      '12-08', // วันแม่
+      '23-10', // วันปิยมหาราช
+      '05-12', // วันพ่อ
+      '10-12', // วันรัฐธรรมนูญ
+      '31-12', // วันสิ้นปี
+    ];
+    
+    const dateString = dateObj.format('DD-MM');
+    return holidays.includes(dateString);
+  };
+
+  // เพิ่มฟังก์ชันแสดงชื่อวันในภาษาไทย
+  const getThaiDayName = (date: string) => {
+    const dayNames = ['อาทิตย์', 'จันทร์', 'อังคาร', 'พุธ', 'พฤหัสบดี', 'ศุกร์', 'เสาร์'];
+    const dateObj = dayjs(date);
+    return dayNames[dateObj.day()];
+  };
+
+  // เพิ่มฟังก์ชันแสดงรายละเอียดวันที่
+  const showDateDetail = (date: string) => {
+    const dateObj = dayjs(date);
+    const isHolidayDate = isHoliday(date);
+    const dayName = getThaiDayName(date);
+    
+    // หา timesheet ที่มีอยู่สำหรับวันที่นี้
+    const existingTimesheet = timesheets.find(ts => 
+      dayjs(ts.date).format('YYYY-MM-DD') === date
+    );
+    
+    setSelectedDate(date);
+    setSelectedDateInfo({
+      date: date,
+      dayName: dayName,
+      isHoliday: isHolidayDate,
+      existingTimesheet: existingTimesheet,
+      formattedDate: dateObj.format('DD/MM/YYYY')
+    });
+    setDateDetailModalVisible(true);
   };
 
   // เพิ่มฟังก์ชันคำนวณสถิติการทำงาน

@@ -1,5 +1,16 @@
 import axios from 'axios';
-import { ApiResponse, LoginRequest, AuthResponse, Timesheet, CreateTimesheetForm, UpdateTimesheetForm, PaginatedResponse } from '../types';
+import { 
+  ApiResponse, 
+  LoginRequest, 
+  AuthResponse, 
+  Timesheet, 
+  CreateTimesheetForm, 
+  UpdateTimesheetForm, 
+  PaginatedResponse,
+  TimesheetWithApproval,
+  ApproveTimesheetRequest,
+  RejectTimesheetRequest
+} from '../types';
 
 const API_BASE_URL = (import.meta as any).env?.VITE_API_URL || 'http://localhost:8000';
 
@@ -269,13 +280,52 @@ export const timesheetAPI = {
     return response.data;
   },
 
-  approveTimesheet: async (id: string, status: 'approved' | 'rejected', rejectionReason?: string): Promise<ApiResponse<Timesheet>> => {
-    const response = await api.patch(`/api/timesheets/${id}/approve`, { status, rejection_reason: rejectionReason });
+  // Approve/Reject methods
+  approveTimesheet: async (id: string): Promise<ApiResponse<TimesheetWithApproval>> => {
+    const response = await api.put(`/api/timesheets/${id}/approve`);
     return response.data;
   },
 
-  getTimesheetHistory: async (id: string): Promise<ApiResponse<any[]>> => {
+  rejectTimesheet: async (id: string, data: RejectTimesheetRequest): Promise<ApiResponse<TimesheetWithApproval>> => {
+    const response = await api.put(`/api/timesheets/${id}/reject`, data);
+    return response.data;
+  },
+
+  // Alternative approve method with status
+  approveTimesheetWithStatus: async (id: string, data: ApproveTimesheetRequest): Promise<ApiResponse<TimesheetWithApproval>> => {
+    const response = await api.patch(`/api/timesheets/${id}/approve`, data);
+    return response.data;
+  },
+
+  getTimesheetHistory: async (id: string): Promise<ApiResponse<TimesheetWithApproval[]>> => {
     const response = await api.get(`/api/timesheets/${id}/history`);
+    return response.data;
+  },
+
+  // Additional timesheet management methods
+  getPendingApprovals: async (): Promise<ApiResponse<TimesheetWithApproval[]>> => {
+    const response = await api.get('/api/timesheets/pending-approvals');
+    return response.data;
+  },
+
+  getApprovedTimesheets: async (): Promise<ApiResponse<TimesheetWithApproval[]>> => {
+    const response = await api.get('/api/timesheets/approved');
+    return response.data;
+  },
+
+  getRejectedTimesheets: async (): Promise<ApiResponse<TimesheetWithApproval[]>> => {
+    const response = await api.get('/api/timesheets/rejected');
+    return response.data;
+  },
+
+  // Bulk operations
+  approveMultipleTimesheets: async (ids: string[]): Promise<ApiResponse<TimesheetWithApproval[]>> => {
+    const response = await api.put('/api/timesheets/bulk-approve', { ids });
+    return response.data;
+  },
+
+  rejectMultipleTimesheets: async (data: { ids: string[]; reason: string }): Promise<ApiResponse<TimesheetWithApproval[]>> => {
+    const response = await api.put('/api/timesheets/bulk-reject', data);
     return response.data;
   },
 };
