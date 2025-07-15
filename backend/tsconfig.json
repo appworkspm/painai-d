@@ -37,6 +37,8 @@
   "exclude": [
     "node_modules",
     "dist",
-    "**/*.test.ts"
+    "**/*.test.ts",
+    "src/prisma/test-*.ts",
+    "src/prisma/run-all-tests.ts"
   ]
 } 

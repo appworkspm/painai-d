@@ -20,6 +20,8 @@ COPY . .
 # Build backend
 WORKDIR /app/backend
 RUN npm ci
+# Remove test files before build
+RUN rm -rf src/prisma/test-*.ts src/prisma/run-all-tests.ts
 RUN npm run build
 RUN npm run db:generate
 
