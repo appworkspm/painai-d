@@ -201,12 +201,11 @@ const ProjectDetails: React.FC = () => {
     if (statusFilter !== 'all' && project.status !== statusFilter) {
       return false;
     }
-    
     // Search filter
     return project.name.toLowerCase().includes(search.toLowerCase()) ||
       project.description?.toLowerCase().includes(search.toLowerCase()) ||
-    project.manager?.name?.toLowerCase().includes(search.toLowerCase())
-  );
+      project.manager?.name?.toLowerCase().includes(search.toLowerCase());
+  });
 
   // --- Helper Functions ---
   const getStatusColor = (status: string) => {
