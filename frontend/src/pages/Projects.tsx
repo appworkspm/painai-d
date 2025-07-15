@@ -11,7 +11,7 @@ const Projects: React.FC = () => {
   const [projects, setProjects] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState<string | null>(null);
-  const [filter, setFilter] = useState('all');
+  const [filter, setFilter] = useState('ACTIVE');
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingProject, setEditingProject] = useState<any>(null);
   const [editForm, setEditForm] = useState({

@@ -34,6 +34,7 @@ const ProjectDetails: React.FC = () => {
   const [submitting, setSubmitting] = useState(false);
   const [allProjects, setAllProjects] = useState<any[]>([]);
   const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('ACTIVE');
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -195,9 +196,15 @@ const ProjectDetails: React.FC = () => {
   const progress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
 
   // --- Filter Projects ---
-  const filteredProjects = allProjects.filter(project => 
-    project.name.toLowerCase().includes(search.toLowerCase()) ||
-    project.description?.toLowerCase().includes(search.toLowerCase()) ||
+  const filteredProjects = allProjects.filter(project => {
+    // Status filter
+    if (statusFilter !== 'all' && project.status !== statusFilter) {
+      return false;
+    }
+    
+    // Search filter
+    return project.name.toLowerCase().includes(search.toLowerCase()) ||
+      project.description?.toLowerCase().includes(search.toLowerCase()) ||
     project.manager?.name?.toLowerCase().includes(search.toLowerCase())
   );
 
@@ -599,7 +606,7 @@ const ProjectDetails: React.FC = () => {
       {/* Search and Filter */}
       <Card>
         <Row gutter={16}>
-          <Col span={12}>
+          <Col span={8}>
             <AntSearch
               placeholder="ค้นหาตามชื่อโครงการ, คำอธิบาย, หรือผู้จัดการ"
               value={search}
@@ -608,7 +615,22 @@ const ProjectDetails: React.FC = () => {
               size="large"
             />
           </Col>
-          <Col span={12}>
+          <Col span={8}>
+            <Select
+              value={statusFilter}
+              onChange={setStatusFilter}
+              size="large"
+              style={{ width: '100%' }}
+              placeholder="เลือกสถานะ"
+            >
+              <Select.Option value="all">สถานะทั้งหมด</Select.Option>
+              <Select.Option value="ACTIVE">กำลังดำเนินการ</Select.Option>
+              <Select.Option value="ON_HOLD">ระงับ</Select.Option>
+              <Select.Option value="COMPLETED">เสร็จสิ้น</Select.Option>
+              <Select.Option value="CANCELLED">ยกเลิก</Select.Option>
+            </Select>
+          </Col>
+          <Col span={8}>
             <div className="flex items-center gap-2">
               <Filter className="h-4 w-4 text-gray-400" />
               <span className="text-sm text-gray-600">พบ {filteredProjects.length} โครงการ</span>
