@@ -2,8 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useNotification } from '../contexts/NotificationContext';
-import { FolderOpen, Users, Calendar, Clock, CheckCircle, AlertCircle, BarChart3, Edit, Plus, Circle, X, Save, Trash2 } from 'lucide-react';
+import { FolderOpen, Users, Calendar, Clock, CheckCircle, AlertCircle, BarChart3, Edit, Plus, Circle, X, Save, Trash2, Search, Filter } from 'lucide-react';
 import { projectAPI, projectTeamAPI, projectTaskAPI, projectTimelineAPI, adminAPI } from '../services/api';
+import { Card, Row, Col, Statistic, Table, Tag, Space, Button, Input, Select, DatePicker, message, Spin, Empty, Skeleton } from 'antd';
+import dayjs from 'dayjs';
+
+const { Search: AntSearch } = Input;
 
 const ProjectDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -30,35 +34,72 @@ const ProjectDetails: React.FC = () => {
   const [submitting, setSubmitting] = useState(false);
   const [allProjects, setAllProjects] = useState<any[]>([]);
   const [search, setSearch] = useState('');
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!id) {
       // Load all projects for /projects/details
-      projectAPI.getProjects().then(res => {
-        if (res.success && res.data) setAllProjects(res.data);
-      });
+      loadAllProjects();
     } else {
       loadAll();
     }
     // eslint-disable-next-line
   }, [id]);
 
+  const loadAllProjects = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await projectAPI.getProjects();
+      if (res.success && res.data) {
+        setAllProjects(res.data);
+      } else {
+        setError('ไม่สามารถโหลดข้อมูลโครงการได้');
+      }
+    } catch (error: any) {
+      setError(error.response?.data?.message || 'เกิดข้อผิดพลาดในการโหลดข้อมูล');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const loadAll = async () => {
     setLoading(true);
+    setError(null);
     try {
-      const [projRes, teamRes, timelineRes] = await Promise.all([
-        projectAPI.getProject(id!),
+      // Load project data first
+      const projRes = await projectAPI.getProject(id!);
+      if (projRes.success) {
+        setProject(projRes.data);
+        setTasks(projRes.data.projectTasks?.filter((t: any) => !t.isDeleted) || []);
+      } else {
+        throw new Error(projRes.message || 'ไม่สามารถโหลดข้อมูลโครงการได้');
+      }
+
+      // Load additional data in parallel
+      const [teamRes, timelineRes, usersRes] = await Promise.allSettled([
         projectTeamAPI.getTeam(id!),
-        projectTimelineAPI.getTimeline(id!)
+        projectTimelineAPI.getTimeline(id!),
+        adminAPI.getUsers()
       ]);
-      setProject(projRes.data);
-      setTeam(teamRes.data);
-      setTimeline(timelineRes.data);
-      setTasks(projRes.data.projectTasks?.filter((t: any) => !t.isDeleted) || []);
-      // For add member modal
-      const usersRes = await adminAPI.getUsers();
-      setAllUsers(usersRes.data);
-    } catch (error) {
+
+      // Handle team data
+      if (teamRes.status === 'fulfilled' && teamRes.value.success) {
+        setTeam(teamRes.value.data);
+      }
+
+      // Handle timeline data
+      if (timelineRes.status === 'fulfilled' && timelineRes.value.success) {
+        setTimeline(timelineRes.value.data);
+      }
+
+      // Handle users data
+      if (usersRes.status === 'fulfilled' && usersRes.value.success) {
+        setAllUsers(usersRes.value.data);
+      }
+
+    } catch (error: any) {
+      setError(error.message || 'เกิดข้อผิดพลาดในการโหลดข้อมูล');
       showNotification({ message: 'Failed to load project data', type: 'error' });
     } finally {
       setLoading(false);
@@ -153,288 +194,281 @@ const ProjectDetails: React.FC = () => {
   const completedTasks = tasks.filter((t: any) => t.status === 'COMPLETED').length;
   const progress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
 
+  // --- Filter Projects ---
+  const filteredProjects = allProjects.filter(project => 
+    project.name.toLowerCase().includes(search.toLowerCase()) ||
+    project.description?.toLowerCase().includes(search.toLowerCase()) ||
+    project.manager?.name?.toLowerCase().includes(search.toLowerCase())
+  );
+
+  // --- Helper Functions ---
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'ACTIVE': return 'bg-green-100 text-green-800';
+      case 'COMPLETED': return 'bg-blue-100 text-blue-800';
+      case 'ON_HOLD': return 'bg-yellow-100 text-yellow-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const getTaskStatusIcon = (status: string) => {
+    switch (status) {
+      case 'COMPLETED': return <CheckCircle className="h-5 w-5 text-green-500" />;
+      case 'IN_PROGRESS': return <Clock className="h-5 w-5 text-yellow-500" />;
+      case 'PENDING': return <Circle className="h-5 w-5 text-gray-400" />;
+      default: return <Circle className="h-5 w-5 text-gray-400" />;
+    }
+  };
+
   // --- UI Render Functions ---
   const renderTeam = () => (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h3 className="text-lg font-medium text-gray-900">Team Members</h3>
-        <button onClick={handleAddMember} className="bg-primary-600 text-white px-4 py-2 rounded-md hover:bg-primary-700 transition-colors flex items-center">
-          <Plus className="h-4 w-4 mr-2" />
-          Add Member
-        </button>
+        <h3 className="text-lg font-medium text-gray-900">สมาชิกทีม</h3>
+        <Button 
+          type="primary" 
+          icon={<Plus className="h-4 w-4" />}
+          onClick={handleAddMember}
+        >
+          เพิ่มสมาชิก
+        </Button>
       </div>
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-200">
-          <h4 className="text-lg font-medium text-gray-900">Project Team</h4>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Member</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Position</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {team.map((member: any) => (
-                <tr key={member.user.id}>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center">
-                      <div className="flex-shrink-0 h-10 w-10">
-                        <div className="h-10 w-10 rounded-full bg-primary-100 flex items-center justify-center">
-                          <Users className="h-5 w-5 text-primary-600" />
-                        </div>
-                      </div>
-                      <div className="ml-4">
-                        <div className="text-sm font-medium text-gray-900">{member.user.name}</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{member.user.position || '-'}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{member.user.email}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    {member.user.id !== managerId && (
-                      <button onClick={() => handleRemoveMember(member.user.id)} className="text-red-600 hover:text-red-900 flex items-center"><Trash2 className="h-4 w-4 mr-1" />Remove</button>
-                    )}
-                    {member.user.id === managerId && <span className="text-gray-400">Manager</span>}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-      {/* Add Member Modal */}
-      {showAddMemberModal && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
-            <div className="mt-3">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-medium text-gray-900">Add Member</h3>
-                <button onClick={() => setShowAddMemberModal(false)} className="text-gray-400 hover:text-gray-600"><X className="h-5 w-5" /></button>
+      
+      <Table
+        dataSource={team}
+        rowKey={(record) => record.user.id}
+        columns={[
+          {
+            title: 'สมาชิก',
+            dataIndex: 'user',
+            key: 'user',
+            render: (user: any) => (
+              <div className="flex items-center">
+                <div className="flex-shrink-0 h-10 w-10">
+                  <div className="h-10 w-10 rounded-full bg-primary-100 flex items-center justify-center">
+                    <Users className="h-5 w-5 text-primary-600" />
+                  </div>
+                </div>
+                <div className="ml-4">
+                  <div className="text-sm font-medium text-gray-900">{user.name}</div>
+                </div>
               </div>
-              <div className="mb-4">
-                <select value={addMemberUserId} onChange={e => setAddMemberUserId(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-md">
-                  <option value="">Select User</option>
-                  {allUsers.filter(u => u.id !== managerId && !team.some((m: any) => m.user.id === u.id)).map(u => (
-                    <option key={u.id} value={u.id}>{u.name} ({u.position || '-'})</option>
-                  ))}
-                </select>
-              </div>
-              <div className="flex space-x-3 pt-4">
-                <button type="button" onClick={handleConfirmAddMember} className="flex-1 bg-primary-600 text-white px-4 py-2 rounded-md hover:bg-primary-700" disabled={submitting || !addMemberUserId}>Add</button>
-                <button type="button" onClick={() => setShowAddMemberModal(false)} className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50">Cancel</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+            )
+          },
+          {
+            title: 'ตำแหน่ง',
+            dataIndex: ['user', 'position'],
+            key: 'position',
+            render: (position: string) => position || '-'
+          },
+          {
+            title: 'อีเมล',
+            dataIndex: ['user', 'email'],
+            key: 'email'
+          },
+          {
+            title: 'การดำเนินการ',
+            key: 'actions',
+            render: (record: any) => (
+              <Space>
+                {record.user.id !== managerId && (
+                  <Button 
+                    type="text" 
+                    danger 
+                    icon={<Trash2 className="h-4 w-4" />}
+                    onClick={() => handleRemoveMember(record.user.id)}
+                  >
+                    ลบ
+                  </Button>
+                )}
+                {record.user.id === managerId && (
+                  <Tag color="blue">ผู้จัดการ</Tag>
+                )}
+              </Space>
+            )
+          }
+        ]}
+      />
     </div>
   );
 
   const renderTasks = () => (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h3 className="text-lg font-medium text-gray-900">Project Tasks</h3>
-        <button onClick={handleAddTask} className="bg-primary-600 text-white px-4 py-2 rounded-md hover:bg-primary-700 transition-colors flex items-center">
-          <Plus className="h-4 w-4 mr-2" />
-          Add Task
-        </button>
+        <h3 className="text-lg font-medium text-gray-900">งานในโครงการ</h3>
+        <Button 
+          type="primary" 
+          icon={<Plus className="h-4 w-4" />}
+          onClick={handleAddTask}
+        >
+          เพิ่มงาน
+        </Button>
       </div>
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-200">
-          <h4 className="text-lg font-medium text-gray-900">All Tasks</h4>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Task</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Assignee</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Due Date</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {tasks.map((task: any) => (
-                <tr key={task.id}>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center">
-                      {getTaskStatusIcon(task.status)}
-                      <div className="ml-3">
-                        <div className="text-sm font-medium text-gray-900">{task.name}</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(task.status)}`}>{task.status}</span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{team.find(m => m.user.id === task.assigneeId)?.user.name || '-'}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{task.dueDate ? new Date(task.dueDate).toLocaleDateString() : '-'}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <button onClick={() => handleEditTask(task)} className="text-primary-600 hover:text-primary-900 mr-2">Edit</button>
-                    <button onClick={() => handleDeleteTask(task.id)} className="text-red-600 hover:text-red-900 flex items-center"><Trash2 className="h-4 w-4 mr-1" />Delete</button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-      {/* Add/Edit Task Modal */}
-      {showEditTaskModal && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
-            <div className="mt-3">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-medium text-gray-900">{editingTask ? 'Edit Task' : 'Add Task'}</h3>
-                <button onClick={() => setShowEditTaskModal(false)} className="text-gray-400 hover:text-gray-600"><X className="h-5 w-5" /></button>
+      
+      <Table
+        dataSource={tasks}
+        rowKey="id"
+        columns={[
+          {
+            title: 'งาน',
+            dataIndex: 'name',
+            key: 'name',
+            render: (name: string, record: any) => (
+              <div className="flex items-center">
+                {getTaskStatusIcon(record.status)}
+                <div className="ml-3">
+                  <div className="text-sm font-medium text-gray-900">{name}</div>
+                  <div className="text-sm text-gray-500">{record.description}</div>
+                </div>
               </div>
-              <form onSubmit={handleSubmitTask} className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Task Name</label>
-                  <input type="text" value={taskForm.name} onChange={e => setTaskForm(prev => ({ ...prev, name: e.target.value }))} className="w-full px-3 py-2 border border-gray-300 rounded-md" required />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                  <textarea value={taskForm.description} onChange={e => setTaskForm(prev => ({ ...prev, description: e.target.value }))} className="w-full px-3 py-2 border border-gray-300 rounded-md" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Assignee</label>
-                  <select value={taskForm.assigneeId} onChange={e => setTaskForm(prev => ({ ...prev, assigneeId: e.target.value }))} className="w-full px-3 py-2 border border-gray-300 rounded-md">
-                    <option value="">Select Member</option>
-                    {team.map(m => <option key={m.user.id} value={m.user.id}>{m.user.name}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Due Date</label>
-                  <input type="date" value={taskForm.dueDate} onChange={e => setTaskForm(prev => ({ ...prev, dueDate: e.target.value }))} className="w-full px-3 py-2 border border-gray-300 rounded-md" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Priority</label>
-                  <input type="number" min={1} max={5} value={taskForm.priority} onChange={e => setTaskForm(prev => ({ ...prev, priority: Number(e.target.value) }))} className="w-full px-3 py-2 border border-gray-300 rounded-md" />
-                </div>
-                <div className="flex space-x-3 pt-4">
-                  <button type="submit" className="flex-1 bg-primary-600 text-white px-4 py-2 rounded-md hover:bg-primary-700" disabled={submitting}>{editingTask ? 'Update' : 'Add'} Task</button>
-                  <button type="button" onClick={() => setShowEditTaskModal(false)} className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50">Cancel</button>
-                </div>
-              </form>
-            </div>
-          </div>
-        </div>
-      )}
+            )
+          },
+          {
+            title: 'สถานะ',
+            dataIndex: 'status',
+            key: 'status',
+            render: (status: string) => {
+              const statusConfig = {
+                COMPLETED: { color: 'success', text: 'เสร็จสิ้น' },
+                IN_PROGRESS: { color: 'processing', text: 'กำลังดำเนินการ' },
+                PENDING: { color: 'default', text: 'รอดำเนินการ' }
+              };
+              const config = statusConfig[status as keyof typeof statusConfig] || { color: 'default', text: status };
+              return <Tag color={config.color}>{config.text}</Tag>;
+            }
+          },
+          {
+            title: 'ผู้รับผิดชอบ',
+            dataIndex: 'assigneeId',
+            key: 'assigneeId',
+            render: (assigneeId: string) => {
+              const member = team.find(m => m.user.id === assigneeId);
+              return member?.user.name || '-';
+            }
+          },
+          {
+            title: 'กำหนดส่ง',
+            dataIndex: 'dueDate',
+            key: 'dueDate',
+            render: (dueDate: string) => dueDate ? dayjs(dueDate).format('DD/MM/YYYY') : '-'
+          },
+          {
+            title: 'การดำเนินการ',
+            key: 'actions',
+            render: (record: any) => (
+              <Space>
+                <Button 
+                  type="text" 
+                  icon={<Edit className="h-4 w-4" />}
+                  onClick={() => handleEditTask(record)}
+                >
+                  แก้ไข
+                </Button>
+                <Button 
+                  type="text" 
+                  danger 
+                  icon={<Trash2 className="h-4 w-4" />}
+                  onClick={() => handleDeleteTask(record.id)}
+                >
+                  ลบ
+                </Button>
+              </Space>
+            )
+          }
+        ]}
+      />
     </div>
   );
 
   const renderTimeline = () => (
     <div className="space-y-6">
-      <div className="bg-white rounded-lg shadow p-6">
-        <h3 className="text-lg font-medium text-gray-900 mb-6">Project Timeline</h3>
-        <ul className="space-y-4">
+      <h3 className="text-lg font-medium text-gray-900">ไทม์ไลน์โครงการ</h3>
+      
+      {timeline.length === 0 ? (
+        <Empty description="ยังไม่มีกิจกรรมในไทม์ไลน์" />
+      ) : (
+        <div className="space-y-4">
           {timeline.map((item: any) => (
-            <li key={item.id} className="flex items-start">
+            <div key={item.id} className="flex items-start">
               <div className="flex-shrink-0 w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                {item.action === 'task_created' ? <Plus className="h-4 w-4 text-blue-600" /> : <Trash2 className="h-4 w-4 text-red-600" />}
+                {item.action === 'task_created' ? (
+                  <Plus className="h-4 w-4 text-blue-600" />
+                ) : (
+                  <Trash2 className="h-4 w-4 text-red-600" />
+                )}
               </div>
               <div className="ml-4 flex-1">
                 <p className="text-sm font-medium text-gray-900">{item.description}</p>
-                <p className="text-xs text-gray-500">By {item.user?.name || '-'} • {new Date(item.createdAt).toLocaleString()}</p>
+                <p className="text-xs text-gray-500">
+                  โดย {item.user?.name || '-'} • {dayjs(item.createdAt).format('DD/MM/YYYY HH:mm')}
+                </p>
               </div>
-            </li>
+            </div>
           ))}
-        </ul>
-      </div>
+        </div>
+      )}
     </div>
   );
 
   const renderOverview = () => (
     <div className="space-y-6">
-      {/* Project Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <div className="bg-white p-6 rounded-lg shadow">
-          <div className="flex items-center">
-            <div className="p-2 bg-blue-100 rounded-lg">
-              <CheckCircle className="h-6 w-6 text-blue-600" />
-            </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-500">Progress</p>
-              <p className="text-2xl font-bold text-gray-900">{progress}%</p>
-            </div>
-          </div>
-        </div>
-        <div className="bg-white p-6 rounded-lg shadow">
-          <div className="flex items-center">
-            <div className="p-2 bg-green-100 rounded-lg">
-              <Users className="h-6 w-6 text-green-600" />
-            </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-500">Team Members</p>
-              <p className="text-2xl font-bold text-gray-900">{team.length}</p>
-            </div>
-          </div>
-        </div>
-        <div className="bg-white p-6 rounded-lg shadow">
-          <div className="flex items-center">
-            <div className="p-2 bg-yellow-100 rounded-lg">
-              <Clock className="h-6 w-6 text-yellow-600" />
-            </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-500">Tasks</p>
-              <p className="text-2xl font-bold text-gray-900">{tasks.length}</p>
-            </div>
-          </div>
-        </div>
-      </div>
       {/* Project Information */}
       <div className="bg-white rounded-lg shadow">
         <div className="px-6 py-4 border-b border-gray-200">
-          <div className="flex items-center justify-between">
-            <h3 className="text-lg font-medium text-gray-900">Project Information</h3>
-            <button onClick={() => setShowEditModal(true)} className="text-primary-600 hover:text-primary-900 flex items-center">
-              <Edit className="h-4 w-4 mr-1" />
-              Edit
-            </button>
-          </div>
+          <h3 className="text-lg font-medium text-gray-900">ข้อมูลโครงการ</h3>
         </div>
         <div className="p-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <h4 className="text-sm font-medium text-gray-500">Description</h4>
-              <p className="mt-1 text-sm text-gray-900">{project?.description}</p>
-            </div>
-            <div>
-              <h4 className="text-sm font-medium text-gray-500">Status</h4>
-              <span className={`mt-1 inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(project?.status)}`}>{project?.status}</span>
-            </div>
-            <div>
-              <h4 className="text-sm font-medium text-gray-500">Start Date</h4>
-              <p className="mt-1 text-sm text-gray-900">{project?.startDate ? new Date(project?.startDate).toLocaleDateString() : '-'}</p>
-            </div>
-            <div>
-              <h4 className="text-sm font-medium text-gray-500">End Date</h4>
-              <p className="mt-1 text-sm text-gray-900">{project?.endDate ? new Date(project?.endDate).toLocaleDateString() : '-'}</p>
-            </div>
-            <div>
-              <h4 className="text-sm font-medium text-gray-500">Budget</h4>
-              <p className="mt-1 text-sm text-gray-900">฿{project?.budget?.toLocaleString()}</p>
-            </div>
-          </div>
+          <Row gutter={16}>
+            <Col span={12}>
+              <div className="mb-4">
+                <h4 className="text-sm font-medium text-gray-500">คำอธิบาย</h4>
+                <p className="mt-1 text-sm text-gray-900">{project?.description || '-'}</p>
+              </div>
+              <div className="mb-4">
+                <h4 className="text-sm font-medium text-gray-500">สถานะ</h4>
+                <Tag color={project?.status === 'ACTIVE' ? 'success' : 'default'}>
+                  {project?.status === 'ACTIVE' ? 'กำลังดำเนินการ' : project?.status}
+                </Tag>
+              </div>
+            </Col>
+            <Col span={12}>
+              <div className="mb-4">
+                <h4 className="text-sm font-medium text-gray-500">วันที่เริ่มต้น</h4>
+                <p className="mt-1 text-sm text-gray-900">
+                  {project?.startDate ? dayjs(project.startDate).format('DD/MM/YYYY') : '-'}
+                </p>
+              </div>
+              <div className="mb-4">
+                <h4 className="text-sm font-medium text-gray-500">วันที่สิ้นสุด</h4>
+                <p className="mt-1 text-sm text-gray-900">
+                  {project?.endDate ? dayjs(project.endDate).format('DD/MM/YYYY') : '-'}
+                </p>
+              </div>
+              <div className="mb-4">
+                <h4 className="text-sm font-medium text-gray-500">งบประมาณ</h4>
+                <p className="mt-1 text-sm text-gray-900">
+                  {project?.budget ? `฿${project.budget.toLocaleString()}` : '-'}
+                </p>
+              </div>
+            </Col>
+          </Row>
         </div>
       </div>
+
       {/* Progress Bar */}
       <div className="bg-white rounded-lg shadow p-6">
-        <h3 className="text-lg font-medium text-gray-900 mb-4">Project Progress</h3>
+        <h3 className="text-lg font-medium text-gray-900 mb-4">ความคืบหน้าโครงการ</h3>
         <div className="space-y-4">
           <div>
             <div className="flex justify-between text-sm text-gray-600 mb-2">
-              <span>Overall Progress</span>
+              <span>ความคืบหน้ารวม</span>
               <span>{progress}%</span>
             </div>
             <div className="w-full bg-gray-200 rounded-full h-2">
-              <div className="bg-primary-600 h-2 rounded-full transition-all duration-300" style={{ width: `${progress}%` }}></div>
+              <div 
+                className="bg-primary-600 h-2 rounded-full transition-all duration-300" 
+                style={{ width: `${progress}%` }}
+              ></div>
             </div>
           </div>
         </div>
@@ -442,79 +476,283 @@ const ProjectDetails: React.FC = () => {
     </div>
   );
 
-  // Render project list with filter for /projects/details
   const renderProjectList = () => (
     <div className="space-y-6">
-      <div className="flex items-center gap-3 mb-4">
-        <FolderOpen className="h-8 w-8 text-primary-600" />
-        <h1 className="text-2xl font-bold text-gray-900">Project List</h1>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <FolderOpen className="h-8 w-8 text-primary-600" />
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">รายการโครงการ</h1>
+            <p className="text-sm text-gray-600">ค้นหาและดูรายละเอียดโครงการทั้งหมด</p>
+          </div>
+        </div>
       </div>
-      <div className="mb-4">
-        <input
-          type="text"
-          placeholder="ค้นหาชื่อโครงการ..."
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          className="w-full max-w-md px-3 py-2 border border-gray-300 rounded-md"
+
+      {/* Search and Filter */}
+      <Card>
+        <Row gutter={16}>
+          <Col span={12}>
+            <AntSearch
+              placeholder="ค้นหาตามชื่อโครงการ, คำอธิบาย, หรือผู้จัดการ"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              prefix={<Search className="h-4 w-4 text-gray-400" />}
+              size="large"
+            />
+          </Col>
+          <Col span={12}>
+            <div className="flex items-center gap-2">
+              <Filter className="h-4 w-4 text-gray-400" />
+              <span className="text-sm text-gray-600">พบ {filteredProjects.length} โครงการ</span>
+            </div>
+          </Col>
+        </Row>
+      </Card>
+
+      {/* Project Statistics */}
+      <Row gutter={16}>
+        <Col span={6}>
+          <Card>
+            <Statistic
+              title="โครงการทั้งหมด"
+              value={allProjects.length}
+              prefix={<FolderOpen className="h-4 w-4" />}
+            />
+          </Card>
+        </Col>
+        <Col span={6}>
+          <Card>
+            <Statistic
+              title="โครงการที่กำลังดำเนินการ"
+              value={allProjects.filter(p => p.status === 'ACTIVE').length}
+              valueStyle={{ color: '#3f8600' }}
+              prefix={<CheckCircle className="h-4 w-4" />}
+            />
+          </Card>
+        </Col>
+        <Col span={6}>
+          <Card>
+            <Statistic
+              title="โครงการที่เสร็จสิ้น"
+              value={allProjects.filter(p => p.status === 'COMPLETED').length}
+              valueStyle={{ color: '#1890ff' }}
+              prefix={<BarChart3 className="h-4 w-4" />}
+            />
+          </Card>
+        </Col>
+        <Col span={6}>
+          <Card>
+            <Statistic
+              title="โครงการที่ระงับ"
+              value={allProjects.filter(p => p.status === 'ON_HOLD').length}
+              valueStyle={{ color: '#faad14' }}
+              prefix={<AlertCircle className="h-4 w-4" />}
+            />
+          </Card>
+        </Col>
+      </Row>
+
+      {/* Project Table */}
+      <Card title="รายการโครงการ">
+        <Table
+          dataSource={filteredProjects}
+          rowKey="id"
+          loading={loading}
+          pagination={{
+            pageSize: 10,
+            showSizeChanger: true,
+            showQuickJumper: true,
+            showTotal: (total, range) => `${range[0]}-${range[1]} จาก ${total} รายการ`
+          }}
+          columns={[
+            {
+              title: 'ชื่อโครงการ',
+              dataIndex: 'name',
+              key: 'name',
+              render: (name: string, record: any) => (
+                <div>
+                  <div className="font-medium text-gray-900">{name}</div>
+                  <div className="text-sm text-gray-500">{record.description}</div>
+                </div>
+              )
+            },
+            {
+              title: 'ผู้จัดการ',
+              dataIndex: 'manager',
+              key: 'manager',
+              render: (manager: any) => manager?.name || '-'
+            },
+            {
+              title: 'สถานะ',
+              dataIndex: 'status',
+              key: 'status',
+              render: (status: string) => {
+                const statusConfig = {
+                  ACTIVE: { color: 'success', text: 'กำลังดำเนินการ' },
+                  COMPLETED: { color: 'default', text: 'เสร็จสิ้น' },
+                  ON_HOLD: { color: 'warning', text: 'ระงับ' }
+                };
+                const config = statusConfig[status as keyof typeof statusConfig] || { color: 'default', text: status };
+                return <Tag color={config.color}>{config.text}</Tag>;
+              }
+            },
+            {
+              title: 'วันที่สร้าง',
+              dataIndex: 'createdAt',
+              key: 'createdAt',
+              render: (date: string) => dayjs(date).format('DD/MM/YYYY')
+            },
+            {
+              title: 'การดำเนินการ',
+              key: 'actions',
+              render: (record: any) => (
+                <Space>
+                  <Button 
+                    type="link" 
+                    onClick={() => window.location.href = `/projects/${record.id}/details`}
+                  >
+                    ดูรายละเอียด
+                  </Button>
+                </Space>
+              )
+            }
+          ]}
         />
-      </div>
-      <div className="bg-white rounded-lg shadow overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Project</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Manager</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {allProjects.filter(p => p.name.toLowerCase().includes(search.toLowerCase())).map(project => (
-              <tr key={project.id}>
-                <td className="px-6 py-4 whitespace-nowrap">{project.name}</td>
-                <td className="px-6 py-4 whitespace-nowrap">{project.manager?.name || '-'}</td>
-                <td className="px-6 py-4 whitespace-nowrap">{project.status}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      </Card>
     </div>
   );
 
   const renderContent = () => {
+    if (loading) {
+      return (
+        <div className="p-6 space-y-6">
+          <Skeleton active paragraph={{ rows: 4 }} />
+          <Skeleton active paragraph={{ rows: 6 }} />
+          <Skeleton active paragraph={{ rows: 8 }} />
+        </div>
+      );
+    }
+
+    if (error) {
+      return (
+        <div className="p-6">
+          <Empty
+            description={error}
+            image={Empty.PRESENTED_IMAGE_SIMPLE}
+          >
+            <Button type="primary" onClick={() => id ? loadAll() : loadAllProjects()}>
+              ลองใหม่
+            </Button>
+          </Empty>
+        </div>
+      );
+    }
+
     if (!id) {
-      // /projects/details: show filterable project list
       return renderProjectList();
     }
-    switch (activeTab) {
-      case 'overview':
-        return renderOverview();
-      case 'team':
-        return renderTeam();
-      case 'tasks':
-        return renderTasks();
-      case 'timeline':
-        return renderTimeline();
-      default:
-        return null;
+
+    if (!project) {
+      return (
+        <div className="p-6">
+          <Empty description="ไม่พบข้อมูลโครงการ" />
+        </div>
+      );
     }
+
+    return (
+      <div className="p-6 space-y-6">
+        {/* Project Header */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <FolderOpen className="h-8 w-8 text-primary-600" />
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">{project.name}</h1>
+              <p className="text-sm text-gray-600">{project.description}</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Project Statistics */}
+        <Row gutter={16}>
+          <Col span={6}>
+            <Card>
+              <Statistic
+                title="ความคืบหน้า"
+                value={progress}
+                suffix="%"
+                prefix={<BarChart3 className="h-4 w-4" />}
+              />
+            </Card>
+          </Col>
+          <Col span={6}>
+            <Card>
+              <Statistic
+                title="งานทั้งหมด"
+                value={totalTasks}
+                prefix={<CheckCircle className="h-4 w-4" />}
+              />
+            </Card>
+          </Col>
+          <Col span={6}>
+            <Card>
+              <Statistic
+                title="งานเสร็จสิ้น"
+                value={completedTasks}
+                valueStyle={{ color: '#3f8600' }}
+                prefix={<CheckCircle className="h-4 w-4" />}
+              />
+            </Card>
+          </Col>
+          <Col span={6}>
+            <Card>
+              <Statistic
+                title="สมาชิกทีม"
+                value={team.length}
+                prefix={<Users className="h-4 w-4" />}
+              />
+            </Card>
+          </Col>
+        </Row>
+
+        {/* Tabs */}
+        <Card>
+          <div className="border-b border-gray-200">
+            <nav className="-mb-px flex space-x-8">
+              {[
+                { id: 'overview', label: 'ภาพรวม', icon: BarChart3 },
+                { id: 'team', label: 'ทีม', icon: Users },
+                { id: 'tasks', label: 'งาน', icon: CheckCircle },
+                { id: 'timeline', label: 'ไทม์ไลน์', icon: Calendar }
+              ].map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`py-2 px-1 border-b-2 font-medium text-sm flex items-center gap-2 ${
+                    activeTab === tab.id
+                      ? 'border-primary-500 text-primary-600'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
+                >
+                  <tab.icon className="h-4 w-4" />
+                  {tab.label}
+                </button>
+              ))}
+            </nav>
+          </div>
+
+          <div className="mt-6">
+            {activeTab === 'overview' && renderOverview()}
+            {activeTab === 'team' && renderTeam()}
+            {activeTab === 'tasks' && renderTasks()}
+            {activeTab === 'timeline' && renderTimeline()}
+          </div>
+        </Card>
+      </div>
+    );
   };
 
-  if (loading) return <div className="p-8 text-center text-gray-500">Loading...</div>;
-
-  return (
-    <div className="p-8">
-      <div className="mb-6 flex items-center space-x-6">
-        <h2 className="text-2xl font-bold text-gray-900 flex items-center"><FolderOpen className="h-7 w-7 mr-2 text-primary-600" /> {project?.name}</h2>
-        <div className="flex space-x-2">
-          {['overview', 'team', 'tasks', 'timeline'].map(tab => (
-            <button key={tab} onClick={() => setActiveTab(tab)} className={`px-4 py-2 rounded-md ${activeTab === tab ? 'bg-primary-600 text-white' : 'bg-gray-100 text-gray-700'} font-medium`}>{tab.charAt(0).toUpperCase() + tab.slice(1)}</button>
-          ))}
-        </div>
-      </div>
-      {renderContent()}
-    </div>
-  );
+  return renderContent();
 };
 
 export default ProjectDetails; 
