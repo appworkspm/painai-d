@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Button, Table, Tag, Space, Modal, Form, Input, Select, DatePicker, message, Row, Col, Statistic } from 'antd';
+import { Button, Table, Tag, Space, Modal, Form, Input, Select, DatePicker, message, Row, Col, Statistic, Card } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, SendOutlined } from '@ant-design/icons';
 import { useAuth } from '../contexts/AuthContext';
 import api from '../services/api';
 import dayjs from 'dayjs';
-import { Clock } from 'lucide-react';
+import { Clock, CheckCircle, XCircle, Hourglass, FileText, User } from 'lucide-react';
 import TimesheetForm from '../components/TimesheetForm';
 
 const { TextArea } = Input;
@@ -342,55 +342,90 @@ const Timesheets: React.FC = () => {
   ];
 
   return (
-    <div className="p-6">
+    <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <Clock className="h-8 w-8 text-primary-600" />
-          <h1 className="text-2xl font-bold text-gray-900">My Timesheets</h1>
+          <User className="h-8 w-8 text-primary-600" />
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">My Timesheets</h1>
+            <p className="text-sm text-gray-600">จัดการ timesheet ของตนเอง</p>
+          </div>
         </div>
-        {/* Removed Create Timesheet button */}
+        <Button 
+          type="primary" 
+          icon={<PlusOutlined />}
+          onClick={() => setModalVisible(true)}
+        >
+          สร้าง Timesheet
+        </Button>
       </div>
 
-      <div className="mb-6">
-        
-        {/* Statistics */}
-        <Row gutter={16} className="mb-6">
-          <Col span={4}>
-            <div className="bg-white p-4 rounded-lg shadow">
-              <Statistic title="ทั้งหมด" value={stats.total} />
-            </div>
-          </Col>
-          <Col span={4}>
-            <div className="bg-white p-4 rounded-lg shadow">
-              <Statistic title="ร่าง" value={stats.draft} />
-            </div>
-          </Col>
-          <Col span={4}>
-            <div className="bg-white p-4 rounded-lg shadow">
-              <Statistic title="ส่งแล้ว" value={stats.submitted} />
-            </div>
-          </Col>
-          <Col span={4}>
-            <div className="bg-white p-4 rounded-lg shadow">
-              <Statistic title="อนุมัติแล้ว" value={stats.approved} />
-            </div>
-          </Col>
-          <Col span={4}>
-            <div className="bg-white p-4 rounded-lg shadow">
-              <Statistic title="ไม่อนุมัติ" value={stats.rejected} />
-            </div>
-          </Col>
-          <Col span={4}>
-            <div className="bg-white p-4 rounded-lg shadow">
-              <Statistic title="ชั่วโมงรวม" value={stats.totalHours} suffix="h" />
-            </div>
-          </Col>
-        </Row>
+      {/* Statistics Cards */}
+      <Row gutter={16}>
+        <Col span={4}>
+          <Card>
+            <Statistic
+              title="รวมทั้งหมด"
+              value={stats.total}
+              prefix={<Clock className="h-4 w-4" />}
+            />
+          </Card>
+        </Col>
+        <Col span={4}>
+          <Card>
+            <Statistic
+              title="ร่าง"
+              value={stats.draft}
+              valueStyle={{ color: '#8c8c8c' }}
+              prefix={<FileText className="h-4 w-4" />}
+            />
+          </Card>
+        </Col>
+        <Col span={4}>
+          <Card>
+            <Statistic
+              title="ส่งแล้ว"
+              value={stats.submitted}
+              valueStyle={{ color: '#faad14' }}
+              prefix={<Hourglass className="h-4 w-4" />}
+            />
+          </Card>
+        </Col>
+        <Col span={4}>
+          <Card>
+            <Statistic
+              title="อนุมัติแล้ว"
+              value={stats.approved}
+              valueStyle={{ color: '#3f8600' }}
+              prefix={<CheckCircle className="h-4 w-4" />}
+            />
+          </Card>
+        </Col>
+        <Col span={4}>
+          <Card>
+            <Statistic
+              title="ไม่อนุมัติ"
+              value={stats.rejected}
+              valueStyle={{ color: '#cf1322' }}
+              prefix={<XCircle className="h-4 w-4" />}
+            />
+          </Card>
+        </Col>
+        <Col span={4}>
+          <Card>
+            <Statistic
+              title="ชั่วโมงรวม"
+              value={stats.totalHours}
+              suffix="ชั่วโมง"
+              precision={1}
+              prefix={<Clock className="h-4 w-4" />}
+            />
+          </Card>
+        </Col>
+      </Row>
 
-        
-      </div>
-
-      <div className="bg-white p-6 rounded-lg shadow">
+      {/* Timesheet Table */}
+      <Card title="รายการ Timesheet ของฉัน">
         <Table
           columns={columns}
           dataSource={timesheets}
@@ -403,7 +438,7 @@ const Timesheets: React.FC = () => {
             showTotal: (total: number, range: [number, number]) => `${range[0]}-${range[1]} จาก ${total} รายการ`
           }}
         />
-      </div>
+      </Card>
 
       {/* Create/Edit Modal */}
       <Modal
