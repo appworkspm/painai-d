@@ -134,13 +134,13 @@ app.get('*', (req, res) => {
         suggestion: 'Run the build script: ./scripts/build-for-deployment.sh'
       });
     }
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: 'Error serving frontend',
-      error: error.message
-    });
-  }
+      } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: 'Error serving frontend',
+        error: error instanceof Error ? error.message : String(error)
+      });
+    }
 });
 
 // Error handling middleware
