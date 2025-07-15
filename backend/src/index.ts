@@ -9,6 +9,7 @@ import path from 'path';
 
 import { errorHandler } from './middleware/errorHandler';
 import { notFoundHandler } from './middleware/notFoundHandler';
+import { connectDatabase, disconnectDatabase } from './utils/database';
 import authRoutes from './routes/auth';
 import userRoutes from './routes/users';
 import projectRoutes from './routes/projects';
@@ -101,10 +102,35 @@ app.use(notFoundHandler);
 app.use(errorHandler);
 
 // Start server
-app.listen(PORT, () => {
+const server = app.listen(PORT, async () => {
   console.log(`🚀 Painai API server running on port ${PORT}`);
   console.log(`📊 Environment: ${process.env.NODE_ENV}`);
   console.log(`🔗 Health check: http://localhost:${PORT}/health`);
+  
+  // Connect to database
+  try {
+    await connectDatabase();
+  } catch (error) {
+    console.error('❌ Failed to connect to database:', error);
+    process.exit(1);
+  }
+});
+
+// Graceful shutdown
+process.on('SIGTERM', async () => {
+  console.log('🛑 SIGTERM received, shutting down gracefully...');
+  server.close(async () => {
+    await disconnectDatabase();
+    process.exit(0);
+  });
+});
+
+process.on('SIGINT', async () => {
+  console.log('🛑 SIGINT received, shutting down gracefully...');
+  server.close(async () => {
+    await disconnectDatabase();
+    process.exit(0);
+  });
 });
 
 export default app; 
