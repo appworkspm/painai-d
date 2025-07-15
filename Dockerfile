@@ -40,7 +40,7 @@ ENV PORT=8000
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
-# Copy backend
+# Copy backend with all dependencies
 COPY --from=builder /app/backend/dist ./backend/dist
 COPY --from=builder /app/backend/node_modules ./backend/node_modules
 COPY --from=builder /app/backend/package.json ./backend/package.json
@@ -51,6 +51,10 @@ COPY --from=builder /app/frontend/dist ./frontend/dist
 
 # Copy scripts
 COPY --from=builder /app/scripts ./scripts
+
+# Install production dependencies for backend
+WORKDIR /app/backend
+RUN npm install --only=production
 
 # Set ownership
 RUN chown -R nextjs:nodejs /app
