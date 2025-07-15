@@ -9,7 +9,7 @@ WORKDIR /app
 
 # Install dependencies based on the preferred package manager
 COPY package.json package-lock.json* ./
-RUN npm ci --only=production
+RUN npm install --only=production
 
 # Rebuild the source code only when needed
 FROM base AS builder
@@ -19,7 +19,7 @@ COPY . .
 
 # Build backend
 WORKDIR /app/backend
-RUN npm ci
+RUN npm install
 # Remove test files before build
 RUN rm -rf src/prisma/test-*.ts src/prisma/run-all-tests.ts
 RUN npm run build
@@ -27,7 +27,7 @@ RUN npm run db:generate
 
 # Build frontend
 WORKDIR /app/frontend
-RUN npm ci
+RUN npm install
 # Fix TypeScript errors by removing unused variables
 RUN sed -i 's/const user = useAuth();/const { user } = useAuth();/g' src/pages/Timesheets.tsx || true
 RUN sed -i 's/const user = useAuth();/const { user } = useAuth();/g' src/pages/UserActivity.tsx || true
