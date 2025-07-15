@@ -84,7 +84,34 @@ app.get('/api', (req, res) => {
 });
 
 // Serve static files from frontend build
-app.use(express.static(path.join(__dirname, '../frontend/dist')));
+const frontendPath = path.join(__dirname, '../frontend');
+const indexPath = path.join(frontendPath, 'index.html');
+
+// Check if frontend build exists
+if (process.env.NODE_ENV === 'production') {
+  try {
+    const fs = require('fs');
+    if (!fs.existsSync(indexPath)) {
+      console.warn('⚠️  Frontend build not found. API-only mode enabled.');
+      console.warn('📁 Expected path:', indexPath);
+      console.warn('💡 Make sure to run the build script before deployment.');
+    } else {
+      app.use(express.static(frontendPath));
+    }
+  } catch (error) {
+    console.warn('⚠️  Could not check frontend build:', error);
+  }
+} else {
+  // In development, try to serve frontend if it exists
+  try {
+    const fs = require('fs');
+    if (fs.existsSync(indexPath)) {
+      app.use(express.static(frontendPath));
+    }
+  } catch (error) {
+    // Ignore errors in development
+  }
+}
 
 // Serve frontend for all non-API routes
 app.get('*', (req, res) => {
@@ -93,8 +120,27 @@ app.get('*', (req, res) => {
     return notFoundHandler(req, res);
   }
   
-  // Serve index.html for all other routes (SPA routing)
-  res.sendFile(path.join(__dirname, '../frontend/dist/index.html'));
+  // Check if frontend build exists
+  try {
+    const fs = require('fs');
+    if (fs.existsSync(indexPath)) {
+      res.sendFile(indexPath);
+    } else {
+      // Return a helpful error message
+      res.status(404).json({
+        success: false,
+        message: 'Frontend build not found. Please ensure the frontend has been built and copied to the backend directory.',
+        expectedPath: indexPath,
+        suggestion: 'Run the build script: ./scripts/build-for-deployment.sh'
+      });
+    }
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error serving frontend',
+      error: error.message
+    });
+  }
 });
 
 // Error handling middleware

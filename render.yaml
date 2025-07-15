@@ -1,0 +1,52 @@
+services:
+  - type: web
+    name: painai-backend
+    env: node
+    plan: free
+    buildCommand: |
+      # Install frontend dependencies and build
+      cd frontend && npm install && npm run build
+      cd ..
+      # Copy frontend build to backend
+      mkdir -p backend/frontend
+      cp -r frontend/dist/* backend/frontend/
+      # Install backend dependencies and build
+      cd backend && npm install && npx prisma generate && npm run build
+    startCommand: cd backend && npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: JWT_SECRET
+        value: e11e22e07ba643828fedd2dd96c3f2a9ea04a63274cade16adfe84d693f298f185597b3d03ec5b50a003c337977dec563407a6da50b7133b1422c30e1e995eaf
+      - key: JWT_EXPIRES_IN
+        value: 7d
+      - key: CORS_ORIGIN
+        value: https://painai.onrender.com
+      - key: RATE_LIMIT_WINDOW_MS
+        value: 900000
+      - key: RATE_LIMIT_MAX_REQUESTS
+        value: 1000
+      - key: BCRYPT_ROUNDS
+        value: 12
+      - key: HELMET_ENABLED
+        value: true
+      - key: LOG_LEVEL
+        value: info
+      - key: MORGAN_FORMAT
+        value: combined
+      - key: API_VERSION
+        value: v1
+      - key: API_PREFIX
+        value: /api
+      - key: HEALTH_CHECK_ENABLED
+        value: true
+      - key: METRICS_ENABLED
+        value: true
+    autoDeploy: true
+
+databases:
+  - name: painai-db
+    databaseName: painai
+    user: painai_user 
