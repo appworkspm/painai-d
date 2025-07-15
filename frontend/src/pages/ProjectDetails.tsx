@@ -418,45 +418,120 @@ const ProjectDetails: React.FC = () => {
           <h3 className="text-lg font-medium text-gray-900">ข้อมูลโครงการ</h3>
         </div>
         <div className="p-6">
-          <Row gutter={16}>
+          <Row gutter={24}>
+            {/* Basic Information */}
             <Col span={12}>
-              <div className="mb-4">
-                <h4 className="text-sm font-medium text-gray-500">คำอธิบาย</h4>
-                <p className="mt-1 text-sm text-gray-900">{project?.description || '-'}</p>
-              </div>
-              <div className="mb-4">
-                <h4 className="text-sm font-medium text-gray-500">สถานะ</h4>
-                <Tag color={project?.status === 'ACTIVE' ? 'success' : 'default'}>
-                  {project?.status === 'ACTIVE' ? 'กำลังดำเนินการ' : project?.status}
-                </Tag>
+              <div className="space-y-4">
+                <div>
+                  <h4 className="text-sm font-medium text-gray-500">ชื่อโครงการ</h4>
+                  <p className="mt-1 text-sm text-gray-900 font-medium">{project?.name || '-'}</p>
+                </div>
+                <div>
+                  <h4 className="text-sm font-medium text-gray-500">คำอธิบาย</h4>
+                  <p className="mt-1 text-sm text-gray-900">{project?.description || '-'}</p>
+                </div>
+                <div>
+                  <h4 className="text-sm font-medium text-gray-500">สถานะ</h4>
+                  <Tag color={project?.status === 'ACTIVE' ? 'success' : project?.status === 'COMPLETED' ? 'default' : 'warning'}>
+                    {project?.status === 'ACTIVE' ? 'กำลังดำเนินการ' : 
+                     project?.status === 'COMPLETED' ? 'เสร็จสิ้น' : 
+                     project?.status === 'ON_HOLD' ? 'ระงับ' : project?.status}
+                  </Tag>
+                </div>
+                <div>
+                  <h4 className="text-sm font-medium text-gray-500">ผู้จัดการโครงการ</h4>
+                  <p className="mt-1 text-sm text-gray-900">{project?.manager?.name || '-'}</p>
+                </div>
+                <div>
+                  <h4 className="text-sm font-medium text-gray-500">รหัสงาน (Job Code)</h4>
+                  <p className="mt-1 text-sm text-gray-900">{project?.jobCode || '-'}</p>
+                </div>
               </div>
             </Col>
+            
+            {/* Customer & Financial Information */}
             <Col span={12}>
-              <div className="mb-4">
-                <h4 className="text-sm font-medium text-gray-500">วันที่เริ่มต้น</h4>
-                <p className="mt-1 text-sm text-gray-900">
-                  {project?.startDate ? dayjs(project.startDate).format('DD/MM/YYYY') : '-'}
-                </p>
-              </div>
-              <div className="mb-4">
-                <h4 className="text-sm font-medium text-gray-500">วันที่สิ้นสุด</h4>
-                <p className="mt-1 text-sm text-gray-900">
-                  {project?.endDate ? dayjs(project.endDate).format('DD/MM/YYYY') : '-'}
-                </p>
-              </div>
-              <div className="mb-4">
-                <h4 className="text-sm font-medium text-gray-500">งบประมาณ</h4>
-                <p className="mt-1 text-sm text-gray-900">
-                  {project?.budget ? `฿${project.budget.toLocaleString()}` : '-'}
-                </p>
+              <div className="space-y-4">
+                <div>
+                  <h4 className="text-sm font-medium text-gray-500">ชื่อลูกค้า</h4>
+                  <p className="mt-1 text-sm text-gray-900">{project?.customerName || '-'}</p>
+                </div>
+                <div>
+                  <h4 className="text-sm font-medium text-gray-500">เงื่อนไขการชำระเงิน</h4>
+                  <p className="mt-1 text-sm text-gray-900">{project?.paymentTerm || '-'}</p>
+                  {project?.paymentCondition && (
+                    <p className="mt-1 text-xs text-gray-500">{project.paymentCondition}</p>
+                  )}
+                </div>
+                <div>
+                  <h4 className="text-sm font-medium text-gray-500">งบประมาณ</h4>
+                  <p className="mt-1 text-sm text-gray-900 font-medium">
+                    {project?.budget ? `฿${Number(project.budget).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '-'}
+                  </p>
+                </div>
+                <div>
+                  <h4 className="text-sm font-medium text-gray-500">วันที่เริ่มต้น</h4>
+                  <p className="mt-1 text-sm text-gray-900">
+                    {project?.startDate ? dayjs(project.startDate).format('DD/MM/YYYY') : '-'}
+                  </p>
+                </div>
+                <div>
+                  <h4 className="text-sm font-medium text-gray-500">วันที่สิ้นสุด</h4>
+                  <p className="mt-1 text-sm text-gray-900">
+                    {project?.endDate ? dayjs(project.endDate).format('DD/MM/YYYY') : '-'}
+                  </p>
+                </div>
               </div>
             </Col>
           </Row>
         </div>
       </div>
 
+      {/* Project Statistics */}
+      <Row gutter={16}>
+        <Col span={6}>
+          <Card>
+            <Statistic
+              title="งานที่ค้าง"
+              value={totalTasks - completedTasks}
+              valueStyle={{ color: '#faad14' }}
+              prefix={<Clock className="h-4 w-4" />}
+            />
+          </Card>
+        </Col>
+        <Col span={6}>
+          <Card>
+            <Statistic
+              title="อัตราความสำเร็จ"
+              value={totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0}
+              suffix="%"
+              valueStyle={{ color: '#3f8600' }}
+              prefix={<CheckCircle className="h-4 w-4" />}
+            />
+          </Card>
+        </Col>
+        <Col span={6}>
+          <Card>
+            <Statistic
+              title="กิจกรรมล่าสุด"
+              value={timeline.length}
+              prefix={<Calendar className="h-4 w-4" />}
+            />
+          </Card>
+        </Col>
+        <Col span={6}>
+          <Card>
+            <Statistic
+              title="วันที่สร้าง"
+              value={project?.createdAt ? dayjs(project.createdAt).format('DD/MM/YYYY') : '-'}
+              prefix={<FolderOpen className="h-4 w-4" />}
+            />
+          </Card>
+        </Col>
+      </Row>
+
       {/* Progress Bar */}
-      <div className="bg-white rounded-lg shadow p-6">
+      <Card>
         <h3 className="text-lg font-medium text-gray-900 mb-4">ความคืบหน้าโครงการ</h3>
         <div className="space-y-4">
           <div>
@@ -472,7 +547,40 @@ const ProjectDetails: React.FC = () => {
             </div>
           </div>
         </div>
-      </div>
+      </Card>
+
+      {/* Project Timeline Summary */}
+      {timeline.length > 0 && (
+        <Card>
+          <h3 className="text-lg font-medium text-gray-900 mb-4">กิจกรรมล่าสุด</h3>
+          <div className="space-y-3">
+            {timeline.slice(0, 5).map((item: any) => (
+              <div key={item.id} className="flex items-start">
+                <div className="flex-shrink-0 w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center">
+                  {item.action === 'task_created' ? (
+                    <Plus className="h-3 w-3 text-blue-600" />
+                  ) : (
+                    <Trash2 className="h-3 w-3 text-red-600" />
+                  )}
+                </div>
+                <div className="ml-3 flex-1">
+                  <p className="text-sm text-gray-900">{item.description}</p>
+                  <p className="text-xs text-gray-500">
+                    โดย {item.user?.name || '-'} • {dayjs(item.createdAt).format('DD/MM/YYYY HH:mm')}
+                  </p>
+                </div>
+              </div>
+            ))}
+            {timeline.length > 5 && (
+              <div className="text-center pt-2">
+                <Button type="link" onClick={() => setActiveTab('timeline')}>
+                  ดูกิจกรรมทั้งหมด ({timeline.length} รายการ)
+                </Button>
+              </div>
+            )}
+          </div>
+        </Card>
+      )}
     </div>
   );
 
@@ -710,6 +818,47 @@ const ProjectDetails: React.FC = () => {
                 title="สมาชิกทีม"
                 value={team.length}
                 prefix={<Users className="h-4 w-4" />}
+              />
+            </Card>
+          </Col>
+        </Row>
+
+        {/* Additional Project Info */}
+        <Row gutter={16}>
+          <Col span={8}>
+            <Card>
+              <Statistic
+                title="ระยะเวลาโครงการ"
+                value={project?.startDate && project?.endDate ? 
+                  Math.ceil(dayjs(project.endDate).diff(dayjs(project.startDate), 'day', true)) : 0}
+                suffix="วัน"
+                prefix={<Calendar className="h-4 w-4" />}
+              />
+            </Card>
+          </Col>
+          <Col span={8}>
+            <Card>
+              <Statistic
+                title="งบประมาณที่ใช้"
+                value={project?.budget ? Number(project.budget).toLocaleString() : 0}
+                suffix="บาท"
+                prefix={<BarChart3 className="h-4 w-4" />}
+              />
+            </Card>
+          </Col>
+          <Col span={8}>
+            <Card>
+              <Statistic
+                title="สถานะโครงการ"
+                value={project?.status === 'ACTIVE' ? 'กำลังดำเนินการ' : 
+                       project?.status === 'COMPLETED' ? 'เสร็จสิ้น' : 
+                       project?.status === 'ON_HOLD' ? 'ระงับ' : 'ไม่ระบุ'}
+                valueStyle={{ 
+                  color: project?.status === 'ACTIVE' ? '#3f8600' : 
+                         project?.status === 'COMPLETED' ? '#1890ff' : 
+                         project?.status === 'ON_HOLD' ? '#faad14' : '#8c8c8c'
+                }}
+                prefix={<AlertCircle className="h-4 w-4" />}
               />
             </Card>
           </Col>
