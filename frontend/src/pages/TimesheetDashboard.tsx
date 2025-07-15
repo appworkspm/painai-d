@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { Table, Tag, Space, Select, Input, Row, Col, Statistic } from 'antd';
-import { FilterOutlined } from '@ant-design/icons';
+import { Button, Table, Tag, Space, Modal, Form, Input, Select, DatePicker, message, Row, Col, Statistic } from 'antd';
+import { PlusOutlined, EditOutlined, DeleteOutlined, SendOutlined, EyeOutlined, FilterOutlined } from '@ant-design/icons';
 import { useAuth } from '../contexts/AuthContext';
 import { useNotification } from '../contexts/NotificationContext';
 import { timesheetAPI } from '../services/api';
 import dayjs from 'dayjs';
-import { Clock, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
+import { Clock, Users, CheckCircle, XCircle, AlertCircle, TrendingUp } from 'lucide-react';
+
+const { TextArea } = Input;
 
 interface Timesheet {
   id: string;
@@ -42,7 +44,7 @@ interface Timesheet {
   };
 }
 
-const TimesheetHistory: React.FC = () => {
+const TimesheetDashboard: React.FC = () => {
   const { user } = useAuth();
   const { showNotification } = useNotification();
   const [timesheets, setTimesheets] = useState<Timesheet[]>([]);
@@ -53,7 +55,8 @@ const TimesheetHistory: React.FC = () => {
     submitted: 0,
     approved: 0,
     rejected: 0,
-    totalHours: 0
+    totalHours: 0,
+    pendingApproval: 0
   });
   const [filter, setFilter] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
@@ -80,7 +83,7 @@ const TimesheetHistory: React.FC = () => {
         status: filter !== 'all' ? filter : undefined
       };
 
-      const response = await timesheetAPI.getUserTimesheetHistory(params);
+      const response = await timesheetAPI.getTimesheets(params);
       if (response.success) {
         setTimesheets(response.data.data || []);
         setPagination(prev => ({ ...prev, total: response.data.pagination.total }));
@@ -90,8 +93,11 @@ const TimesheetHistory: React.FC = () => {
           acc.total++;
           acc[timesheet.status]++;
           acc.totalHours += timesheet.hours_worked + (timesheet.overtime_hours || 0);
+          if (timesheet.status === 'submitted') {
+            acc.pendingApproval++;
+          }
           return acc;
-        }, { total: 0, draft: 0, submitted: 0, approved: 0, rejected: 0, totalHours: 0 });
+        }, { total: 0, draft: 0, submitted: 0, approved: 0, rejected: 0, totalHours: 0, pendingApproval: 0 });
         
         setStats(stats);
       } else {
@@ -107,6 +113,52 @@ const TimesheetHistory: React.FC = () => {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleApprove = async (id: string) => {
+    try {
+      const response = await timesheetAPI.approveTimesheet(id, 'approved');
+      if (response.success) {
+        showNotification({
+          message: 'อนุมัติ timesheet สำเร็จ',
+          type: 'success'
+        });
+        fetchTimesheets();
+      } else {
+        showNotification({
+          message: response.message || 'เกิดข้อผิดพลาดในการอนุมัติ',
+          type: 'error'
+        });
+      }
+    } catch (error: any) {
+      showNotification({
+        message: error.response?.data?.message || 'เกิดข้อผิดพลาดในการอนุมัติ',
+        type: 'error'
+      });
+    }
+  };
+
+  const handleReject = async (id: string, reason: string) => {
+    try {
+      const response = await timesheetAPI.approveTimesheet(id, 'rejected', reason);
+      if (response.success) {
+        showNotification({
+          message: 'ปฏิเสธ timesheet สำเร็จ',
+          type: 'success'
+        });
+        fetchTimesheets();
+      } else {
+        showNotification({
+          message: response.message || 'เกิดข้อผิดพลาดในการปฏิเสธ',
+          type: 'error'
+        });
+      }
+    } catch (error: any) {
+      showNotification({
+        message: error.response?.data?.message || 'เกิดข้อผิดพลาดในการปฏิเสธ',
+        type: 'error'
+      });
     }
   };
 
@@ -142,13 +194,24 @@ const TimesheetHistory: React.FC = () => {
 
   const filteredTimesheets = timesheets.filter(timesheet => {
     const matchesSearch = 
-      timesheet.project?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      timesheet.activity?.toLowerCase().includes(searchTerm.toLowerCase());
+      timesheet.user?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      timesheet.user?.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      timesheet.project?.name?.toLowerCase().includes(searchTerm.toLowerCase());
     
     return matchesSearch;
   });
 
   const columns = [
+    {
+      title: 'พนักงาน',
+      key: 'user',
+      render: (record: Timesheet) => (
+        <div>
+          <div className="font-medium">{record.user?.name}</div>
+          <div className="text-sm text-gray-500">{record.user?.email}</div>
+        </div>
+      )
+    },
     {
       title: 'วันที่',
       dataIndex: 'date',
@@ -181,13 +244,29 @@ const TimesheetHistory: React.FC = () => {
       )
     },
     {
-      title: 'รายละเอียด',
-      dataIndex: 'description',
-      key: 'description',
-      render: (description: string) => (
-        <div className="max-w-xs truncate" title={description}>
-          {description}
-        </div>
+      title: 'การดำเนินการ',
+      key: 'actions',
+      render: (record: Timesheet) => (
+        <Space>
+          {record.status === 'submitted' && (user?.role === 'ADMIN' || user?.role === 'MANAGER') && (
+            <>
+              <Button 
+                type="primary" 
+                size="small" 
+                onClick={() => handleApprove(record.id)}
+              >
+                อนุมัติ
+              </Button>
+              <Button 
+                danger 
+                size="small" 
+                onClick={() => handleReject(record.id, '')}
+              >
+                ปฏิเสธ
+              </Button>
+            </>
+          )}
+        </Space>
       )
     }
   ];
@@ -215,40 +294,49 @@ const TimesheetHistory: React.FC = () => {
   return (
     <div className="p-6">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">ประวัติ Timesheet</h1>
-        <p className="text-gray-600">ประวัติการบันทึก timesheet ของคุณ</p>
+        <h1 className="text-2xl font-bold text-gray-900 mb-2">Timesheet Dashboard</h1>
+        <p className="text-gray-600">
+          {user?.role === 'ADMIN' ? 'ดู timesheet ทั้งหมด' : 
+           user?.role === 'MANAGER' ? 'ดู timesheet ของตนเองและทีมในโครงการที่จัดการ' : 
+           'ดู timesheet ของตนเอง'}
+        </p>
       </div>
 
       {/* Statistics */}
       <Row gutter={16} className="mb-6">
-        <Col span={4}>
+        <Col span={3}>
           <div className="bg-white p-4 rounded-lg shadow">
             <Statistic title="ทั้งหมด" value={stats.total} />
           </div>
         </Col>
-        <Col span={4}>
+        <Col span={3}>
           <div className="bg-white p-4 rounded-lg shadow">
             <Statistic title="ร่าง" value={stats.draft} />
           </div>
         </Col>
-        <Col span={4}>
+        <Col span={3}>
           <div className="bg-white p-4 rounded-lg shadow">
             <Statistic title="ส่งแล้ว" value={stats.submitted} />
           </div>
         </Col>
-        <Col span={4}>
+        <Col span={3}>
           <div className="bg-white p-4 rounded-lg shadow">
             <Statistic title="อนุมัติแล้ว" value={stats.approved} />
           </div>
         </Col>
-        <Col span={4}>
+        <Col span={3}>
           <div className="bg-white p-4 rounded-lg shadow">
             <Statistic title="ปฏิเสธ" value={stats.rejected} />
           </div>
         </Col>
-        <Col span={4}>
+        <Col span={3}>
           <div className="bg-white p-4 rounded-lg shadow">
             <Statistic title="ชั่วโมงรวม" value={stats.totalHours} suffix="h" />
+          </div>
+        </Col>
+        <Col span={3}>
+          <div className="bg-white p-4 rounded-lg shadow">
+            <Statistic title="รออนุมัติ" value={stats.pendingApproval} />
           </div>
         </Col>
       </Row>
@@ -301,10 +389,10 @@ const TimesheetHistory: React.FC = () => {
           </Select>
 
           <Input
-            placeholder="ค้นหาโครงการหรือกิจกรรม..."
+            placeholder="ค้นหา..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            style={{ width: 250 }}
+            style={{ width: 200 }}
           />
         </div>
       </div>
@@ -333,4 +421,4 @@ const TimesheetHistory: React.FC = () => {
   );
 };
 
-export default TimesheetHistory; 
+export default TimesheetDashboard; 

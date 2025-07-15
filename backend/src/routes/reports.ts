@@ -8,6 +8,249 @@ const router = Router();
 // All routes require authentication
 router.use(authenticate);
 
+// Export timesheet data as CSV
+router.get('/export/timesheet/csv', async (req: IAuthenticatedRequest, res) => {
+  try {
+    const { start, end, status, project } = req.query;
+    const where: any = {};
+    if (start && end) {
+      where.date = {
+        gte: new Date(start as string),
+        lte: new Date(end as string)
+      };
+    }
+    if (status && status !== 'all') {
+      where.status = status.toString().toUpperCase();
+    }
+    if (project && project !== 'all') {
+      where.project_id = project;
+    }
+
+    const timesheets = await prisma.timesheet.findMany({
+      where,
+      include: {
+        project: true,
+        user: true
+      }
+    });
+
+    // Create CSV content
+    const csvHeaders = [
+      'Date',
+      'User',
+      'Project',
+      'Activity Type',
+      'Description',
+      'Hours Worked',
+      'Overtime Hours',
+      'Status',
+      'Billable',
+      'Created At'
+    ];
+
+    const csvRows = timesheets.map(t => [
+      t.date ? t.date.toISOString().split('T')[0] : '',
+      t.user?.name || '',
+      t.project?.name || '',
+      t.activity_type || '',
+      t.description || '',
+      t.hours_worked || 0,
+      t.overtime_hours || 0,
+      t.status || '',
+      t.billable ? 'Yes' : 'No',
+      t.created_at ? new Date(t.created_at).toISOString() : ''
+    ]);
+
+    const csvContent = [csvHeaders, ...csvRows]
+      .map(row => row.map(cell => `"${cell}"`).join(','))
+      .join('\n');
+
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', `attachment; filename="timesheet-report-${new Date().toISOString().split('T')[0]}.csv"`);
+    res.send(csvContent);
+  } catch (error) {
+    console.error('Error exporting timesheet CSV:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to export timesheet data'
+    });
+  }
+});
+
+// Export project data as CSV
+router.get('/export/project/csv', async (req: IAuthenticatedRequest, res) => {
+  try {
+    const { status } = req.query;
+    const where: any = {};
+    if (status && status !== 'all') {
+      where.status = status.toString().toUpperCase();
+    }
+
+    const projects = await prisma.project.findMany({
+      where,
+      include: {
+        manager: true
+      }
+    });
+
+    // Create CSV content
+    const csvHeaders = [
+      'Project Name',
+      'Description',
+      'Status',
+      'Manager',
+      'Created At',
+      'Updated At'
+    ];
+
+    const csvRows = projects.map(p => [
+      p.name || '',
+      p.description || '',
+      p.status || '',
+      p.manager?.name || '',
+      p.created_at ? new Date(p.created_at).toISOString() : '',
+      p.updated_at ? new Date(p.updated_at).toISOString() : ''
+    ]);
+
+    const csvContent = [csvHeaders, ...csvRows]
+      .map(row => row.map(cell => `"${cell}"`).join(','))
+      .join('\n');
+
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', `attachment; filename="project-report-${new Date().toISOString().split('T')[0]}.csv"`);
+    res.send(csvContent);
+  } catch (error) {
+    console.error('Error exporting project CSV:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to export project data'
+    });
+  }
+});
+
+// Export user activity data as CSV
+router.get('/export/user-activity/csv', async (req: IAuthenticatedRequest, res) => {
+  try {
+    const { start, end, user } = req.query;
+    const where: any = {};
+    if (start && end) {
+      where.date = {
+        gte: new Date(start as string),
+        lte: new Date(end as string)
+      };
+    }
+    if (user && user !== 'all') {
+      where.user_id = user;
+    }
+
+    const timesheets = await prisma.timesheet.findMany({
+      where,
+      include: {
+        user: true,
+        project: true
+      }
+    });
+
+    // Create CSV content
+    const csvHeaders = [
+      'User',
+      'Date',
+      'Project',
+      'Activity Type',
+      'Description',
+      'Hours Worked',
+      'Overtime Hours',
+      'Status',
+      'Billable'
+    ];
+
+    const csvRows = timesheets.map(t => [
+      t.user?.name || '',
+      t.date ? t.date.toISOString().split('T')[0] : '',
+      t.project?.name || '',
+      t.activity_type || '',
+      t.description || '',
+      t.hours_worked || 0,
+      t.overtime_hours || 0,
+      t.status || '',
+      t.billable ? 'Yes' : 'No'
+    ]);
+
+    const csvContent = [csvHeaders, ...csvRows]
+      .map(row => row.map(cell => `"${cell}"`).join(','))
+      .join('\n');
+
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', `attachment; filename="user-activity-report-${new Date().toISOString().split('T')[0]}.csv"`);
+    res.send(csvContent);
+  } catch (error) {
+    console.error('Error exporting user activity CSV:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to export user activity data'
+    });
+  }
+});
+
+// Export workload data as CSV
+router.get('/export/workload/csv', async (req: IAuthenticatedRequest, res) => {
+  try {
+    const { start, end, department } = req.query;
+    const where: any = {};
+    if (start && end) {
+      where.date = {
+        gte: new Date(start as string),
+        lte: new Date(end as string)
+      };
+    }
+
+    const timesheets = await prisma.timesheet.findMany({
+      where,
+      include: {
+        user: true,
+        project: true
+      }
+    });
+
+    // Create CSV content
+    const csvHeaders = [
+      'Department',
+      'User',
+      'Project',
+      'Date',
+      'Hours Worked',
+      'Overtime Hours',
+      'Total Hours',
+      'Status'
+    ];
+
+    const csvRows = timesheets.map(t => [
+      t.user?.role || '',
+      t.user?.name || '',
+      t.project?.name || '',
+      t.date ? t.date.toISOString().split('T')[0] : '',
+      t.hours_worked || 0,
+      t.overtime_hours || 0,
+      (Number(t.hours_worked || 0) + Number(t.overtime_hours || 0)),
+      t.status || ''
+    ]);
+
+    const csvContent = [csvHeaders, ...csvRows]
+      .map(row => row.map(cell => `"${cell}"`).join(','))
+      .join('\n');
+
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', `attachment; filename="workload-report-${new Date().toISOString().split('T')[0]}.csv"`);
+    res.send(csvContent);
+  } catch (error) {
+    console.error('Error exporting workload CSV:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to export workload data'
+    });
+  }
+});
+
 // Get workload report
 router.get('/workload', async (req: IAuthenticatedRequest, res) => {
   try {

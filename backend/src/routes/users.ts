@@ -18,6 +18,7 @@ router.get('/', requireAdmin, async (req: IAuthenticatedRequest, res) => {
         name: true,
         role: true,
         isActive: true,
+        position: true,
         createdAt: true,
         updatedAt: true
       },
@@ -52,6 +53,7 @@ router.get('/:id', requireAdmin, async (req: IAuthenticatedRequest, res) => {
         name: true,
         role: true,
         isActive: true,
+        position: true,
         createdAt: true,
         updatedAt: true
       }
@@ -80,7 +82,7 @@ router.get('/:id', requireAdmin, async (req: IAuthenticatedRequest, res) => {
 // Create new user (admin only)
 router.post('/', requireAdmin, async (req: IAuthenticatedRequest, res) => {
   try {
-    const { email, name, password, role } = req.body;
+    const { email, name, password, role, position } = req.body;
 
     if (!email || !name || !password || !role) {
       return res.status(400).json({
@@ -111,7 +113,8 @@ router.post('/', requireAdmin, async (req: IAuthenticatedRequest, res) => {
         name,
         password: hashedPassword,
         role,
-        isActive: true
+        isActive: true,
+        position
       },
       select: {
         id: true,
@@ -119,6 +122,7 @@ router.post('/', requireAdmin, async (req: IAuthenticatedRequest, res) => {
         name: true,
         role: true,
         isActive: true,
+        position: true,
         createdAt: true,
         updatedAt: true
       }
@@ -141,13 +145,14 @@ router.post('/', requireAdmin, async (req: IAuthenticatedRequest, res) => {
 router.put('/:id', requireAdmin, async (req: IAuthenticatedRequest, res) => {
   try {
     const { id } = req.params;
-    const { email, name, role, isActive } = req.body;
+    const { email, name, role, isActive, position } = req.body;
 
     const updateData: any = {};
     if (email) updateData.email = email;
     if (name) updateData.name = name;
     if (role) updateData.role = role;
     if (typeof isActive === 'boolean') updateData.isActive = isActive;
+    if (position !== undefined) updateData.position = position;
 
     const user = await prisma.user.update({
       where: { id },
@@ -158,6 +163,7 @@ router.put('/:id', requireAdmin, async (req: IAuthenticatedRequest, res) => {
         name: true,
         role: true,
         isActive: true,
+        position: true,
         createdAt: true,
         updatedAt: true
       }

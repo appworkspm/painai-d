@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNotification } from '../contexts/NotificationContext';
-import { User, Settings, Users, BarChart3, Shield, Activity, FolderOpen, Plus, Edit, Trash2 } from 'lucide-react';
+import { User, Settings, Users, BarChart3, Shield, Activity, FolderOpen, Plus, Edit, Trash2, X, Save } from 'lucide-react';
 import { User as UserType } from '../types';
 import { adminAPI } from '../services/api';
 
@@ -13,6 +13,35 @@ const AdminPanel: React.FC = () => {
   const [projects, setProjects] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [stats, setStats] = useState<any>(null);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingUser, setEditingUser] = useState<UserType | null>(null);
+  const [editForm, setEditForm] = useState({
+    name: '',
+    email: '',
+    role: '',
+    isActive: true
+  });
+  const [submitting, setSubmitting] = useState(false);
+  const [showCreateUserModal, setShowCreateUserModal] = useState(false);
+  const [createUserForm, setCreateUserForm] = useState({
+    name: '',
+    email: '',
+    role: '',
+    password: '',
+    isActive: true
+  });
+  const [creatingUser, setCreatingUser] = useState(false);
+  const [showCreateProjectModal, setShowCreateProjectModal] = useState(false);
+  const [createProjectForm, setCreateProjectForm] = useState({
+    name: '',
+    description: '',
+    status: '',
+    managerId: '',
+    budget: 0,
+    startDate: '',
+    endDate: ''
+  });
+  const [creatingProject, setCreatingProject] = useState(false);
 
   const tabs = [
     { id: 'dashboard', name: 'Dashboard', icon: BarChart3 },
@@ -59,8 +88,52 @@ const AdminPanel: React.FC = () => {
   };
 
   const handleEditUser = (user: UserType) => {
-    // TODO: Implement edit user modal
-    console.log('Edit user:', user);
+    setEditingUser(user);
+    setEditForm({
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      isActive: user.isActive
+    });
+    setShowEditModal(true);
+  };
+
+  const handleSubmitEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSubmitting(true);
+
+    try {
+      const response = await adminAPI.updateUser(editingUser!.id, editForm);
+      
+      if (response.success) {
+        showNotification({
+          message: 'User updated successfully',
+          type: 'success'
+        });
+        setShowEditModal(false);
+        setEditingUser(null);
+        loadAdminData(); // Reload data
+      } else {
+        showNotification({
+          message: response.message || 'Failed to update user',
+          type: 'error'
+        });
+      }
+    } catch (error: any) {
+      showNotification({
+        message: error.response?.data?.message || 'Failed to update user',
+        type: 'error'
+      });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleInputChange = (field: string, value: string | boolean) => {
+    setEditForm(prev => ({
+      ...prev,
+      [field]: value
+    }));
   };
 
   const handleDeleteUser = async (userId: string) => {
@@ -68,22 +141,122 @@ const AdminPanel: React.FC = () => {
       try {
         const response = await adminAPI.deleteUser(userId);
         if (response.success) {
+          setUsers(prev => prev.filter(u => u.id !== userId));
           showNotification({
             message: 'User deleted successfully',
             type: 'success'
           });
-          // Reload users after deletion
-          loadAdminData();
+        } else {
+          showNotification({
+            message: response.message || 'Failed to delete user',
+            type: 'error'
+          });
         }
-      } catch (error) {
-        console.error('Error deleting user:', error);
+      } catch (error: any) {
         showNotification({
-          message: 'Error deleting user',
-          description: 'Failed to delete user',
+          message: error.response?.data?.message || 'Failed to delete user',
           type: 'error'
         });
       }
     }
+  };
+
+  const handleCreateUser = () => {
+    setCreateUserForm({
+      name: '',
+      email: '',
+      role: '',
+      password: '',
+      isActive: true
+    });
+    setShowCreateUserModal(true);
+  };
+
+  const handleCreateProject = () => {
+    setCreateProjectForm({
+      name: '',
+      description: '',
+      status: '',
+      managerId: '',
+      budget: 0,
+      startDate: '',
+      endDate: ''
+    });
+    setShowCreateProjectModal(true);
+  };
+
+  const handleSubmitCreateUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setCreatingUser(true);
+
+    try {
+      const response = await adminAPI.createUser(createUserForm);
+      
+      if (response.success) {
+        showNotification({
+          message: 'User created successfully',
+          type: 'success'
+        });
+        setShowCreateUserModal(false);
+        loadAdminData(); // Reload data
+      } else {
+        showNotification({
+          message: response.message || 'Failed to create user',
+          type: 'error'
+        });
+      }
+    } catch (error: any) {
+      showNotification({
+        message: error.response?.data?.message || 'Failed to create user',
+        type: 'error'
+      });
+    } finally {
+      setCreatingUser(false);
+    }
+  };
+
+  const handleSubmitCreateProject = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setCreatingProject(true);
+
+    try {
+      const response = await adminAPI.createProject(createProjectForm);
+      
+      if (response.success) {
+        showNotification({
+          message: 'Project created successfully',
+          type: 'success'
+        });
+        setShowCreateProjectModal(false);
+        loadAdminData(); // Reload data
+      } else {
+        showNotification({
+          message: response.message || 'Failed to create project',
+          type: 'error'
+        });
+      }
+    } catch (error: any) {
+      showNotification({
+        message: error.response?.data?.message || 'Failed to create project',
+        type: 'error'
+      });
+    } finally {
+      setCreatingProject(false);
+    }
+  };
+
+  const handleCreateUserInputChange = (field: string, value: string | boolean) => {
+    setCreateUserForm(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
+  const handleCreateProjectInputChange = (field: string, value: string | number) => {
+    setCreateProjectForm(prev => ({
+      ...prev,
+      [field]: value
+    }));
   };
 
   const renderDashboard = () => (
@@ -175,7 +348,7 @@ const AdminPanel: React.FC = () => {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h3 className="text-lg font-medium text-gray-900">User Management</h3>
-        <button className="bg-primary-600 text-white px-4 py-2 rounded-md hover:bg-primary-700 transition-colors">
+        <button className="bg-primary-600 text-white px-4 py-2 rounded-md hover:bg-primary-700 transition-colors" onClick={handleCreateUser}>
           Add User
         </button>
       </div>
@@ -282,7 +455,7 @@ const AdminPanel: React.FC = () => {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h3 className="text-lg font-medium text-gray-900">Project Management</h3>
-        <button className="bg-primary-600 text-white px-4 py-2 rounded-md hover:bg-primary-700 transition-colors flex items-center">
+        <button className="bg-primary-600 text-white px-4 py-2 rounded-md hover:bg-primary-700 transition-colors flex items-center" onClick={handleCreateProject}>
           <Plus className="h-4 w-4 mr-2" />
           Create Project
         </button>
@@ -589,6 +762,117 @@ const AdminPanel: React.FC = () => {
       <div className="mt-6">
         {renderContent()}
       </div>
+
+      {/* Edit User Modal */}
+      {showEditModal && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+            <div className="mt-3">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-medium text-gray-900">Edit User</h3>
+                <button
+                  onClick={() => {
+                    setShowEditModal(false);
+                    setEditingUser(null);
+                  }}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+              
+              <form onSubmit={handleSubmitEdit} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Name
+                  </label>
+                  <input
+                    type="text"
+                    value={editForm.name}
+                    onChange={(e) => handleInputChange('name', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Email
+                  </label>
+                  <input
+                    type="email"
+                    value={editForm.email}
+                    onChange={(e) => handleInputChange('email', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Role
+                  </label>
+                  <select
+                    value={editForm.role}
+                    onChange={(e) => handleInputChange('role', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                    required
+                  >
+                    <option value="">Select Role</option>
+                    <option value="ADMIN">Admin</option>
+                    <option value="MANAGER">Manager</option>
+                    <option value="USER">User</option>
+                  </select>
+                </div>
+
+                <div className="flex items-center">
+                  <input
+                    type="checkbox"
+                    id="isActive"
+                    checked={editForm.isActive}
+                    onChange={(e) => handleInputChange('isActive', e.target.checked)}
+                    className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
+                  />
+                  <label htmlFor="isActive" className="ml-2 block text-sm text-gray-900">
+                    Active User
+                  </label>
+                </div>
+
+                <div className="flex space-x-3 pt-4">
+                  <button
+                    type="submit"
+                    disabled={submitting}
+                    className="flex-1 bg-primary-600 text-white px-4 py-2 rounded-md hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                  >
+                    {submitting ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                        Updating...
+                      </>
+                    ) : (
+                      <>
+                        <Save className="h-4 w-4 mr-2" />
+                        Update User
+                      </>
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowEditModal(false);
+                      setEditingUser(null);
+                    }}
+                    className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 flex items-center"
+                  >
+                    <X className="h-4 w-4 mr-2" />
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

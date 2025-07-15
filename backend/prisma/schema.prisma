@@ -17,6 +17,7 @@ model User {
   name                String
   role                String    @default("USER") // ADMIN, MANAGER, USER
   isActive            Boolean   @default(true)
+  position            String?   // Job position
   resetToken          String?
   resetTokenExpiry    DateTime?
   createdAt           DateTime  @default(now())
@@ -33,6 +34,8 @@ model User {
   userRoles              UserRole[]
   timesheetEditHistories TimesheetEditHistory[] @relation("UserEditHistory")
   assignedTasks          ProjectTask[]          @relation("TaskAssignee")
+  projectTeamMembers     ProjectTeamMember[]
+  projectTimelines       ProjectTimeline[]
 
   @@map("users")
 }
@@ -43,6 +46,13 @@ model Project {
   description String?
   status      String   @default("ACTIVE") // ACTIVE, COMPLETED, ON_HOLD, CANCELLED
   managerId   String   @db.Uuid
+  startDate   DateTime?
+  endDate     DateTime?
+  budget      Decimal? @db.Decimal(15, 2)
+  jobCode     String?  // Job code for the project
+  customerName String? // Customer name for the project
+  paymentTerm String?  // Payment term for the project
+  paymentCondition String? // Payment condition for the project
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   isDeleted   Boolean  @default(false)
@@ -51,6 +61,8 @@ model Project {
   manager      User          @relation("ProjectManager", fields: [managerId], references: [id])
   timesheets   Timesheet[]
   projectTasks ProjectTask[]
+  projectTeamMembers ProjectTeamMember[]
+  projectTimelines ProjectTimeline[]
 
   @@map("projects")
 }
@@ -155,4 +167,37 @@ model ProjectTask {
   parentTask   ProjectTask?  @relation("ParentTask", fields: [parentTaskId], references: [id])
   subTasks     ProjectTask[] @relation("ParentTask")
   timesheets   Timesheet[]
+}
+
+model ProjectTeamMember {
+  id        String   @id @default(uuid()) @db.Uuid
+  projectId String   @db.Uuid
+  userId    String   @db.Uuid
+  role      String   @default("MEMBER") // MANAGER, MEMBER
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  isDeleted Boolean  @default(false)
+
+  // Relations
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, userId])
+  @@map("project_team_members")
+}
+
+model ProjectTimeline {
+  id          String   @id @default(uuid()) @db.Uuid
+  projectId   String   @db.Uuid
+  action      String   // task_created, task_completed, member_added, member_removed, etc.
+  description String
+  userId      String   @db.Uuid
+  metadata    Json?    // Additional data like task name, member name, etc.
+  createdAt   DateTime @default(now())
+
+  // Relations
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id])
+
+  @@map("project_timelines")
 }

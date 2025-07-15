@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNotification } from '../contexts/NotificationContext';
-import { Users as UsersIcon, Plus, Edit, Trash2, Shield, User, Mail } from 'lucide-react';
+import { Users as UsersIcon, Plus, Edit, Trash2, Shield, User, Mail, X, Save } from 'lucide-react';
 import { adminAPI } from '../services/api';
 
 const Users: React.FC = () => {
@@ -12,6 +12,27 @@ const Users: React.FC = () => {
   const [deleting, setDeleting] = useState<string | null>(null);
   const [filter, setFilter] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingUser, setEditingUser] = useState<any>(null);
+  const [editForm, setEditForm] = useState({
+    name: '',
+    email: '',
+    role: '',
+    isActive: true,
+    position: ''
+  });
+  const [submitting, setSubmitting] = useState(false);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [createForm, setCreateForm] = useState({
+    name: '',
+    email: '',
+    role: '',
+    password: '',
+    isActive: true,
+    position: ''
+  });
+  const [creating, setCreating] = useState(false);
+  const [filterPosition, setFilterPosition] = useState('all');
 
   useEffect(() => {
     loadUsers();
@@ -67,6 +88,105 @@ const Users: React.FC = () => {
     }
   };
 
+  const handleEdit = (user: any) => {
+    setEditingUser(user);
+    setEditForm({
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      isActive: user.isActive,
+      position: user.position || ''
+    });
+    setShowEditModal(true);
+  };
+
+  const handleCreate = () => {
+    setCreateForm({
+      name: '',
+      email: '',
+      role: '',
+      password: '',
+      isActive: true,
+      position: ''
+    });
+    setShowCreateModal(true);
+  };
+
+  const handleSubmitCreate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setCreating(true);
+
+    try {
+      const response = await adminAPI.createUser(createForm);
+      
+      if (response.success) {
+        showNotification({
+          message: 'User created successfully',
+          type: 'success'
+        });
+        setShowCreateModal(false);
+        loadUsers(); // Reload users data
+      } else {
+        showNotification({
+          message: response.message || 'Failed to create user',
+          type: 'error'
+        });
+      }
+    } catch (error: any) {
+      showNotification({
+        message: error.response?.data?.message || 'Failed to create user',
+        type: 'error'
+      });
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const handleCreateInputChange = (field: string, value: string | boolean) => {
+    setCreateForm(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
+  const handleSubmitEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSubmitting(true);
+
+    try {
+      const response = await adminAPI.updateUser(editingUser.id, editForm);
+      
+      if (response.success) {
+        showNotification({
+          message: 'User updated successfully',
+          type: 'success'
+        });
+        setShowEditModal(false);
+        setEditingUser(null);
+        loadUsers(); // Reload users data
+      } else {
+        showNotification({
+          message: response.message || 'Failed to update user',
+          type: 'error'
+        });
+      }
+    } catch (error: any) {
+      showNotification({
+        message: error.response?.data?.message || 'Failed to update user',
+        type: 'error'
+      });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleInputChange = (field: string, value: string | boolean) => {
+    setEditForm(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
   const getRoleColor = (role: string) => {
     switch (role) {
       case 'ADMIN':
@@ -89,11 +209,10 @@ const Users: React.FC = () => {
       (filter === 'active' && user.isActive) ||
       (filter === 'inactive' && !user.isActive) ||
       user.role.toLowerCase() === filter;
-    
+    const matchesPosition = filterPosition === 'all' || (user.position === filterPosition);
     const matchesSearch = user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          user.email.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    return matchesFilter && matchesSearch;
+    return matchesFilter && matchesPosition && matchesSearch;
   });
 
   return (
@@ -103,7 +222,7 @@ const Users: React.FC = () => {
           <UsersIcon className="h-8 w-8 text-primary-600" />
           <h1 className="text-2xl font-bold text-gray-900">User Management</h1>
         </div>
-        <button className="bg-primary-600 text-white px-4 py-2 rounded-md hover:bg-primary-700 transition-colors flex items-center">
+        <button className="bg-primary-600 text-white px-4 py-2 rounded-md hover:bg-primary-700 transition-colors flex items-center" onClick={handleCreate}>
           <Plus className="h-4 w-4 mr-2" />
           Add User
         </button>
@@ -133,6 +252,16 @@ const Users: React.FC = () => {
                 <option value="MANAGER">Manager</option>
                 <option value="USER">User</option>
               </select>
+              <select
+                value={filterPosition}
+                onChange={(e) => setFilterPosition(e.target.value)}
+                className="px-3 py-1 border border-gray-300 rounded-md text-sm"
+              >
+                <option value="all">All Positions</option>
+                {[...new Set(users.map(u => u.position).filter(Boolean))].map(pos => (
+                  <option key={pos} value={pos}>{pos}</option>
+                ))}
+              </select>
             </div>
           </div>
         </div>
@@ -152,6 +281,9 @@ const Users: React.FC = () => {
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     User
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Position
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Role
@@ -186,6 +318,9 @@ const Users: React.FC = () => {
                         </div>
                       </div>
                     </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {user.position || '-'}
+                    </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getRoleColor(user.role)}`}>
                         {user.role}
@@ -204,7 +339,10 @@ const Users: React.FC = () => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <div className="flex space-x-2">
-                        <button className="text-primary-600 hover:text-primary-900 flex items-center">
+                        <button 
+                          onClick={() => handleEdit(user)}
+                          className="text-primary-600 hover:text-primary-900 flex items-center"
+                        >
                           <Edit className="h-4 w-4 mr-1" />
                           Edit
                         </button>
@@ -229,6 +367,129 @@ const Users: React.FC = () => {
           )}
         </div>
       </div>
+
+      {/* Edit User Modal */}
+      {showEditModal && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+            <div className="mt-3">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-medium text-gray-900">Edit User</h3>
+                <button
+                  onClick={() => {
+                    setShowEditModal(false);
+                    setEditingUser(null);
+                  }}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+              
+              <form onSubmit={handleSubmitEdit} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Name
+                  </label>
+                  <input
+                    type="text"
+                    value={editForm.name}
+                    onChange={(e) => handleInputChange('name', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Email
+                  </label>
+                  <input
+                    type="email"
+                    value={editForm.email}
+                    onChange={(e) => handleInputChange('email', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Role
+                  </label>
+                  <select
+                    value={editForm.role}
+                    onChange={(e) => handleInputChange('role', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                    required
+                  >
+                    <option value="">Select Role</option>
+                    <option value="ADMIN">Admin</option>
+                    <option value="MANAGER">Manager</option>
+                    <option value="USER">User</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Position
+                  </label>
+                  <input
+                    type="text"
+                    value={editForm.position || ''}
+                    onChange={(e) => handleInputChange('position', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                  />
+                </div>
+
+                <div className="flex items-center">
+                  <input
+                    type="checkbox"
+                    id="isActive"
+                    checked={editForm.isActive}
+                    onChange={(e) => handleInputChange('isActive', e.target.checked)}
+                    className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
+                  />
+                  <label htmlFor="isActive" className="ml-2 block text-sm text-gray-900">
+                    Active User
+                  </label>
+                </div>
+
+                <div className="flex space-x-3 pt-4">
+                  <button
+                    type="submit"
+                    disabled={submitting}
+                    className="flex-1 bg-primary-600 text-white px-4 py-2 rounded-md hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                  >
+                    {submitting ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                        Updating...
+                      </>
+                    ) : (
+                      <>
+                        <Save className="h-4 w-4 mr-2" />
+                        Update User
+                      </>
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowEditModal(false);
+                      setEditingUser(null);
+                    }}
+                    className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 flex items-center"
+                  >
+                    <X className="h-4 w-4 mr-2" />
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

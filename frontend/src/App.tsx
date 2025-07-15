@@ -9,6 +9,7 @@ import Timesheets from './pages/Timesheets'
 import CreateTimesheet from './pages/CreateTimesheet'
 import TimesheetApproval from './pages/TimesheetApproval'
 import TimesheetHistory from './pages/TimesheetHistory'
+import TimesheetDashboard from './pages/TimesheetDashboard'
 import Projects from './pages/Projects'
 import ProjectDetails from './pages/ProjectDetails'
 import Users from './pages/Users'
@@ -42,12 +43,13 @@ function App() {
             {/* Timesheet Systems */}
             <Route path="timesheets" element={<Timesheets />} />
             <Route path="timesheets/create" element={<CreateTimesheet />} />
+            <Route path="timesheets/dashboard" element={<TimesheetDashboard />} />
             <Route path="timesheets/approval" element={<TimesheetApproval />} />
-            <Route path="timesheets/history" element={<TimesheetHistory />} />
             
             {/* Project Management */}
             <Route path="projects" element={<Projects />} />
             <Route path="projects/details" element={<ProjectDetails />} />
+            <Route path="projects/:id/details" element={<ProjectDetails />} />
             
             {/* Reports */}
             <Route path="report" element={<Report />} />

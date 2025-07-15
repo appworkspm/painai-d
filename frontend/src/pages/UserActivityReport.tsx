@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNotification } from '../contexts/NotificationContext';
 import { Activity, Users, TrendingUp, Download, Calendar, BarChart3 } from 'lucide-react';
-import api from '../services/api';
+import { reportAPI } from '../services/api';
 
 const UserActivityReport: React.FC = () => {
   const { user } = useAuth();
@@ -50,11 +50,27 @@ const UserActivityReport: React.FC = () => {
     }
   };
 
-  const handleExport = () => {
-    showNotification({
-      message: 'Export functionality coming soon',
-      type: 'info'
-    });
+  const handleExport = async () => {
+    try {
+      setLoading(true);
+      const params = {
+        start: dateRange.start,
+        end: dateRange.end,
+        user: selectedUser
+      };
+      await reportAPI.exportUserActivityCSV(params);
+      showNotification({
+        message: 'Export completed successfully',
+        type: 'success'
+      });
+    } catch (error: any) {
+      showNotification({
+        message: error.response?.data?.message || 'Failed to export report',
+        type: 'error'
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const getRoleColor = (role: string) => {

@@ -4,6 +4,8 @@ import { PlusOutlined, EditOutlined, DeleteOutlined, SendOutlined } from '@ant-d
 import { useAuth } from '../contexts/AuthContext';
 import api from '../services/api';
 import dayjs from 'dayjs';
+import { Clock } from 'lucide-react';
+import TimesheetForm from '../components/TimesheetForm';
 
 const { TextArea } = Input;
 
@@ -120,7 +122,7 @@ const Timesheets: React.FC = () => {
   const fetchTimesheets = async () => {
     try {
       setLoading(true);
-      const response = await api.get('/timesheets/my');
+      const response = await api.get('/api/timesheets/my');
       if (response.data.success) {
         setTimesheets(response.data.data || []);
         
@@ -145,7 +147,7 @@ const Timesheets: React.FC = () => {
 
   const fetchProjects = async () => {
     try {
-      const response = await api.get('/projects');
+      const response = await api.get('/api/projects');
       if (response.data.success) {
         setProjects(response.data.data || []);
       } else {
@@ -341,8 +343,15 @@ const Timesheets: React.FC = () => {
 
   return (
     <div className="p-6">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <Clock className="h-8 w-8 text-primary-600" />
+          <h1 className="text-2xl font-bold text-gray-900">My Timesheets</h1>
+        </div>
+        {/* Removed Create Timesheet button */}
+      </div>
+
       <div className="mb-6">
-        <h1 className="text-2xl font-bold mb-4">จัดการ Timesheet</h1>
         
         {/* Statistics */}
         <Row gutter={16} className="mb-6">
@@ -378,18 +387,7 @@ const Timesheets: React.FC = () => {
           </Col>
         </Row>
 
-        <Button 
-          type="primary" 
-          icon={<PlusOutlined />}
-          onClick={() => {
-            setEditingTimesheet(null);
-            form.resetFields();
-            setModalVisible(true);
-          }}
-          className="mb-4"
-        >
-          สร้าง Timesheet ใหม่
-        </Button>
+        
       </div>
 
       <div className="bg-white p-6 rounded-lg shadow">
@@ -420,153 +418,29 @@ const Timesheets: React.FC = () => {
         width={800}
         confirmLoading={submitting}
       >
-        <Form
-          form={form}
-          layout="vertical"
-          onFinish={handleSubmit}
-          initialValues={{
-            work_type: 'PROJECT',
-            sub_work_type: 'SOFTWARE',
-            activity: 'DEVELOPMENT',
-            hours_worked: 8,
-            overtime_hours: 0,
-            billable: true
+        <TimesheetForm
+          mode={editingTimesheet ? 'edit' : 'create'}
+          initialValues={editingTimesheet ? {
+            ...editingTimesheet,
+            date: editingTimesheet.date ? dayjs(editingTimesheet.date) : undefined,
+            project_id: editingTimesheet.project_id,
+            work_type: editingTimesheet.work_type,
+            sub_work_type: editingTimesheet.sub_work_type,
+            activity: editingTimesheet.activity,
+            hours_worked: editingTimesheet.hours_worked,
+            overtime_hours: editingTimesheet.overtime_hours,
+            description: editingTimesheet.description,
+            billable: editingTimesheet.billable
+          } : undefined}
+          onSubmit={handleSubmit}
+          onCancel={() => {
+            setModalVisible(false);
+            setEditingTimesheet(null);
+            form.resetFields();
           }}
-        >
-          <Row gutter={16}>
-            <Col span={12}>
-              <Form.Item
-                name="date"
-                label="วันที่"
-                rules={[{ required: true, message: 'กรุณาเลือกวันที่' }]}
-              >
-                <DatePicker style={{ width: '100%' }} format="DD/MM/YYYY" />
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item
-                name="work_type"
-                label="ประเภทงาน"
-                rules={[{ required: true, message: 'กรุณาเลือกประเภทงาน' }]}
-              >
-                <Select
-                  options={workTypeOptions}
-                  onChange={(value: string) => {
-                    form.setFieldsValue({
-                      sub_work_type: subWorkTypeOptions[value as keyof typeof subWorkTypeOptions][0]?.value,
-                      project_id: value === 'NON_PROJECT' ? null : undefined
-                    });
-                  }}
-                />
-              </Form.Item>
-            </Col>
-          </Row>
-
-          <Form.Item
-            name="project_id"
-            label="โครงการ"
-            rules={[{ required: true, message: 'กรุณาเลือกโครงการ' }]}
-          >
-            <Select
-              placeholder="เลือกโครงการ"
-              showSearch
-              optionFilterProp="children"
-              disabled={form.getFieldValue('work_type') === 'NON_PROJECT'}
-              options={projects.map(project => ({
-                key: project.id,
-                value: project.id,
-                label: `${project.name} (${project.code})`
-              }))}
-            />
-          </Form.Item>
-
-          <Row gutter={16}>
-            <Col span={12}>
-              <Form.Item
-                name="sub_work_type"
-                label="ประเภทงานย่อย"
-                rules={[{ required: true, message: 'กรุณาเลือกประเภทงานย่อย' }]}
-              >
-                <Select
-                  options={subWorkTypeOptions[form.getFieldValue('work_type') as keyof typeof subWorkTypeOptions] || []}
-                  onChange={(value: string) => {
-                    const activities = activityOptions[value as keyof typeof activityOptions];
-                    if (activities && activities.length > 0) {
-                      form.setFieldsValue({ activity: activities[0].value });
-                    }
-                  }}
-                />
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item
-                name="activity"
-                label="กิจกรรม"
-                rules={[{ required: true, message: 'กรุณาเลือกกิจกรรม' }]}
-              >
-                <Select
-                  options={activityOptions[form.getFieldValue('sub_work_type') as keyof typeof activityOptions] || []}
-                />
-              </Form.Item>
-            </Col>
-          </Row>
-
-          <Row gutter={16}>
-            <Col span={12}>
-              <Form.Item
-                name="hours_worked"
-                label="ชั่วโมงทำงาน"
-                rules={[{ required: true, message: 'กรุณาระบุชั่วโมงทำงาน' }]}
-              >
-                <Input type="number" min={0} max={24} step={0.5} />
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item
-                name="overtime_hours"
-                label="ชั่วโมงโอที"
-              >
-                <Input type="number" min={0} max={24} step={0.5} />
-              </Form.Item>
-            </Col>
-          </Row>
-
-          <Form.Item
-            name="description"
-            label="รายละเอียด"
-            rules={[{ required: true, message: 'กรุณาระบุรายละเอียด' }]}
-          >
-            <TextArea rows={4} />
-          </Form.Item>
-
-          <Form.Item
-            name="billable"
-            label="สามารถเรียกเก็บเงินได้"
-            valuePropName="checked"
-          >
-            <Select
-              options={[
-                { value: true, label: 'ใช่' },
-                { value: false, label: 'ไม่' }
-              ]}
-            />
-          </Form.Item>
-
-          <Form.Item>
-            <Space>
-              <Button type="primary" htmlType="submit">
-                {editingTimesheet ? 'อัปเดต' : 'สร้าง'}
-              </Button>
-              <Button onClick={() => {
-                setModalVisible(false);
-                setEditingTimesheet(null);
-                form.resetFields();
-              }}>
-                ยกเลิก
-              </Button>
-            </Space>
-          </Form.Item>
-        </Form>
+          loading={submitting}
+          projects={projects}
+        />
       </Modal>
     </div>
   );

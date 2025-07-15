@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNotification } from '../contexts/NotificationContext';
-import { Users, Shield, User, Settings, Edit, Plus, Trash2 } from 'lucide-react';
+import { Shield, Settings, User, Plus, Edit, Trash2, X, Save } from 'lucide-react';
 import { adminAPI } from '../services/api';
 
 const UserRoles: React.FC = () => {
@@ -10,8 +10,15 @@ const UserRoles: React.FC = () => {
   const [roles, setRoles] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
-  const [selectedRole, setSelectedRole] = useState<any>(null);
+  const [deleting, setDeleting] = useState<string | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [selectedRole, setSelectedRole] = useState<any>(null);
+  const [editForm, setEditForm] = useState({
+    name: '',
+    description: '',
+    permissions: [] as string[]
+  });
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     loadRolesAndUsers();
@@ -44,12 +51,56 @@ const UserRoles: React.FC = () => {
 
   const handleEditRole = (role: any) => {
     setSelectedRole(role);
+    setEditForm({
+      name: role.name,
+      description: role.description,
+      permissions: role.permissions || []
+    });
     setShowEditModal(true);
+  };
+
+  const handleSubmitEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSubmitting(true);
+
+    try {
+      // TODO: Implement actual role update logic
+      showNotification({
+        message: 'Role update functionality coming soon',
+        type: 'info'
+      });
+      setShowEditModal(false);
+      setSelectedRole(null);
+    } catch (error: any) {
+      showNotification({
+        message: 'Failed to update role',
+        type: 'error'
+      });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleInputChange = (field: string, value: string | string[]) => {
+    setEditForm(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
+  const handlePermissionToggle = (permission: string) => {
+    setEditForm(prev => ({
+      ...prev,
+      permissions: prev.permissions.includes(permission)
+        ? prev.permissions.filter(p => p !== permission)
+        : [...prev.permissions, permission]
+    }));
   };
 
   const handleDeleteRole = async (roleId: string) => {
     if (window.confirm('Are you sure you want to delete this role?')) {
       try {
+        setDeleting(roleId);
         const response = await adminAPI.deleteRole(roleId);
         if (response.success) {
           showNotification({
@@ -57,14 +108,29 @@ const UserRoles: React.FC = () => {
             type: 'success'
           });
           loadRolesAndUsers();
+        } else {
+          showNotification({
+            message: response.message || 'Failed to delete role',
+            type: 'error'
+          });
         }
-      } catch (error) {
+      } catch (error: any) {
         showNotification({
-          message: 'Failed to delete role',
+          message: error.response?.data?.message || 'Failed to delete role',
           type: 'error'
         });
+      } finally {
+        setDeleting(null);
       }
     }
+  };
+
+  const handleCreateRole = () => {
+    // Navigate to create role page or open modal
+    showNotification({
+      message: 'Create role functionality coming soon',
+      type: 'info'
+    });
   };
 
   const getRoleColor = (role: string) => {
@@ -130,7 +196,10 @@ const UserRoles: React.FC = () => {
           <Shield className="h-8 w-8 text-primary-600" />
           <h1 className="text-2xl font-bold text-gray-900">User Roles</h1>
         </div>
-        <button className="bg-primary-600 text-white px-4 py-2 rounded-md hover:bg-primary-700 transition-colors flex items-center">
+        <button
+          onClick={handleCreateRole}
+          className="bg-primary-600 text-white px-4 py-2 rounded-md hover:bg-primary-700 transition-colors flex items-center"
+        >
           <Plus className="h-4 w-4 mr-2" />
           Create Role
         </button>
@@ -294,6 +363,116 @@ const UserRoles: React.FC = () => {
           </table>
         </div>
       </div>
+
+      {/* Edit Role Modal */}
+      {showEditModal && selectedRole && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+            <div className="mt-3">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-medium text-gray-900">Edit Role</h3>
+                <button
+                  onClick={() => {
+                    setShowEditModal(false);
+                    setSelectedRole(null);
+                  }}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+              
+              <form onSubmit={handleSubmitEdit} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Role Name
+                  </label>
+                  <input
+                    type="text"
+                    value={editForm.name}
+                    onChange={(e) => handleInputChange('name', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Description
+                  </label>
+                  <textarea
+                    value={editForm.description}
+                    onChange={(e) => handleInputChange('description', e.target.value)}
+                    rows={3}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Permissions
+                  </label>
+                  <div className="space-y-2">
+                    {[
+                      'user_management',
+                      'project_management',
+                      'timesheet_management',
+                      'timesheet_approval',
+                      'reports',
+                      'system_settings'
+                    ].map((permission) => (
+                      <div key={permission} className="flex items-center">
+                        <input
+                          type="checkbox"
+                          id={permission}
+                          checked={editForm.permissions.includes(permission)}
+                          onChange={() => handlePermissionToggle(permission)}
+                          className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
+                        />
+                        <label htmlFor={permission} className="ml-2 block text-sm text-gray-900">
+                          {permission.replace('_', ' ')}
+                        </label>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="flex space-x-3 pt-4">
+                  <button
+                    type="submit"
+                    disabled={submitting}
+                    className="flex-1 bg-primary-600 text-white px-4 py-2 rounded-md hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                  >
+                    {submitting ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                        Updating...
+                      </>
+                    ) : (
+                      <>
+                        <Save className="h-4 w-4 mr-2" />
+                        Update Role
+                      </>
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowEditModal(false);
+                      setSelectedRole(null);
+                    }}
+                    className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 flex items-center"
+                  >
+                    <X className="h-4 w-4 mr-2" />
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

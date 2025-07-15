@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNotification } from '../contexts/NotificationContext';
 import { Clock, BarChart3, CheckCircle, AlertCircle, Download, Filter, Calendar, TrendingUp } from 'lucide-react';
-import api from '../services/api';
+import { reportAPI } from '../services/api';
 
 const TimesheetReport: React.FC = () => {
   const { user } = useAuth();
@@ -53,11 +53,28 @@ const TimesheetReport: React.FC = () => {
     }
   };
 
-  const handleExport = () => {
-    showNotification({
-      message: 'Export functionality coming soon',
-      type: 'info'
-    });
+  const handleExport = async () => {
+    try {
+      setLoading(true);
+      const params = {
+        start: dateRange.start,
+        end: dateRange.end,
+        status: selectedStatus,
+        project: selectedProject
+      };
+      await reportAPI.exportTimesheetCSV(params);
+      showNotification({
+        message: 'Export completed successfully',
+        type: 'success'
+      });
+    } catch (error: any) {
+      showNotification({
+        message: error.response?.data?.message || 'Failed to export report',
+        type: 'error'
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const getStatusColor = (status: string) => {

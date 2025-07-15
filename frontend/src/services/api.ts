@@ -8,6 +8,7 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+  withCredentials: true,
 });
 
 // Request interceptor to add auth token
@@ -146,10 +147,57 @@ export const projectAPI = {
   },
 };
 
+export const projectTeamAPI = {
+  getTeam: async (projectId: string) => {
+    const response = await api.get(`/api/projects/${projectId}/team`);
+    return response.data;
+  },
+  addMember: async (projectId: string, userId: string) => {
+    const response = await api.post(`/api/projects/${projectId}/team`, { userId });
+    return response.data;
+  },
+  removeMember: async (projectId: string, userId: string) => {
+    const response = await api.delete(`/api/projects/${projectId}/team/${userId}`);
+    return response.data;
+  },
+};
+
+export const projectTaskAPI = {
+  addTask: async (projectId: string, data: any) => {
+    const response = await api.post(`/api/projects/${projectId}/tasks`, data);
+    return response.data;
+  },
+  updateTask: async (projectId: string, taskId: string, data: any) => {
+    const response = await api.put(`/api/projects/${projectId}/tasks/${taskId}`, data);
+    return response.data;
+  },
+  deleteTask: async (projectId: string, taskId: string) => {
+    const response = await api.delete(`/api/projects/${projectId}/tasks/${taskId}`);
+    return response.data;
+  },
+};
+
+export const projectTimelineAPI = {
+  getTimeline: async (projectId: string) => {
+    const response = await api.get(`/api/projects/${projectId}/timeline`);
+    return response.data;
+  },
+};
+
 // Timesheet API
 export const timesheetAPI = {
   getTimesheets: async (params?: any): Promise<ApiResponse<PaginatedResponse<Timesheet>>> => {
     const response = await api.get('/api/timesheets', { params });
+    return response.data;
+  },
+
+  getMyTimesheets: async (params?: any): Promise<ApiResponse<PaginatedResponse<Timesheet>>> => {
+    const response = await api.get('/api/timesheets/my', { params });
+    return response.data;
+  },
+
+  getUserTimesheetHistory: async (params?: any): Promise<ApiResponse<PaginatedResponse<Timesheet>>> => {
+    const response = await api.get('/api/timesheets/history', { params });
     return response.data;
   },
 
@@ -170,6 +218,21 @@ export const timesheetAPI = {
 
   deleteTimesheet: async (id: string): Promise<ApiResponse<void>> => {
     const response = await api.delete(`/api/timesheets/${id}`);
+    return response.data;
+  },
+
+  submitTimesheet: async (id: string): Promise<ApiResponse<Timesheet>> => {
+    const response = await api.patch(`/api/timesheets/${id}/submit`);
+    return response.data;
+  },
+
+  approveTimesheet: async (id: string, status: 'approved' | 'rejected', rejectionReason?: string): Promise<ApiResponse<Timesheet>> => {
+    const response = await api.patch(`/api/timesheets/${id}/approve`, { status, rejection_reason: rejectionReason });
+    return response.data;
+  },
+
+  getTimesheetHistory: async (id: string): Promise<ApiResponse<any[]>> => {
+    const response = await api.get(`/api/timesheets/${id}/history`);
     return response.data;
   },
 };
@@ -194,6 +257,67 @@ export const reportAPI = {
   getUserActivityReport: async (params?: any): Promise<ApiResponse<any>> => {
     const response = await api.get('/api/reports/user-activity', { params });
     return response.data;
+  },
+
+  // Export functions
+  exportTimesheetCSV: async (params?: any): Promise<void> => {
+    const response = await api.get('/api/reports/export/timesheet/csv', { 
+      params,
+      responseType: 'blob'
+    });
+    const url = window.URL.createObjectURL(new Blob([response.data]));
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `timesheet-report-${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
+  },
+
+  exportProjectCSV: async (params?: any): Promise<void> => {
+    const response = await api.get('/api/reports/export/project/csv', { 
+      params,
+      responseType: 'blob'
+    });
+    const url = window.URL.createObjectURL(new Blob([response.data]));
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `project-report-${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
+  },
+
+  exportUserActivityCSV: async (params?: any): Promise<void> => {
+    const response = await api.get('/api/reports/export/user-activity/csv', { 
+      params,
+      responseType: 'blob'
+    });
+    const url = window.URL.createObjectURL(new Blob([response.data]));
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `user-activity-report-${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
+  },
+
+  exportWorkloadCSV: async (params?: any): Promise<void> => {
+    const response = await api.get('/api/reports/export/workload/csv', { 
+      params,
+      responseType: 'blob'
+    });
+    const url = window.URL.createObjectURL(new Blob([response.data]));
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `workload-report-${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
   },
 };
 

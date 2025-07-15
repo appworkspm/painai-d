@@ -49,11 +49,25 @@ const ProjectReport: React.FC = () => {
     }
   };
 
-  const handleExport = () => {
-    showNotification({
-      message: 'Export functionality coming soon',
-      type: 'info'
-    });
+  const handleExport = async () => {
+    try {
+      setLoading(true);
+      const params = {
+        status: selectedStatus
+      };
+      await reportAPI.exportProjectCSV(params);
+      showNotification({
+        message: 'Export completed successfully',
+        type: 'success'
+      });
+    } catch (error: any) {
+      showNotification({
+        message: error.response?.data?.message || 'Failed to export report',
+        type: 'error'
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const getStatusColor = (status: string) => {

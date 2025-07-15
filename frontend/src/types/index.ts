@@ -22,6 +22,13 @@ export interface Project {
   description?: string;
   status: string; // 'ACTIVE' | 'COMPLETED' | 'ON_HOLD' | 'CANCELLED'
   managerId: string;
+  jobCode?: string;
+  customerName?: string;
+  paymentTerm?: string;
+  paymentCondition?: string;
+  startDate?: string;
+  endDate?: string;
+  budget?: number;
   createdAt: string;
   updatedAt: string;
   manager?: User;

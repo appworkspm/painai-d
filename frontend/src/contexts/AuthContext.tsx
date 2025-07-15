@@ -31,9 +31,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check for existing token and user on app load
-    const storedToken = localStorage.getItem('token');
-    const storedUser = localStorage.getItem('user');
+    // ลองอ่านจาก localStorage ก่อน ถ้าไม่มีค่อยอ่านจาก sessionStorage
+    const storedToken = localStorage.getItem('token') || sessionStorage.getItem('token');
+    const storedUser = localStorage.getItem('user') || sessionStorage.getItem('user');
 
     if (storedToken && storedUser) {
       setToken(storedToken);

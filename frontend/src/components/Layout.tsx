@@ -32,13 +32,19 @@ const Layout: React.FC = () => {
   const navigation = [
     { name: 'Dashboard', href: '/', icon: Home },
     {
-      name: 'Timesheet Systems',
+      name: 'My Timesheet',
       icon: Clock,
       children: [
         { name: 'My Timesheets', href: '/timesheets' },
         { name: 'Create Timesheet', href: '/timesheets/create' },
+      ],
+    },
+    {
+      name: 'Review Timesheet',
+      icon: FileText,
+      children: [
+        { name: 'Timesheet Dashboard', href: '/timesheets/dashboard' },
         { name: 'Timesheet Approval', href: '/timesheets/approval' },
-        { name: 'Timesheet History', href: '/timesheets/history' },
       ],
     },
     {

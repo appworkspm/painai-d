@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { authAPI } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
+import { UserRole } from '../types';
 
 export default function Login() {
   const [username, setUsername] = useState('');
@@ -12,6 +13,18 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
   const { setUser } = useAuth();
+
+  const getRedirectPath = (role: string) => {
+    switch (role) {
+      case UserRole.ADMIN:
+        return '/admin'; // Admin panel
+      case UserRole.MANAGER:
+        return '/timesheet-approval'; // Manager sees approval page first
+      case UserRole.USER:
+      default:
+        return '/timesheets'; // Regular users see timesheets first
+    }
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -29,8 +42,10 @@ export default function Login() {
           sessionStorage.setItem('user', JSON.stringify(res.data.user));
         }
         setUser(res.data.user); // อัปเดต AuthContext
-        // redirect ตาม role (ตอนนี้ทุก role ไป /dashboard)
-        navigate('/dashboard');
+        
+        // Redirect based on user role
+        const redirectPath = getRedirectPath(res.data.user.role);
+        navigate(redirectPath);
       } else {
         setError(res.message || 'Login failed');
       }

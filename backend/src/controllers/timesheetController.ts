@@ -116,21 +116,55 @@ export const getPendingTimesheets = async (req: Request, res: Response) => {
   }
 };
 
-// Get all timesheets (admin/manager)
+// Get all timesheets (admin/manager) with role-based access control
 export const getAllTimesheets = async (req: Request, res: Response) => {
   try {
-    const { page = 1, limit = 10, status, project_id, user_id, start_date, end_date } = req.query;
+    const user = (req as any).user;
+    const { page = 1, limit = 10, status, project_id, user_id, start_date, end_date, month, year } = req.query;
     const skip = (Number(page) - 1) * Number(limit);
     const where: any = {};
+
+    // Role-based filtering
+    if (user.role === 'ADMIN') {
+      // Admin sees all timesheets
+    } else if (user.role === 'MANAGER') {
+      // Manager sees their own timesheets + team members' timesheets from projects they manage
+      const managedProjects = await prisma.project.findMany({
+        where: { managerId: user.id },
+        select: { id: true }
+      });
+      const managedProjectIds = managedProjects.map(p => p.id);
+      
+      where.OR = [
+        { user_id: user.id }, // Own timesheets
+        { 
+          project_id: { in: managedProjectIds } // Team members' timesheets from managed projects
+        }
+      ];
+    } else {
+      // Regular user sees only their own timesheets
+      where.user_id = user.id;
+    }
+
+    // Apply filters
     if (status) where.status = status;
     if (project_id) where.project_id = project_id;
-    if (user_id) where.user_id = user_id;
+    if (user_id && user.role === 'ADMIN') where.user_id = user_id; // Only admin can filter by user_id
     if (start_date && end_date) {
       where.date = {
         gte: new Date(start_date as string),
         lte: new Date(end_date as string),
       };
+    } else if (month && year) {
+      // Filter by month and year
+      const startOfMonth = new Date(Number(year), Number(month) - 1, 1);
+      const endOfMonth = new Date(Number(year), Number(month), 0, 23, 59, 59, 999);
+      where.date = {
+        gte: startOfMonth,
+        lte: endOfMonth,
+      };
     }
+
     const [timesheets, total] = await Promise.all([
       prisma.timesheet.findMany({
         where,
@@ -145,6 +179,7 @@ export const getAllTimesheets = async (req: Request, res: Response) => {
       }),
       prisma.timesheet.count({ where }),
     ]);
+
     res.json({
       success: true,
       data: timesheets,
@@ -503,6 +538,58 @@ export const getTimesheetHistory = async (req: Request, res: Response) => {
     res.json({ success: true, data: history });
   } catch (error) {
     console.error('Get timesheet history error:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+// Get user's own timesheet history (for profile page)
+export const getUserTimesheetHistory = async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).user.id;
+    const { page = 1, limit = 10, status, project_id, month, year } = req.query;
+    const skip = (Number(page) - 1) * Number(limit);
+    const where: any = { user_id: userId };
+
+    // Apply filters
+    if (status) where.status = status;
+    if (project_id) where.project_id = project_id;
+    if (month && year) {
+      // Filter by month and year
+      const startOfMonth = new Date(Number(year), Number(month) - 1, 1);
+      const endOfMonth = new Date(Number(year), Number(month), 0, 23, 59, 59, 999);
+      where.date = {
+        gte: startOfMonth,
+        lte: endOfMonth,
+      };
+    }
+
+    const [timesheets, total] = await Promise.all([
+      prisma.timesheet.findMany({
+        where,
+        include: {
+          user: { select: { id: true, name: true, email: true } },
+          project: { select: { id: true, name: true } },
+          approver: { select: { id: true, name: true } },
+        },
+        orderBy: { date: 'desc' },
+        skip,
+        take: Number(limit),
+      }),
+      prisma.timesheet.count({ where }),
+    ]);
+
+    res.json({
+      success: true,
+      data: timesheets,
+      pagination: {
+        page: Number(page),
+        limit: Number(limit),
+        total,
+        pages: Math.ceil(total / Number(limit)),
+      },
+    });
+  } catch (error) {
+    console.error('Get user timesheet history error:', error);
     res.status(500).json({ message: 'Internal server error' });
   }
 }; 

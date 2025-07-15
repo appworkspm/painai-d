@@ -10,12 +10,14 @@ import {
   approveTimesheet,
   getAllTimesheets,
   getTimesheetHistory,
+  getUserTimesheetHistory,
 } from '../controllers/timesheetController';
 
 const router = Router();
 
 // Timesheet CRUD routes
 router.get('/my', requireAuth, getMyTimesheets);
+router.get('/history', requireAuth, getUserTimesheetHistory); // User's own timesheet history
 router.get('/pending', requireAuth, getPendingTimesheets);
 router.get('/', requireAuth, requireManager, getAllTimesheets);
 router.post('/', requireAuth, createTimesheet);
