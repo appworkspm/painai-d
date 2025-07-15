@@ -28,12 +28,6 @@ RUN npm run db:generate
 # Build frontend
 WORKDIR /app/frontend
 RUN npm install
-# Fix TypeScript errors by removing unused variables
-RUN sed -i 's/const user = useAuth();/const { user } = useAuth();/g' src/pages/Timesheets.tsx || true
-RUN sed -i 's/const user = useAuth();/const { user } = useAuth();/g' src/pages/UserActivity.tsx || true
-RUN sed -i 's/const user = useAuth();/const { user } = useAuth();/g' src/pages/UserActivityReport.tsx || true
-RUN sed -i 's/const user = useAuth();/const { user } = useAuth();/g' src/pages/UserRoles.tsx || true
-RUN sed -i 's/const user = useAuth();/const { user } = useAuth();/g' src/pages/Users.tsx || true
 RUN npm run build
 
 # Production image, copy all the files and run the app
