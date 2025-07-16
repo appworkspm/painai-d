@@ -40,7 +40,7 @@ If you prefer manual configuration:
    JWT_SECRET=e11e22e07ba643828fedd2dd96c3f2a9ea04a63274cade16adfe84d693f298f185597b3d03ec5b50a003c337977dec563407a6da50b7133b1422c30e1e995eaf
    JWT_EXPIRES_IN=7d
    CORS_ORIGIN=https://painai.onrender.com
-   DATABASE_URL=postgresql://painai_user:MDu9QWUcIezihmxKH58cX2BXEoTc8NvQ@dpg-d1q90bk9c44c739b8obg-a.oregon-postgres.render.com/painai
+   DATABASE_URL=postgresql://neondb_owner:npg_yTtac2Hm5WRu@ep-billowing-thunder-a1viq4pt-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require
    ```
 
 ## 🔍 What Was Fixed

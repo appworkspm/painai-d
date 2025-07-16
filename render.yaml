@@ -39,9 +39,6 @@ services:
         value: true
       - key: METRICS_ENABLED
         value: true
-    autoDeploy: true
-
-databases:
-  - name: painai-db
-    databaseName: painai
-    user: painai_user 
+      - key: DATABASE_URL
+        value: postgresql://neondb_owner:npg_yTtac2Hm5WRu@ep-billowing-thunder-a1viq4pt-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require
+    autoDeploy: true 
