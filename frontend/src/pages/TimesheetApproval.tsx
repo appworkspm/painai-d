@@ -138,11 +138,12 @@ const TimesheetApproval: React.FC = () => {
 
   const filteredTimesheets = timesheets.filter(ts => {
     if (filter === 'all') return true;
+    if (filter === 'pending') return ts.status === 'SUBMITTED';
     return ts.status === filter.toUpperCase();
   });
 
   const stats = {
-    pending: timesheets.filter(ts => ts.status === 'PENDING').length,
+    pending: timesheets.filter(ts => ts.status === 'SUBMITTED').length,
     approved: timesheets.filter(ts => ts.status === 'APPROVED').length,
     rejected: timesheets.filter(ts => ts.status === 'REJECTED').length,
     total: timesheets.length
@@ -318,7 +319,7 @@ const TimesheetApproval: React.FC = () => {
                     
                     {/* Actions */}
                     <div className="flex items-center space-x-2 ml-4">
-                      {timesheet.status === 'PENDING' && (
+                      {timesheet.status === 'SUBMITTED' && (
                         <>
                           <button
                             onClick={() => handleApprove(timesheet.id)}

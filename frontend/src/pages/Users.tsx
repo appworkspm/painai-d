@@ -35,9 +35,11 @@ const Users: React.FC = () => {
   });
   const [creating, setCreating] = useState(false);
   const [filterPosition, setFilterPosition] = useState('all');
+  const [roles, setRoles] = useState<string[]>([]);
 
   useEffect(() => {
     loadUsers();
+    loadRoles();
   }, []);
 
   const loadUsers = async () => {
@@ -59,6 +61,19 @@ const Users: React.FC = () => {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadRoles = async () => {
+    try {
+      const response = await adminAPI.getRoles();
+      if (response.success && response.data) {
+        setRoles(response.data);
+      } else {
+        setRoles(['VP', 'ADMIN', 'MANAGER', 'USER']); // fallback
+      }
+    } catch {
+      setRoles(['VP', 'ADMIN', 'MANAGER', 'USER']);
     }
   };
 
@@ -254,10 +269,9 @@ const Users: React.FC = () => {
                 <option value="all">All Users</option>
                 <option value="active">Active</option>
                 <option value="inactive">Inactive</option>
-                <option value="VP">VP</option>
-                <option value="ADMIN">Admin</option>
-                <option value="MANAGER">Manager</option>
-                <option value="USER">User</option>
+                {roles.map(role => (
+                  <option key={role} value={role}>{role.charAt(0) + role.slice(1).toLowerCase()}</option>
+                ))}
               </select>
               <select
                 value={filterPosition}
@@ -444,10 +458,9 @@ const Users: React.FC = () => {
                     required
                   >
                     <option value="">Select Role</option>
-                    <option value="VP">VP</option>
-                    <option value="ADMIN">Admin</option>
-                    <option value="MANAGER">Manager</option>
-                    <option value="USER">User</option>
+                    {roles.map(role => (
+                      <option key={role} value={role}>{role.charAt(0) + role.slice(1).toLowerCase()}</option>
+                    ))}
                   </select>
                 </div>
 
@@ -591,10 +604,9 @@ const Users: React.FC = () => {
                     required
                   >
                     <option value="">Select Role</option>
-                    <option value="VP">VP</option>
-                    <option value="ADMIN">Admin</option>
-                    <option value="MANAGER">Manager</option>
-                    <option value="USER">User</option>
+                    {roles.map(role => (
+                      <option key={role} value={role}>{role.charAt(0) + role.slice(1).toLowerCase()}</option>
+                    ))}
                   </select>
                 </div>
 
