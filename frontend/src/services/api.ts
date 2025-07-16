@@ -282,7 +282,7 @@ export const timesheetAPI = {
 
   // Approve/Reject methods
   approveTimesheet: async (id: string): Promise<ApiResponse<TimesheetWithApproval>> => {
-    const response = await api.patch(`/api/timesheets/${id}/approve`);
+    const response = await api.patch(`/api/timesheets/${id}/approve`, { status: 'approved' });
     return response.data;
   },
 

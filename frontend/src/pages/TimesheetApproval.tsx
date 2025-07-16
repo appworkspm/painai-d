@@ -17,11 +17,18 @@ const TimesheetApproval: React.FC = () => {
   const [showDetails, setShowDetails] = useState(false);
 
   // Fetch real timesheet data
+  const statusMap: Record<string, string | undefined> = {
+    pending: 'submitted',
+    approved: 'approved',
+    rejected: 'rejected',
+    all: undefined
+  };
+
   const { data: timesheetsData, isLoading } = useQuery(
     ['timesheets-approval', filter],
     () => timesheetAPI.getTimesheets({ 
       limit: 100, 
-      status: filter === 'all' ? undefined : filter.toUpperCase() 
+      status: statusMap[filter]
     }),
     {
       refetchInterval: 30000,

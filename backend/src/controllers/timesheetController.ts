@@ -461,7 +461,8 @@ export const approveTimesheet = async (req: Request, res: Response) => {
   try {
     const approverId = (req as any).user.id;
     const { id } = req.params;
-    const { status, rejection_reason } = req.body;
+    // const { status, rejection_reason } = req.body;
+    const { rejection_reason } = req.body;
 
     // Check if timesheet exists
     const existingTimesheet = await prisma.timesheet.findFirst({
@@ -481,14 +482,12 @@ export const approveTimesheet = async (req: Request, res: Response) => {
     }
 
     const updateData: any = {
-      status,
+      status: 'approved', // บังคับเป็น approved เสมอ
       approved_by: approverId,
       approved_at: new Date(),
     };
 
-    if (status === 'rejected' && rejection_reason) {
-      updateData.rejection_reason = rejection_reason;
-    }
+    // ไม่รองรับ reject ในฟังก์ชันนี้ (ใช้ฟังก์ชัน rejectTimesheet แยก)
 
     const timesheet = await prisma.timesheet.update({
       where: { id },
@@ -516,12 +515,12 @@ export const approveTimesheet = async (req: Request, res: Response) => {
       },
     });
 
-    // Save approve/reject history
+    // Save approve history
     await prisma.timesheetEditHistory.create({
       data: {
         timesheetId: id,
         userId: approverId,
-        action: status === 'approved' ? 'approve' : 'reject',
+        action: 'approve',
         oldValue: existingTimesheet,
         newValue: updateData,
         createdAt: new Date(),
@@ -529,7 +528,7 @@ export const approveTimesheet = async (req: Request, res: Response) => {
     });
 
     res.json({
-      message: `Timesheet ${status} successfully`,
+      message: `Timesheet approved successfully`,
       timesheet,
     });
   } catch (error) {
