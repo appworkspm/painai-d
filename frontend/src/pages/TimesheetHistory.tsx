@@ -87,8 +87,9 @@ const TimesheetHistory: React.FC = () => {
         
         // Calculate stats
         const stats = response.data.data.reduce((acc: any, timesheet: Timesheet) => {
+          const status = (timesheet.status || '').toLowerCase();
           acc.total++;
-          acc[timesheet.status]++;
+          acc[status]++;
           acc.totalHours += timesheet.hours_worked + (timesheet.overtime_hours || 0);
           return acc;
         }, { total: 0, draft: 0, submitted: 0, approved: 0, rejected: 0, totalHours: 0 });
@@ -111,7 +112,7 @@ const TimesheetHistory: React.FC = () => {
   };
 
   const getStatusColor = (status: string) => {
-    switch (status) {
+    switch ((status || '').toLowerCase()) {
       case 'draft':
         return 'default';
       case 'submitted':
@@ -126,7 +127,7 @@ const TimesheetHistory: React.FC = () => {
   };
 
   const getStatusText = (status: string) => {
-    switch (status) {
+    switch ((status || '').toLowerCase()) {
       case 'draft':
         return 'ร่าง';
       case 'submitted':

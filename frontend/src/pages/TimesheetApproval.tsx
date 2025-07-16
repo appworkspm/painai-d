@@ -105,7 +105,7 @@ const TimesheetApproval: React.FC = () => {
   };
 
   const getStatusColor = (status: string) => {
-    switch (status) {
+    switch ((status || '').toUpperCase()) {
       case 'PENDING':
         return 'bg-yellow-100 text-yellow-800';
       case 'APPROVED':
