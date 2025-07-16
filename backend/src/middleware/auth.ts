@@ -65,6 +65,7 @@ export const requireRole = (requiredRole: string) => {
 
     const userRole = req.user.role;
     const hasAccess = 
+      userRole === 'VP' ? true :
       requiredRole === 'ADMIN' ? userRole === 'ADMIN' :
       requiredRole === 'MANAGER' ? ['ADMIN', 'MANAGER'].includes(userRole) :
       true; // USER role can access everything

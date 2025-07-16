@@ -50,6 +50,39 @@ async function main() {
       },
     });
   }
+
+  // Add VP role if not exists
+  const vpRole = await prisma.role.upsert({
+    where: { name: 'VP' },
+    update: {},
+    create: {
+      name: 'VP',
+      description: 'Vice President (Super Admin, highest privilege)',
+    },
+  });
+
+  // Add sample VP user
+  const vpUser = await prisma.user.upsert({
+    where: { email: 'vp@painai.com' },
+    update: {},
+    create: {
+      email: 'vp@painai.com',
+      password: '$2a$10$VpSampleHashPassword', // TODO: Replace with real hash
+      name: 'VP User',
+      role: 'VP',
+      isActive: true,
+    },
+  });
+
+  // Assign VP role to VP user
+  await prisma.userRole.upsert({
+    where: { userId_roleId: { userId: vpUser.id, roleId: vpRole.id } },
+    update: {},
+    create: {
+      userId: vpUser.id,
+      roleId: vpRole.id,
+    },
+  });
   
   console.log('✅ Thai holidays 2025 seeded successfully');
 }

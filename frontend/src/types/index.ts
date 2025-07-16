@@ -3,7 +3,7 @@ export interface User {
   id: string;
   email: string;
   name: string;
-  role: string; // 'ADMIN' | 'MANAGER' | 'USER'
+  role: string; // 'VP' | 'ADMIN' | 'MANAGER' | 'USER'
   isActive: boolean;
   position?: string;
   employeeCode?: string;
@@ -12,6 +12,7 @@ export interface User {
 }
 
 export const UserRole = {
+  VP: 'VP',
   ADMIN: 'ADMIN',
   MANAGER: 'MANAGER',
   USER: 'USER'

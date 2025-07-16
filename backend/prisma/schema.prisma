@@ -1,6 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -11,90 +8,88 @@ datasource db {
 }
 
 model User {
-  id                  String    @id @default(uuid()) @db.Uuid
-  employeeCode        String?   @unique // Employee code from original system
-  email               String    @unique
-  password            String
-  name                String
-  role                String    @default("USER") // ADMIN, MANAGER, USER
-  isActive            Boolean   @default(true)
-  position            String?   // Job position
-  resetToken          String?
-  resetTokenExpiry    DateTime?
-  createdAt           DateTime  @default(now())
-  updatedAt           DateTime  @updatedAt
-  lastLogin           DateTime?
-  failedLoginAttempts Int?      @default(0)
-  lockedUntil         DateTime?
-  isDeleted           Boolean   @default(false)
-
-  // Relations
-  timesheets             Timesheet[]
-  approved_timesheets    Timesheet[]            @relation("TimesheetApprover")
-  projects               Project[]              @relation("ProjectManager")
-  userRoles              UserRole[]
-  timesheetEditHistories TimesheetEditHistory[] @relation("UserEditHistory")
+  email                  String                 @unique
+  password               String
+  name                   String
+  role                   String                 @default("USER")
+  isActive               Boolean                @default(true)
+  createdAt              DateTime               @default(now())
+  updatedAt              DateTime               @updatedAt
+  id                     String                 @id @default(uuid()) @db.Uuid
+  failedLoginAttempts    Int?                   @default(0)
+  isDeleted              Boolean                @default(false)
+  lastLogin              DateTime?
+  lockedUntil            DateTime?
+  resetToken             String?
+  resetTokenExpiry       DateTime?
+  position               String?
+  employeeCode           String?                @unique
+  department             String?                @db.VarChar(255)
+  activityLogs           ActivityLog[]
   assignedTasks          ProjectTask[]          @relation("TaskAssignee")
+  timesheetEditHistories TimesheetEditHistory[] @relation("UserEditHistory")
+  userRoles              UserRole[]
   projectTeamMembers     ProjectTeamMember[]
   projectTimelines       ProjectTimeline[]
-  activityLogs           ActivityLog[]
+  projects               Project[]              @relation("ProjectManager")
+  approved_timesheets    Timesheet[]            @relation("TimesheetApprover")
+  timesheets             Timesheet[]
 
   @@map("users")
 }
 
 model Project {
-  id          String   @id @default(uuid()) @db.Uuid
-  name        String
-  description String?
-  status      String   @default("ACTIVE") // ACTIVE, COMPLETED, ON_HOLD, CANCELLED, ESCALATED_TO_SUPPORT, SIGNED_CONTRACT
-  managerId   String?  @db.Uuid
-  startDate   DateTime?
-  endDate     DateTime?
-  budget      Decimal? @db.Decimal(15, 2)
-  jobCode     String?  // Job code for the project
-  customerName String? // Customer name for the project
-  paymentTerm String?  // Payment term for the project
-  paymentCondition String? // Payment condition for the project
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  isDeleted   Boolean  @default(false)
-
-  // Relations
-  manager      User?         @relation("ProjectManager", fields: [managerId], references: [id])
-  timesheets   Timesheet[]
-  projectTasks ProjectTask[]
+  name               String
+  description        String?
+  status             String              @default("ACTIVE")
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  id                 String              @id @default(uuid()) @db.Uuid
+  managerId          String?             @db.Uuid
+  isDeleted          Boolean             @default(false)
+  budget             Decimal?            @db.Decimal(15, 2)
+  endDate            DateTime?
+  startDate          DateTime?
+  customerName       String?
+  jobCode            String?
+  paymentCondition   String?
+  paymentTerm        String?
+  escalated          Boolean?            @default(false)
+  projectTasks       ProjectTask[]
   projectTeamMembers ProjectTeamMember[]
-  projectTimelines ProjectTimeline[]
+  projectTimelines   ProjectTimeline[]
+  manager            User?               @relation("ProjectManager", fields: [managerId], references: [id])
+  timesheets         Timesheet[]
 
   @@map("projects")
 }
 
 model Timesheet {
-  id               String                 @id @default(uuid()) @db.Uuid
-  user_id          String?                @map("user_id") @db.Uuid
-  project_id       String?                @map("project_id") @db.Uuid
-  work_type        String?                @default("PROJECT") @db.VarChar(20) // PROJECT, NON_PROJECT
-  sub_work_type    String?                @default("SOFTWARE") @db.VarChar(20) // SOFTWARE, HARDWARE, MEETING, etc.
-  activity         String?                @db.VarChar(100) // Specific activity type
+  description      String
+  activity         String?                @db.VarChar(100)
+  approved_at      DateTime?              @map("approved_at") @db.Timestamp(6)
+  approved_by      String?                @map("approved_by") @db.Uuid
+  billable         Boolean?               @default(true)
+  created_at       DateTime?              @default(now()) @map("created_at") @db.Timestamp(6)
   date             DateTime               @db.Date
+  hourly_rate      Decimal?               @db.Decimal(10, 2)
   hours_worked     Decimal                @db.Decimal(4, 2)
   overtime_hours   Decimal?               @default(0) @db.Decimal(4, 2)
-  description      String
-  status           String?                @default("draft") @db.VarChar(20) // draft, submitted, approved, rejected
-  submitted_at     DateTime?              @db.Timestamp(6)
-  approved_by      String?                @map("approved_by") @db.Uuid
-  approved_at      DateTime?              @map("approved_at") @db.Timestamp(6)
+  project_id       String?                @map("project_id") @db.Uuid
   rejection_reason String?                @map("rejection_reason")
-  billable         Boolean?               @default(true)
-  hourly_rate      Decimal?               @db.Decimal(10, 2)
-  created_at       DateTime?              @default(now()) @map("created_at") @db.Timestamp(6)
+  status           String?                @default("draft") @db.VarChar(20)
+  sub_work_type    String?                @default("SOFTWARE") @db.VarChar(20)
+  submitted_at     DateTime?              @db.Timestamp(6)
   updated_at       DateTime?              @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
+  user_id          String?                @map("user_id") @db.Uuid
+  work_type        String?                @default("PROJECT") @db.VarChar(20)
+  id               String                 @id @default(uuid()) @db.Uuid
+  projectTaskId    String?                @db.Uuid
+  editHistories    TimesheetEditHistory[] @relation("TimesheetHistory")
   approver         User?                  @relation("TimesheetApprover", fields: [approved_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  projectTask      ProjectTask?           @relation(fields: [projectTaskId], references: [id])
   project          Project?               @relation(fields: [project_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   user             User?                  @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  projectTaskId    String?                @db.Uuid
-  projectTask      ProjectTask?           @relation(fields: [projectTaskId], references: [id])
-  editHistories    TimesheetEditHistory[] @relation("TimesheetHistory")
 
   @@unique([user_id, project_id, date, work_type, sub_work_type])
   @@index([date], map: "idx_timesheets_date_range")
@@ -108,7 +103,7 @@ model TimesheetEditHistory {
   id          String    @id @default(uuid()) @db.Uuid
   timesheetId String    @db.Uuid
   userId      String    @db.Uuid
-  action      String // edit, submit, approve, reject
+  action      String
   oldValue    Json?
   newValue    Json?
   createdAt   DateTime  @default(now())
@@ -120,8 +115,8 @@ model Role {
   id          String           @id @default(uuid()) @db.Uuid
   name        String           @unique
   description String?
-  users       UserRole[]
   permissions RolePermission[]
+  users       UserRole[]
 }
 
 model Permission {
@@ -133,19 +128,21 @@ model Permission {
 
 model UserRole {
   id     String @id @default(uuid()) @db.Uuid
-  user   User   @relation(fields: [userId], references: [id])
   userId String @db.Uuid
-  role   Role   @relation(fields: [roleId], references: [id])
   roleId String @db.Uuid
+  role   Role   @relation(fields: [roleId], references: [id])
+  user   User   @relation(fields: [userId], references: [id])
+
   @@unique([userId, roleId])
 }
 
 model RolePermission {
-  id           String      @id @default(uuid()) @db.Uuid
-  role         Role        @relation(fields: [roleId], references: [id])
-  roleId       String      @db.Uuid
-  permission   Permission  @relation(fields: [permissionId], references: [id])
-  permissionId String      @db.Uuid
+  id           String     @id @default(uuid()) @db.Uuid
+  roleId       String     @db.Uuid
+  permissionId String     @db.Uuid
+  permission   Permission @relation(fields: [permissionId], references: [id])
+  role         Role       @relation(fields: [roleId], references: [id])
+
   @@unique([roleId, permissionId])
 }
 
@@ -164,10 +161,10 @@ model ProjectTask {
   isDeleted    Boolean       @default(false)
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
-  project      Project       @relation(fields: [projectId], references: [id])
   assignee     User?         @relation("TaskAssignee", fields: [assigneeId], references: [id])
   parentTask   ProjectTask?  @relation("ParentTask", fields: [parentTaskId], references: [id])
   subTasks     ProjectTask[] @relation("ParentTask")
+  project      Project       @relation(fields: [projectId], references: [id])
   timesheets   Timesheet[]
 }
 
@@ -175,14 +172,12 @@ model ProjectTeamMember {
   id        String   @id @default(uuid()) @db.Uuid
   projectId String   @db.Uuid
   userId    String   @db.Uuid
-  role      String   @default("MEMBER") // MANAGER, MEMBER
+  role      String   @default("MEMBER")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   isDeleted Boolean  @default(false)
-
-  // Relations
-  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([projectId, userId])
   @@map("project_team_members")
@@ -191,15 +186,13 @@ model ProjectTeamMember {
 model ProjectTimeline {
   id          String   @id @default(uuid()) @db.Uuid
   projectId   String   @db.Uuid
-  action      String   // task_created, task_completed, member_added, member_removed, etc.
+  action      String
   description String
   userId      String   @db.Uuid
-  metadata    Json?    // Additional data like task name, member name, etc.
+  metadata    Json?
   createdAt   DateTime @default(now())
-
-  // Relations
-  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  user    User    @relation(fields: [userId], references: [id])
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user        User     @relation(fields: [userId], references: [id])
 
   @@map("project_timelines")
 }
@@ -207,11 +200,11 @@ model ProjectTimeline {
 model ActivityLog {
   id        String   @id @default(uuid()) @db.Uuid
   userId    String?  @db.Uuid
-  user      User?    @relation(fields: [userId], references: [id])
   type      String
   message   String
   severity  String   @default("info")
   createdAt DateTime @default(now())
+  user      User?    @relation(fields: [userId], references: [id])
 }
 
 model Holiday {
@@ -219,7 +212,7 @@ model Holiday {
   date        DateTime
   name        String
   nameEn      String
-  type        String   // PUBLIC_HOLIDAY, GOVERNMENT_HOLIDAY, BANK_HOLIDAY
+  type        String
   description String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt

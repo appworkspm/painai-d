@@ -193,6 +193,8 @@ const Users: React.FC = () => {
 
   const getRoleColor = (role: string) => {
     switch (role) {
+      case 'VP':
+        return 'bg-purple-100 text-purple-800';
       case 'ADMIN':
         return 'bg-red-100 text-red-800';
       case 'MANAGER':
@@ -252,6 +254,7 @@ const Users: React.FC = () => {
                 <option value="all">All Users</option>
                 <option value="active">Active</option>
                 <option value="inactive">Inactive</option>
+                <option value="VP">VP</option>
                 <option value="ADMIN">Admin</option>
                 <option value="MANAGER">Manager</option>
                 <option value="USER">User</option>
@@ -441,6 +444,7 @@ const Users: React.FC = () => {
                     required
                   >
                     <option value="">Select Role</option>
+                    <option value="VP">VP</option>
                     <option value="ADMIN">Admin</option>
                     <option value="MANAGER">Manager</option>
                     <option value="USER">User</option>
@@ -587,6 +591,7 @@ const Users: React.FC = () => {
                     required
                   >
                     <option value="">Select Role</option>
+                    <option value="VP">VP</option>
                     <option value="ADMIN">Admin</option>
                     <option value="MANAGER">Manager</option>
                     <option value="USER">User</option>

@@ -5,7 +5,7 @@ export interface IUser {
   id: string;
   email: string;
   name: string;
-  role: string; // 'ADMIN' | 'MANAGER' | 'USER'
+  role: string; // 'VP' | 'ADMIN' | 'MANAGER' | 'USER'
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -26,6 +26,7 @@ export interface IUpdateUser {
 }
 
 export const UserRole = {
+  VP: 'VP',
   ADMIN: 'ADMIN',
   MANAGER: 'MANAGER',
   USER: 'USER'

@@ -135,6 +135,8 @@ const UserRoles: React.FC = () => {
 
   const getRoleColor = (role: string) => {
     switch (role) {
+      case 'VP':
+        return 'bg-purple-100 text-purple-800';
       case 'ADMIN':
         return 'bg-red-100 text-red-800';
       case 'MANAGER':
@@ -148,6 +150,8 @@ const UserRoles: React.FC = () => {
 
   const getRoleIcon = (role: string) => {
     switch (role) {
+      case 'VP':
+        return <Shield className="h-5 w-5 text-purple-600" />;
       case 'ADMIN':
         return <Shield className="h-5 w-5 text-red-600" />;
       case 'MANAGER':
@@ -160,6 +164,13 @@ const UserRoles: React.FC = () => {
   };
 
   const mockRoles = [
+    {
+      id: '0',
+      name: 'VP',
+      description: 'Highest privileges, full system control',
+      permissions: ['all_permissions'],
+      userCount: 1
+    },
     {
       id: '1',
       name: 'ADMIN',
@@ -184,6 +195,7 @@ const UserRoles: React.FC = () => {
   ];
 
   const mockUsers = users.length > 0 ? users : [
+    { id: '0', name: 'Victor Prime', email: 'vp@example.com', role: 'VP' },
     { id: '1', name: 'John Doe', email: 'john.doe@example.com', role: 'ADMIN' },
     { id: '2', name: 'Jane Smith', email: 'jane.smith@example.com', role: 'MANAGER' },
     { id: '3', name: 'Mike Johnson', email: 'mike.johnson@example.com', role: 'USER' }

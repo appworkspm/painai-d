@@ -71,13 +71,25 @@ export const getMyTimesheets = async (req: Request, res: Response) => {
 // Get pending timesheets for approval (for managers/admins)
 export const getPendingTimesheets = async (req: Request, res: Response) => {
   try {
+    const user = (req as any).user;
     const { page = 1, limit = 10 } = req.query;
-
     const skip = (Number(page) - 1) * Number(limit);
+    let where: any = { status: 'submitted' };
+
+    if (user.role === 'MANAGER') {
+      // Manager เห็นเฉพาะ timesheet ที่เกี่ยวข้องกับโครงการที่ตนเป็นผู้จัดการ
+      const managedProjects = await prisma.project.findMany({
+        where: { managerId: user.id },
+        select: { id: true }
+      });
+      const managedProjectIds = managedProjects.map(p => p.id);
+      where.project_id = { in: managedProjectIds };
+    }
+    // Admin และ VP เห็นทุก submitted timesheet
 
     const [timesheets, total] = await Promise.all([
       prisma.timesheet.findMany({
-        where: { status: 'submitted' },
+        where,
         include: {
           user: {
             select: {
@@ -97,7 +109,7 @@ export const getPendingTimesheets = async (req: Request, res: Response) => {
         skip,
         take: Number(limit),
       }),
-      prisma.timesheet.count({ where: { status: 'submitted' } }),
+      prisma.timesheet.count({ where }),
     ]);
 
     res.json({

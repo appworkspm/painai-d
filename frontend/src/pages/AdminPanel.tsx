@@ -515,7 +515,18 @@ const AdminPanel: React.FC = () => {
 
   const renderDashboard = () => (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+        <div className="bg-white p-6 rounded-lg shadow">
+          <div className="flex items-center">
+            <div className="p-2 bg-purple-100 rounded-lg">
+              <Shield className="h-6 w-6 text-purple-600" />
+            </div>
+            <div className="ml-4">
+              <p className="text-sm font-medium text-gray-500">VPs</p>
+              <p className="text-2xl font-bold text-gray-900">{stats?.vpUsers || 0}</p>
+            </div>
+          </div>
+        </div>
         <div className="bg-white p-6 rounded-lg shadow">
           <div className="flex items-center">
             <div className="p-2 bg-blue-100 rounded-lg">
@@ -527,7 +538,6 @@ const AdminPanel: React.FC = () => {
             </div>
           </div>
         </div>
-
         <div className="bg-white p-6 rounded-lg shadow">
           <div className="flex items-center">
             <div className="p-2 bg-green-100 rounded-lg">
@@ -539,7 +549,6 @@ const AdminPanel: React.FC = () => {
             </div>
           </div>
         </div>
-
         <div className="bg-white p-6 rounded-lg shadow">
           <div className="flex items-center">
             <div className="p-2 bg-yellow-100 rounded-lg">
@@ -551,7 +560,6 @@ const AdminPanel: React.FC = () => {
             </div>
           </div>
         </div>
-
         <div className="bg-white p-6 rounded-lg shadow">
           <div className="flex items-center">
             <div className="p-2 bg-purple-100 rounded-lg">
@@ -613,6 +621,7 @@ const AdminPanel: React.FC = () => {
                 className="px-3 py-1 border border-gray-300 rounded-md text-sm"
               >
                 <option value="all">All Roles</option>
+                <option value="VP">VP</option>
                 <option value="ADMIN">Admin</option>
                 <option value="MANAGER">Manager</option>
                 <option value="USER">User</option>
@@ -659,8 +668,10 @@ const AdminPanel: React.FC = () => {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                      user.role === 'ADMIN' ? 'bg-blue-100 text-blue-800' :
+                      user.role === 'VP' ? 'bg-purple-100 text-purple-800' :
+                      user.role === 'ADMIN' ? 'bg-red-100 text-red-800' :
                       user.role === 'MANAGER' ? 'bg-yellow-100 text-yellow-800' :
+                      user.role === 'USER' ? 'bg-blue-100 text-blue-800' :
                       'bg-gray-100 text-gray-800'
                     }`}>
                       {user.role}

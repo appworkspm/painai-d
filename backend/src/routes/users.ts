@@ -230,12 +230,14 @@ router.get('/stats/overview', requireAdmin, async (req: IAuthenticatedRequest, r
     const [
       totalUsers,
       activeUsers,
+      vpUsers,
       adminUsers,
       managerUsers,
       regularUsers
     ] = await Promise.all([
       prisma.user.count(),
       prisma.user.count({ where: { isActive: true } }),
+      prisma.user.count({ where: { role: 'VP' } }),
       prisma.user.count({ where: { role: 'ADMIN' } }),
       prisma.user.count({ where: { role: 'MANAGER' } }),
       prisma.user.count({ where: { role: 'USER' } })
@@ -246,6 +248,7 @@ router.get('/stats/overview', requireAdmin, async (req: IAuthenticatedRequest, r
       data: {
         totalUsers,
         activeUsers,
+        vpUsers,
         adminUsers,
         managerUsers,
         regularUsers,
@@ -259,6 +262,15 @@ router.get('/stats/overview', requireAdmin, async (req: IAuthenticatedRequest, r
       message: 'Failed to fetch statistics'
     });
   }
+});
+
+// Get all roles (for dropdowns, etc.)
+router.get('/roles', requireAdmin, (req, res) => {
+  // ส่งคืน role ทั้งหมดที่ระบบรองรับ
+  res.json({
+    success: true,
+    data: ['VP', 'ADMIN', 'MANAGER', 'USER']
+  });
 });
 
 export default router; 

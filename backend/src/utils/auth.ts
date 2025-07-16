@@ -43,14 +43,14 @@ export const extractTokenFromHeader = (authHeader: string): string => {
 
 export const hasPermission = (userRole: string, requiredRole: string): boolean => {
   const roleHierarchy = {
+    'VP': 4,
     'ADMIN': 3,
     'MANAGER': 2,
     'USER': 1
   };
-
   return roleHierarchy[userRole as keyof typeof roleHierarchy] >= roleHierarchy[requiredRole as keyof typeof roleHierarchy];
 };
 
-export const isAdmin = (role: string): boolean => role === 'ADMIN';
-export const isManager = (role: string): boolean => role === 'MANAGER' || role === 'ADMIN';
+export const isAdmin = (role: string): boolean => role === 'ADMIN' || role === 'VP';
+export const isManager = (role: string): boolean => ['ADMIN', 'MANAGER', 'VP'].includes(role);
 export const isUser = (role: string): boolean => true; // All authenticated users 
