@@ -4,13 +4,8 @@ services:
     env: node
     plan: free
     buildCommand: |
-      # Install frontend dependencies and build
-      cd frontend && npm install && npm run build
-      cd ..
-      # Copy frontend build to backend
-      mkdir -p backend/frontend
-      cp -r frontend/dist/* backend/frontend/
-      # Install backend dependencies and build
+      chmod +x build-frontend.sh
+      ./build-frontend.sh
       cd backend && npm install && npx prisma generate && npm run build
     startCommand: cd backend && npm start
     envVars:
