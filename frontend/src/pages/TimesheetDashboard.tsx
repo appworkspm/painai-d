@@ -78,7 +78,10 @@ const TimesheetDashboard: React.FC = () => {
         // Calculate stats from actual timesheet data
         const calculatedStats = timesheetsList.reduce((acc: TimesheetStats, timesheet: any) => {
           acc.total++;
-          acc[timesheet.status]++;
+          const status = (timesheet.status || '').toUpperCase();
+          if (status === 'SUBMITTED') acc.pending++;
+          if (status === 'APPROVED') acc.approved++;
+          if (status === 'REJECTED') acc.rejected++;
           // แปลงค่าเป็น number ก่อนคำนวณ
           const hoursWorked = Number(timesheet.hours_worked || 0);
           const overtimeHours = Number(timesheet.overtime_hours || 0);

@@ -28,5 +28,6 @@ router.get('/:id/history', requireAuth, getTimesheetHistory);
 // Timesheet workflow routes
 router.patch('/:id/submit', requireAuth, submitTimesheet);
 router.patch('/:id/approve', requireAuth, approveTimesheet);
+router.patch('/:id/reject', requireAuth, approveTimesheet);
 
 export default router; 
