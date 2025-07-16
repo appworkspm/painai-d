@@ -11,6 +11,7 @@ import {
   getAllTimesheets,
   getTimesheetHistory,
   getUserTimesheetHistory,
+  rejectTimesheet,
 } from '../controllers/timesheetController';
 
 const router = Router();
@@ -28,6 +29,6 @@ router.get('/:id/history', requireAuth, getTimesheetHistory);
 // Timesheet workflow routes
 router.patch('/:id/submit', requireAuth, submitTimesheet);
 router.patch('/:id/approve', requireAuth, approveTimesheet);
-router.patch('/:id/reject', requireAuth, approveTimesheet);
+router.patch('/:id/reject', requireAuth, rejectTimesheet);
 
 export default router; 

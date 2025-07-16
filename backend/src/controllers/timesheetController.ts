@@ -538,6 +538,84 @@ export const approveTimesheet = async (req: Request, res: Response) => {
   }
 }; 
 
+export const rejectTimesheet = async (req: Request, res: Response) => {
+  try {
+    const approverId = (req as any).user.id;
+    const { id } = req.params;
+    const { rejection_reason } = req.body;
+
+    // Check if timesheet exists
+    const existingTimesheet = await prisma.timesheet.findFirst({
+      where: { id }
+    });
+
+    if (!existingTimesheet) {
+      res.status(404).json({ message: 'Timesheet not found' });
+      return;
+    }
+
+    if (existingTimesheet.status !== 'submitted') {
+      res.status(400).json({ 
+        message: 'Timesheet is not in submitted status' 
+      });
+      return;
+    }
+
+    const updateData: any = {
+      status: 'rejected',
+      approved_by: approverId,
+      approved_at: new Date(),
+      rejection_reason: rejection_reason || null
+    };
+
+    const timesheet = await prisma.timesheet.update({
+      where: { id },
+      data: updateData,
+      include: {
+        project: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true
+          }
+        },
+        approver: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+    });
+
+    // Save reject history
+    await prisma.timesheetEditHistory.create({
+      data: {
+        timesheetId: id,
+        userId: approverId,
+        action: 'reject',
+        oldValue: existingTimesheet,
+        newValue: updateData,
+        createdAt: new Date(),
+      },
+    });
+
+    res.json({
+      message: 'Timesheet rejected successfully',
+      timesheet,
+    });
+  } catch (error) {
+    console.error('Reject timesheet error:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
 // Get timesheet edit history
 export const getTimesheetHistory = async (req: Request, res: Response) => {
   try {
