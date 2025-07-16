@@ -282,12 +282,12 @@ export const timesheetAPI = {
 
   // Approve/Reject methods
   approveTimesheet: async (id: string): Promise<ApiResponse<TimesheetWithApproval>> => {
-    const response = await api.put(`/api/timesheets/${id}/approve`);
+    const response = await api.patch(`/api/timesheets/${id}/approve`);
     return response.data;
   },
 
   rejectTimesheet: async (id: string, data: RejectTimesheetRequest): Promise<ApiResponse<TimesheetWithApproval>> => {
-    const response = await api.put(`/api/timesheets/${id}/reject`, data);
+    const response = await api.patch(`/api/timesheets/${id}/reject`, data);
     return response.data;
   },
 
