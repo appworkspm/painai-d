@@ -8,7 +8,7 @@ set -e
 # Install frontend dependencies
 echo "📦 Installing frontend dependencies..."
 cd frontend
-npm install
+npm install --include=dev
 
 # Build frontend
 echo "🔨 Building frontend..."
