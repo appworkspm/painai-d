@@ -17,6 +17,10 @@ import timesheetRoutes from './routes/timesheets';
 import reportRoutes from './routes/reports';
 import activityRoutes from './routes/activities';
 import holidayRoutes from './routes/holidays';
+import projectProgressRoutes from './routes/projectProgress';
+import costRequestRoutes from './routes/costRequests';
+import projectCostRoutes from './routes/projectCosts';
+import dashboardRoutes from './routes/dashboard';
 
 // Load environment variables
 dotenv.config();
@@ -66,6 +70,10 @@ app.use('/api/timesheets', timesheetRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/activities', activityRoutes);
 app.use('/api/holidays', holidayRoutes);
+app.use('/api/project-progress', projectProgressRoutes);
+app.use('/api/cost-requests', costRequestRoutes);
+app.use('/api/project-costs', projectCostRoutes);
+app.use('/api/dashboard', dashboardRoutes);
 
 // API documentation
 app.get('/api', (req, res) => {
@@ -78,7 +86,11 @@ app.get('/api', (req, res) => {
       timesheets: '/api/timesheets',
       reports: '/api/reports',
       activities: '/api/activities',
-      holidays: '/api/holidays'
+      holidays: '/api/holidays',
+      projectProgress: '/api/project-progress',
+      costRequests: '/api/cost-requests',
+      projectCosts: '/api/project-costs',
+      dashboard: '/api/dashboard'
     }
   });
 });

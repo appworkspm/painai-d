@@ -1,13 +1,58 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
-  PieChart, Pie, Cell, AreaChart, Area, LineChart, Line
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  PieChart, Pie, Cell
 } from 'recharts';
 import { 
-  CalendarDays, Users, Clock, TrendingUp, Download, Filter,
-  BarChart3, PieChart as PieChartIcon, Activity, Target, Building2, UserCheck
+  CalendarDays, Clock, TrendingUp, Download,
+  BarChart3, PieChart as PieChartIcon, Building2, UserCheck
 } from 'lucide-react';
 import { reportAPI } from '../services/api';
+
+// Define types for the data used in the component
+interface WorkType {
+  name: string;
+  hours: number;
+  percentage: number;
+  count: number;
+}
+
+interface User {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  position: string;
+  hours: number;
+  projects: number;
+  timesheetCount: number;
+}
+
+interface Project {
+  id: string;
+  name: string;
+  status: string;
+  budget: number;
+  customer: string;
+  hours: number;
+  users: number;
+  timesheetCount: number;
+}
+
+interface Department {
+  name: string;
+  hours: number;
+  users: number;
+  userList: string[];
+}
+
+interface Summary {
+  totalTimesheets: number;
+  averageHoursPerTimesheet: number;
+  mostActiveUser: User | null;
+  mostActiveProject: Project | null;
+  mostCommonWorkType: WorkType | null;
+}
 
 interface WorkloadData {
   totalHours: number;
@@ -22,65 +67,13 @@ interface WorkloadData {
     start: string;
     end: string;
   };
-  users: Array<{
-    id: string;
-    name: string;
-    email: string;
-    role: string;
-    position: string;
-    hours: number;
-    projects: number;
-    timesheetCount: number;
-  }>;
-  departments: Array<{
-    name: string;
-    hours: number;
-    users: number;
-    userList: string[];
-  }>;
-  workTypes: Array<{
-    name: string;
-    hours: number;
-    percentage: number;
-    count: number;
-  }>;
-  topUsers: Array<{
-    id: string;
-    name: string;
-    email: string;
-    role: string;
-    position: string;
-    hours: number;
-    projects: number;
-    timesheetCount: number;
-  }>;
-  topProjects: Array<{
-    id: string;
-    name: string;
-    status: string;
-    budget: number;
-    customer: string;
-    hours: number;
-    users: number;
-    timesheetCount: number;
-  }>;
-  projects: Array<{
-    id: string;
-    name: string;
-    status: string;
-    budget: number;
-    customer: string;
-    hours: number;
-    users: number;
-    timesheetCount: number;
-  }>;
-  summary: {
-    totalTimesheets: number;
-    averageHoursPerTimesheet: number;
-    mostActiveUser: any;
-    mostActiveProject: any;
-    mostCommonWorkType: any;
-  };
+  users: User[];
+  departments: Department[];
+  workTypes: WorkType[];
+  topUsers: User[];
+  topProjects: Project[];
+  projects: Project[];
+  summary: Summary;
 }
 
 const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#06B6D4', '#84CC16', '#F97316'];
@@ -91,8 +84,9 @@ const WorkloadReport: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [timeframe, setTimeframe] = useState('week');
   const [showCharts, setShowCharts] = useState(true);
-  const [selectedDepartment, setSelectedDepartment] = useState<string>('all');
-  const [selectedWorkType, setSelectedWorkType] = useState<string>('all');
+  // State for future filtering functionality
+  const [_selectedDepartment, _setSelectedDepartment] = useState<string>('all');
+  const [_selectedWorkType, _setSelectedWorkType] = useState<string>('all');
 
   useEffect(() => {
     fetchWorkloadData();
@@ -120,21 +114,22 @@ const WorkloadReport: React.FC = () => {
     }
   };
 
-  const filteredData = data ? {
-    ...data,
-    users: (data.users ?? []).filter(user => 
-      (selectedDepartment === 'all' || user.role === selectedDepartment) && 
-      (selectedWorkType === 'all' || true) // Work type filtering can be added later
-    ),
-    departments: (data.departments ?? []).filter(dept => 
-      selectedDepartment === 'all' || dept.name === selectedDepartment
-    ),
-    workTypes: (data.workTypes ?? []).filter(type => 
-      selectedWorkType === 'all' || type.name === selectedWorkType
-    ),
-    topUsers: (data.topUsers ?? []),
-    topProjects: (data.topProjects ?? [])
-  } : null;
+  // Filtered data for future filtering functionality
+  // const filteredData = data ? {
+  //   ...data,
+  //   users: (data.users ?? []).filter(user => 
+  //     (_selectedDepartment === 'all' || user.role === _selectedDepartment) && 
+  //     (_selectedWorkType === 'all' || true)
+  //   ),
+  //   departments: (data.departments ?? []).filter(dept => 
+  //     _selectedDepartment === 'all' || dept.name === _selectedDepartment
+  //   ),
+  //   workTypes: (data.workTypes ?? []).filter(type => 
+  //     _selectedWorkType === 'all' || type.name === _selectedWorkType
+  //   ),
+  //   topUsers: (data.topUsers ?? []),
+  //   topProjects: (data.topProjects ?? [])
+  // } : null;
 
   if (loading) {
     return (
@@ -314,8 +309,8 @@ const WorkloadReport: React.FC = () => {
                     fill="#8884d8"
                     dataKey="hours"
                   >
-                    {data.workTypes.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    {data.workTypes.map((workType: WorkType, index: number) => (
+                      <Cell key={`cell-${workType.name}-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}
                   </Pie>
                   <Tooltip />
@@ -355,7 +350,7 @@ const WorkloadReport: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {data.topUsers.map((user, index) => (
+                  {data.topUsers.map((user) => (
                     <tr key={user.id} className="border-b hover:bg-gray-50">
                       <td className="py-2">
                         <div>
@@ -387,7 +382,7 @@ const WorkloadReport: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {data.topProjects.map((project, index) => (
+                  {data.topProjects.map((project) => (
                     <tr key={project.id} className="border-b hover:bg-gray-50">
                       <td className="py-2">
                         <div>
@@ -420,7 +415,7 @@ const WorkloadReport: React.FC = () => {
         <div className="bg-white rounded-xl p-6 shadow-sm mb-8">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Department Summary</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {data.departments.map((dept, index) => (
+            {data.departments.map((dept) => (
               <div key={dept.name} className="border rounded-lg p-4">
                 <div className="flex items-center justify-between mb-2">
                   <h4 className="font-medium text-gray-900">{dept.name}</h4>
