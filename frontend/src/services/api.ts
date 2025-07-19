@@ -113,6 +113,10 @@ export const authAPI = {
     const response = await api.get('/api/auth/profile');
     return response.data;
   },
+  getProjectSCurve: async (id: string): Promise<ApiResponse<any>> => {
+    const response = await api.get(`/api/projects/${id}/s-curve`);
+    return response.data;
+  },
 };
 
 export const usersAPI = {
@@ -234,6 +238,151 @@ export const projectTaskAPI = {
 export const projectTimelineAPI = {
   getTimeline: async (projectId: string) => {
     const response = await api.get(`/api/projects/${projectId}/timeline`);
+    return response.data;
+  },
+};
+
+// Project Progress API
+export const projectProgressAPI = {
+  getProjectProgress: async (projectId: string): Promise<ApiResponse<any[]>> => {
+    const response = await api.get(`/api/project-progress/project/${projectId}`);
+    return response.data;
+  },
+
+  getLatestProgress: async (): Promise<ApiResponse<any[]>> => {
+    const response = await api.get('/api/project-progress/latest');
+    return response.data;
+  },
+
+  createProgress: async (data: any): Promise<ApiResponse<any>> => {
+    const response = await api.post('/api/project-progress', data);
+    return response.data;
+  },
+
+  updateProgress: async (id: string, data: any): Promise<ApiResponse<any>> => {
+    const response = await api.put(`/api/project-progress/${id}`, data);
+    return response.data;
+  },
+
+  deleteProgress: async (id: string): Promise<ApiResponse<void>> => {
+    const response = await api.delete(`/api/project-progress/${id}`);
+    return response.data;
+  },
+};
+
+// Cost Request API
+export const costRequestAPI = {
+  getCostRequests: async (params?: any): Promise<ApiResponse<any[]>> => {
+    const response = await api.get('/api/cost-requests', { params });
+    return response.data;
+  },
+
+  getCostRequest: async (id: string): Promise<ApiResponse<any>> => {
+    const response = await api.get(`/api/cost-requests/${id}`);
+    return response.data;
+  },
+
+  createCostRequest: async (data: any): Promise<ApiResponse<any>> => {
+    const response = await api.post('/api/cost-requests', data);
+    return response.data;
+  },
+
+  updateCostRequest: async (id: string, data: any): Promise<ApiResponse<any>> => {
+    const response = await api.put(`/api/cost-requests/${id}`, data);
+    return response.data;
+  },
+
+  approveCostRequest: async (id: string, data: { status: string; rejectionReason?: string }): Promise<ApiResponse<any>> => {
+    const response = await api.patch(`/api/cost-requests/${id}/approve`, data);
+    return response.data;
+  },
+
+  deleteCostRequest: async (id: string): Promise<ApiResponse<void>> => {
+    const response = await api.delete(`/api/cost-requests/${id}`);
+    return response.data;
+  },
+};
+
+// Project Cost API
+export const projectCostAPI = {
+  getProjectCosts: async (params?: any): Promise<ApiResponse<any[]>> => {
+    const response = await api.get('/api/project-costs', { params });
+    return response.data;
+  },
+
+  getProjectCost: async (id: string): Promise<ApiResponse<any>> => {
+    const response = await api.get(`/api/project-costs/${id}`);
+    return response.data;
+  },
+
+  createProjectCost: async (data: any): Promise<ApiResponse<any>> => {
+    const response = await api.post('/api/project-costs', data);
+    return response.data;
+  },
+
+  updateProjectCost: async (id: string, data: any): Promise<ApiResponse<any>> => {
+    const response = await api.put(`/api/project-costs/${id}`, data);
+    return response.data;
+  },
+
+  deleteProjectCost: async (id: string): Promise<ApiResponse<void>> => {
+    const response = await api.delete(`/api/project-costs/${id}`);
+    return response.data;
+  },
+
+  getCostSummary: async (projectId: string, params?: any): Promise<ApiResponse<any>> => {
+    const response = await api.get(`/api/project-costs/summary/project/${projectId}`, { params });
+    return response.data;
+  },
+};
+
+// Dashboard API
+export const dashboardAPI = {
+  getProjectOverview: async (params?: any): Promise<ApiResponse<any>> => {
+    const response = await api.get('/api/dashboard/projects/overview', { params });
+    return response.data;
+  },
+
+  getProjectProgress: async (): Promise<ApiResponse<any>> => {
+    const response = await api.get('/api/dashboard/projects/progress');
+    return response.data;
+  },
+
+  getCostOverview: async (params?: any): Promise<ApiResponse<any>> => {
+    const response = await api.get('/api/dashboard/costs/overview', { params });
+    return response.data;
+  },
+
+  getTimesheetOverview: async (params?: any): Promise<ApiResponse<any>> => {
+    const response = await api.get('/api/dashboard/timesheets/overview', { params });
+    return response.data;
+  },
+
+  getActivityOverview: async (params?: any): Promise<ApiResponse<any>> => {
+    const response = await api.get('/api/dashboard/activities/overview', { params });
+    return response.data;
+  },
+
+  getComprehensiveDashboard: async (params?: any): Promise<ApiResponse<any>> => {
+    const response = await api.get('/api/dashboard/comprehensive', { params });
+    return response.data;
+  },
+};
+
+// Timesheet Types API
+export const timesheetTypesAPI = {
+  getWorkTypes: async (): Promise<ApiResponse<Array<{ id: string; name: string; description: string }>>> => {
+    const response = await api.get('/api/timesheet-types/work-types');
+    return response.data;
+  },
+  
+  getSubWorkTypes: async (workTypeId: string): Promise<ApiResponse<Array<{ id: string; name: string; description: string; workTypeId: string }>>> => {
+    const response = await api.get(`/api/timesheet-types/sub-work-types?workTypeId=${workTypeId}`);
+    return response.data;
+  },
+  
+  getActivities: async (subWorkTypeId: string): Promise<ApiResponse<Array<{ id: string; name: string; description: string; subWorkTypeId: string }>>> => {
+    const response = await api.get(`/api/timesheet-types/activities?subWorkTypeId=${subWorkTypeId}`);
     return response.data;
   },
 };

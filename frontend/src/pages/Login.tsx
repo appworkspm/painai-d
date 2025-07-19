@@ -1,11 +1,10 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { authAPI } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { UserRole } from '../types';
 
 export default function Login() {
-  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [remember, setRemember] = useState(true);
   const [error, setError] = useState('');
@@ -32,7 +31,7 @@ export default function Login() {
     setLoading(true);
     try {
       // ใช้ AuthContext login function พร้อม remember option
-      await login(username, password, remember);
+      await login(email, password, remember);
       
       // Redirect based on user role (จะได้ user จาก AuthContext)
       const currentUser = JSON.parse(sessionStorage.getItem('user') || localStorage.getItem('user') || '{}');
@@ -75,8 +74,8 @@ export default function Login() {
                 type="text"
                 placeholder="Email"
                 className="w-full outline-none bg-transparent"
-                value={username}
-                onChange={e => setUsername(e.target.value)}
+                value={email}
+                onChange={e => setEmail(e.target.value)}
                 required
                 autoComplete="email"
               />

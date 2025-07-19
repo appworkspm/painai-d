@@ -2,10 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useNotification } from '../contexts/NotificationContext';
-import { FolderOpen, Users, Calendar, Clock, CheckCircle, AlertCircle, BarChart3, Edit, Plus, Circle, X, Save, Trash2, Search, Filter, Download } from 'lucide-react';
+import { FolderOpen, Users, Calendar, Clock, CheckCircle, AlertCircle, BarChart3, Edit, Plus, Circle, X, Save, Trash2, Search, Filter, Download, LineChart } from 'lucide-react';
+import { LineChart as RLineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { projectAPI, projectTeamAPI, projectTaskAPI, projectTimelineAPI, adminAPI } from '../services/api';
 import { Card, Row, Col, Statistic, Table, Tag, Space, Button, Input, Select, DatePicker, message, Spin, Empty, Skeleton } from 'antd';
-import dayjs from 'dayjs';
 
 const { Search: AntSearch } = Input;
 
@@ -16,6 +16,89 @@ const ProjectDetails: React.FC = () => {
   const [project, setProject] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
+  const [sCurveData, setSCurveData] = useState<any>(null);
+  const [loadingSCurve, setLoadingSCurve] = useState(false);
+  // --- S Curve ---
+  const loadSCurve = async () => {
+    if (!id) return;
+    setLoadingSCurve(true);
+    try {
+      const res = await projectAPI.getProjectSCurve(id);
+      if (res && res.success) {
+        setSCurveData(res.data);
+      } else {
+        setSCurveData(null);
+      }
+    } catch (e) {
+      setSCurveData(null);
+    } finally {
+      setLoadingSCurve(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'scurve') {
+      loadSCurve();
+    }
+    // eslint-disable-next-line
+  }, [activeTab, id]);
+
+  const renderSCurve = () => {
+    // เตรียมข้อมูลสำหรับกราฟ S Curve
+    let chartData: any[] = [];
+    if (sCurveData) {
+      const progressArr = sCurveData.progress || [];
+      const costArr = sCurveData.cost || [];
+      const planArr = sCurveData.plannedProgress || [];
+      // รวมวันที่ทั้งหมด
+      const dateSet = new Set([
+        ...progressArr.map((p: any) => p.reportedAt.slice(0, 10)),
+        ...costArr.map((c: any) => c.date.slice(0, 10)),
+        ...planArr.map((p: any) => p.date.slice(0, 10))
+      ]);
+      const dates = Array.from(dateSet).sort();
+      let lastProgress = 0, lastCost = 0, lastPlan = 0;
+      chartData = dates.map((date: string) => {
+        const progress = progressArr.find((p: any) => p.reportedAt.slice(0, 10) === date);
+        const cost = costArr.find((c: any) => c.date.slice(0, 10) === date);
+        const plan = planArr.find((p: any) => p.date.slice(0, 10) === date);
+        const data = {
+          date,
+          progress: progress ? progress.progress : lastProgress,
+          cumulativeCost: cost ? cost.cumulative : lastCost,
+          plan: plan ? plan.progress : lastPlan
+        };
+        if (progress) lastProgress = progress.progress;
+        if (cost) lastCost = cost.cumulative;
+        if (plan) lastPlan = plan.progress;
+        return data;
+      });
+    }
+    return (
+      <div className="space-y-6">
+        <h3 className="text-lg font-medium text-gray-900 flex items-center gap-2"><LineChart className="h-5 w-5" /> S Curve</h3>
+        {loadingSCurve ? (
+          <Spin />
+        ) : !sCurveData || chartData.length === 0 ? (
+          <Empty description="ไม่มีข้อมูล S Curve" />
+        ) : (
+          <ResponsiveContainer width="100%" height={400}>
+            <RLineChart data={chartData} margin={{ top: 20, right: 30, left: 0, bottom: 5 }}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="date" tickFormatter={d => dayjs(d).format('DD/MM/YY')} />
+              <YAxis yAxisId="left" label={{ value: 'Progress (%)', angle: -90, position: 'insideLeft' }} domain={[0, 100]} />
+              <YAxis yAxisId="right" orientation="right" label={{ value: 'Cumulative Cost', angle: 90, position: 'insideRight' }} />
+              <Tooltip formatter={(value, name) => name === 'progress' ? `${value}%` : value} />
+              <Legend />
+              <Line yAxisId="left" type="monotone" dataKey="plan" name="Plan (%)" stroke="#22c55e" strokeWidth={2} dot={false} />
+              <Line yAxisId="left" type="monotone" dataKey="progress" name="Actual (%)" stroke="#3b82f6" strokeWidth={2} dot />
+              <Line yAxisId="right" type="monotone" dataKey="cumulativeCost" name="Cumulative Cost" stroke="#f59e42" strokeWidth={2} dot />
+            </RLineChart>
+          </ResponsiveContainer>
+        )}
+      </div>
+    );
+  };
   const [team, setTeam] = useState<any[]>([]);
   const [tasks, setTasks] = useState<any[]>([]);
   const [timeline, setTimeline] = useState<any[]>([]);
@@ -61,11 +144,10 @@ const ProjectDetails: React.FC = () => {
         'งบประมาณ',
         'วันที่สร้าง'
       ];
-
-      const csvData = filteredProjects.map(project => [
-        project.name || '',
-        project.description || '',
-        project.manager?.name || '',
+      const csvData = allProjects.map((project: any) => [
+        project.name,
+        project.description,
+        project.managerName,
         project.status === 'ACTIVE' ? 'กำลังดำเนินการ' :
         project.status === 'COMPLETED' ? 'เสร็จสิ้น' :
         project.status === 'ON_HOLD' ? 'ระงับ' :
@@ -78,7 +160,7 @@ const ProjectDetails: React.FC = () => {
 
       const csvContent = [
         headers.join(','),
-        ...csvData.map(row => row.map(cell => `"${cell}"`).join(','))
+        ...csvData.map((row: any[]) => row.map((cell: any) => `"${cell}"`).join(','))
       ].join('\n');
 
       const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -1031,6 +1113,7 @@ const ProjectDetails: React.FC = () => {
             {activeTab === 'team' && renderTeam()}
             {activeTab === 'tasks' && renderTasks()}
             {activeTab === 'timeline' && renderTimeline()}
+            {activeTab === 'scurve' && renderSCurve()}
           </div>
         </Card>
       </div>
