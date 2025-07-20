@@ -28,8 +28,7 @@ router.get('/', async (req: IAuthenticatedRequest, res) => {
         project: {
           select: {
             id: true,
-            name: true,
-            status: true
+            name: true
           }
         },
         costRequest: {
@@ -37,13 +36,6 @@ router.get('/', async (req: IAuthenticatedRequest, res) => {
             id: true,
             title: true,
             status: true
-          }
-        },
-        recorder: {
-          select: {
-            id: true,
-            name: true,
-            email: true
           }
         }
       },
@@ -76,8 +68,7 @@ router.get('/:id', async (req: IAuthenticatedRequest, res) => {
         project: {
           select: {
             id: true,
-            name: true,
-            status: true
+            name: true
           }
         },
         costRequest: {
@@ -85,13 +76,6 @@ router.get('/:id', async (req: IAuthenticatedRequest, res) => {
             id: true,
             title: true,
             status: true
-          }
-        },
-        recorder: {
-          select: {
-            id: true,
-            name: true,
-            email: true
           }
         }
       }
@@ -121,13 +105,13 @@ router.get('/:id', async (req: IAuthenticatedRequest, res) => {
 // Create new project cost
 router.post('/', requireManager, async (req: IAuthenticatedRequest, res) => {
   try {
-    const { projectId, title, description, amount, currency, category, date, costRequestId } = req.body;
-    const recordedBy = req.user.id;
+    const { projectId, description, amount, date, costRequestId } = req.body;
+    const recordedBy = req.user?.id;
 
-    if (!projectId || !title || !amount || !category) {
+    if (!projectId || !amount) {
       res.status(400).json({
         success: false,
-        message: 'Project ID, title, amount, and category are required'
+        message: 'Project ID and amount are required'
       });
       return;
     }
@@ -167,21 +151,16 @@ router.post('/', requireManager, async (req: IAuthenticatedRequest, res) => {
     const projectCost = await prisma.projectCost.create({
       data: {
         projectId,
-        title,
         description,
         amount: parseFloat(amount),
-        currency: currency || 'THB',
-        category,
         date: date ? new Date(date) : new Date(),
-        costRequestId,
-        recordedBy
+        costRequestId
       },
       include: {
         project: {
           select: {
             id: true,
-            name: true,
-            status: true
+            name: true
           }
         },
         costRequest: {
@@ -189,13 +168,6 @@ router.post('/', requireManager, async (req: IAuthenticatedRequest, res) => {
             id: true,
             title: true,
             status: true
-          }
-        },
-        recorder: {
-          select: {
-            id: true,
-            name: true,
-            email: true
           }
         }
       }
@@ -218,10 +190,9 @@ router.post('/', requireManager, async (req: IAuthenticatedRequest, res) => {
 router.put('/:id', requireManager, async (req: IAuthenticatedRequest, res) => {
   try {
     const { id } = req.params;
-    const { title, description, amount, currency, category, date } = req.body;
+    const { description, amount, date } = req.body;
 
     const updateData: any = {};
-    if (title) updateData.title = title;
     if (description !== undefined) updateData.description = description;
     if (amount !== undefined) {
       if (amount <= 0) {
@@ -233,8 +204,6 @@ router.put('/:id', requireManager, async (req: IAuthenticatedRequest, res) => {
       }
       updateData.amount = parseFloat(amount);
     }
-    if (currency) updateData.currency = currency;
-    if (category) updateData.category = category;
     if (date) updateData.date = new Date(date);
 
     const projectCost = await prisma.projectCost.update({
@@ -244,8 +213,7 @@ router.put('/:id', requireManager, async (req: IAuthenticatedRequest, res) => {
         project: {
           select: {
             id: true,
-            name: true,
-            status: true
+            name: true
           }
         },
         costRequest: {
@@ -253,13 +221,6 @@ router.put('/:id', requireManager, async (req: IAuthenticatedRequest, res) => {
             id: true,
             title: true,
             status: true
-          }
-        },
-        recorder: {
-          select: {
-            id: true,
-            name: true,
-            email: true
           }
         }
       }
@@ -316,16 +277,27 @@ router.get('/summary/project/:projectId', async (req: IAuthenticatedRequest, res
     const costs = await prisma.projectCost.findMany({
       where,
       select: {
+        id: true,
         amount: true,
-        category: true,
-        currency: true
+        description: true,
+        date: true,
+        projectId: true
       }
     });
 
     // Calculate summary
     const totalAmount = costs.reduce((sum, cost) => sum + Number(cost.amount), 0);
-    const categorySummary = costs.reduce((acc, cost) => {
-      acc[cost.category] = (acc[cost.category] || 0) + Number(cost.amount);
+    // Group costs by project
+    const projectIds = [...new Set(costs.map(cost => cost.projectId))];
+    const projects = await prisma.project.findMany({
+      where: { id: { in: projectIds } },
+      select: { id: true, name: true }
+    });
+
+    const projectSummary = costs.reduce((acc, cost) => {
+      const project = projects.find(p => p.id === cost.projectId);
+      const projectName = project?.name || 'Unknown Project';
+      acc[projectName] = (acc[projectName] || 0) + Number(cost.amount);
       return acc;
     }, {} as any);
 
@@ -333,8 +305,7 @@ router.get('/summary/project/:projectId', async (req: IAuthenticatedRequest, res
       success: true,
       data: {
         totalAmount,
-        categorySummary,
-        currency: costs[0]?.currency || 'THB',
+        projectSummary,
         count: costs.length
       }
     });

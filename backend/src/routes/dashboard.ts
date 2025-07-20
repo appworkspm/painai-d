@@ -165,14 +165,38 @@ router.get('/costs/overview', async (req: IAuthenticatedRequest, res) => {
     const totalCosts = await prisma.projectCost.findMany({ where });
     const totalAmount = totalCosts.reduce((sum, cost) => sum + Number(cost.amount), 0);
 
-    // Get costs by category
-    const costsByCategory = await prisma.projectCost.groupBy({
-      by: ['category'],
+    // Get costs by project
+    const costsByProject = await prisma.projectCost.groupBy({
+      by: ['projectId'],
       where,
       _sum: {
         amount: true
+      },
+      orderBy: {
+        _sum: {
+          amount: 'desc'
+        }
+      },
+      take: 10 // Limit to top 10 projects by cost
+    });
+
+    // Get project details for the grouped results
+    const projectDetails = await prisma.project.findMany({
+      where: {
+        id: { in: costsByProject.map(c => c.projectId) }
+      },
+      select: {
+        id: true,
+        name: true
       }
     });
+
+    // Map project details to the costs
+    const costsByCategory = costsByProject.map(cost => ({
+      projectId: cost.projectId,
+      projectName: projectDetails.find(p => p.id === cost.projectId)?.name || 'Unknown Project',
+      totalAmount: cost._sum.amount || 0
+    }));
 
     // Get cost requests statistics
     const pendingRequests = await prisma.costRequest.count({ 

@@ -46,6 +46,15 @@ router.get('/project/:projectId', async (req: IAuthenticatedRequest, res) => {
 router.post('/', requireManager, async (req: IAuthenticatedRequest, res) => {
   try {
     const { projectId, progress, status, milestone, description } = req.body;
+    
+    if (!req.user) {
+      res.status(401).json({
+        success: false,
+        message: 'User not authenticated'
+      });
+      return;
+    }
+    
     const reportedBy = req.user.id;
 
     if (!projectId || progress === undefined) {

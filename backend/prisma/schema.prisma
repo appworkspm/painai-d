@@ -6,7 +6,9 @@ model ProjectCost {
   date        DateTime @default(now())
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  project     Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  costRequest CostRequest? @relation(fields: [costRequestId], references: [id], onDelete: SetNull)
+  costRequestId String?    @db.Uuid
 
   @@map("project_costs")
 }
@@ -47,6 +49,8 @@ model User {
   approved_timesheets    Timesheet[]            @relation("TimesheetApprover")
   timesheets             Timesheet[]
   reportedProgresses     ProjectProgress[]      @relation("ProjectProgress_reporter")
+  requestedCosts         CostRequest[]          @relation("CostRequestRequester")
+  approvedCosts          CostRequest[]          @relation("CostRequestApprover")
 
   @@map("users")
 }
@@ -75,6 +79,7 @@ model Project {
   timesheets         Timesheet[]
   projectProgresses  ProjectProgress[]
   projectCosts       ProjectCost[]
+  costRequests       CostRequest[]
 
   @@map("projects")
 }
@@ -181,6 +186,29 @@ model ProjectTask {
   subTasks     ProjectTask[] @relation("ParentTask")
   project      Project       @relation(fields: [projectId], references: [id])
   timesheets   Timesheet[]
+}
+
+model CostRequest {
+  id            String    @id @default(uuid()) @db.Uuid
+  title         String
+  description   String?
+  amount        Decimal   @db.Decimal(15, 2)
+  currency      String    @default("THB")
+  category      String
+  status        String    @default("PENDING")
+  requestedAt   DateTime  @default(now())
+  approvedAt    DateTime?
+  rejectedAt    DateTime?
+  rejectionReason String?
+  projectId     String    @db.Uuid
+  requesterId   String    @db.Uuid
+  approverId    String?   @db.Uuid
+  project       Project   @relation(fields: [projectId], references: [id])
+  requester     User      @relation("CostRequestRequester", fields: [requesterId], references: [id])
+  approver      User?     @relation("CostRequestApprover", fields: [approverId], references: [id])
+  projectCosts  ProjectCost[]
+
+  @@map("cost_requests")
 }
 
 model ProjectTeamMember {

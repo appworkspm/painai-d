@@ -149,7 +149,7 @@ router.post('/', async (req: IAuthenticatedRequest, res) => {
         amount: parseFloat(amount),
         currency: currency || 'THB',
         category,
-        requestedBy
+        requesterId: requestedBy
       },
       include: {
         project: {
@@ -206,7 +206,7 @@ router.put('/:id', async (req: IAuthenticatedRequest, res) => {
       res.status(401).json({ success: false, message: 'Unauthorized' });
       return;
     }
-    if (existingRequest.status !== 'PENDING' || existingRequest.requestedBy !== req.user.id) {
+    if (existingRequest.status !== 'PENDING' || existingRequest.requesterId !== req.user?.id) {
       res.status(403).json({
         success: false,
         message: 'You can only edit pending requests that you created'
@@ -366,7 +366,7 @@ router.delete('/:id', async (req: IAuthenticatedRequest, res) => {
       res.status(401).json({ success: false, message: 'Unauthorized' });
       return;
     }
-    if (existingRequest.status !== 'PENDING' || existingRequest.requestedBy !== req.user.id) {
+    if (existingRequest.status !== 'PENDING' || existingRequest.requesterId !== req.user?.id) {
       res.status(403).json({
         success: false,
         message: 'You can only delete pending requests that you created'
