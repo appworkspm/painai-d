@@ -11,9 +11,6 @@
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0"
   },
   "dependencies": {
-<<<<<<< HEAD
-    "@ant-design/icons": "^5.2.6",
-=======
     "@ant-design/charts": "^2.6.0",
     "@ant-design/icons": "^5.2.6",
     "@hookform/resolvers": "^5.1.1",
@@ -30,7 +27,6 @@
     "@radix-ui/react-tooltip": "^1.2.7",
     "@tanstack/react-query": "^5.83.0",
     "@tanstack/react-query-devtools": "^5.83.0",
->>>>>>> feature/integrate-timesheet-types
     "antd": "^5.12.8",
     "axios": "^1.6.2",
     "class-variance-authority": "^0.7.1",
@@ -65,16 +61,11 @@
     "eslint": "^8.53.0",
     "eslint-plugin-react-hooks": "^4.6.0",
     "eslint-plugin-react-refresh": "^0.4.4",
-<<<<<<< HEAD
     "playwright": "^1.54.1",
-    "postcss": "^8.4.31",
-    "tailwindcss": "^3.3.5",
-=======
     "postcss": "^8.5.6",
     "postcss-import": "^16.1.1",
     "postcss-nesting": "^13.0.2",
     "tailwindcss": "^3.4.17",
->>>>>>> feature/integrate-timesheet-types
     "typescript": "^5.2.2",
     "vite": "^7.0.4"
   },
