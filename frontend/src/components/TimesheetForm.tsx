@@ -467,13 +467,10 @@ const TimesheetForm: React.FC<TimesheetFormProps> = ({
             <Form.Item
               name="hours_worked"
               label="ชั่วโมงทำงานปกติ"
-<<<<<<< HEAD
               rules={[ 
                 { required: true, message: 'กรุณาระบุชั่วโมงทำงาน' },
                 { type: 'number', min: 0, max: 24, message: 'กรุณากรอกชั่วโมงระหว่าง 0 ถึง 24' }
               ]}
-=======
->>>>>>> feature/integrate-timesheet-types
             >
               <Input 
                 type="number" 
@@ -488,14 +485,10 @@ const TimesheetForm: React.FC<TimesheetFormProps> = ({
           <Col span={8}>
             <Form.Item
               name="overtime_hours"
-<<<<<<< HEAD
-              label="ชั่วโมงโอที"
+              label="ชั่วโมงโอที (หลัง 18:00 น.)"
               rules={[
                 { type: 'number', min: 0, max: 24, message: 'กรุณากรอกโอทีระหว่าง 0 ถึง 24' }
               ]}
-=======
-              label="ชั่วโมงโอที (หลัง 18:00 น.)"
->>>>>>> feature/integrate-timesheet-types
             >
               <Input 
                 type="number" 
