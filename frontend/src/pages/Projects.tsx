@@ -47,7 +47,138 @@ const Projects = () => {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
 
-  const { data: projectsData, isLoading } = useQuery({
+    // Fetch projects data with error handling and loading states
+  const { data: projectsData, isLoading, error } = useQuery({
+    queryKey: ['projects'],
+    queryFn: async () => {
+      try {
+        const response = await projectAPI.getProjects();
+        if (response.success && response.data) {
+          return response.data;
+        }
+        throw new Error('Failed to fetch projects');
+      } catch (err) {
+        console.error('Error fetching projects:', err);
+        toast.error('Failed to load projects. Please try again.');
+        return [];
+      }
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    refetchOnWindowFocus: false,
+  });
+
+  // Handle project creation
+  const createProjectMutation = useMutation({
+    mutationFn: async (projectData: Omit<Project, 'id'>) => {
+      const response = await projectAPI.createProject(projectData);
+      if (!response.success) {
+        throw new Error(response.message || 'Failed to create project');
+      }
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['projects'] });
+      setIsDialogOpen(false);
+      toast.success('Project created successfully');
+    },
+    onError: (error: any) => {
+      console.error('Error creating project:', error);
+      toast.error(error.message || 'Failed to create project');
+    },
+  });
+
+  // Handle project update
+  const updateProjectMutation = useMutation({
+    mutationFn: async (data: { id: string; projectData: Partial<Project> }) => {
+      const response = await projectAPI.updateProject(data.id, data.projectData);
+      if (!response.success) {
+        throw new Error(response.message || 'Failed to update project');
+      }
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['projects'] });
+      setIsDialogOpen(false);
+      setSelectedProject(null);
+      toast.success('Project updated successfully');
+    },
+    onError: (error: any) => {
+      console.error('Error updating project:', error);
+      toast.error(error.message || 'Failed to update project');
+    },
+  });
+
+  // Handle project deletion
+  const deleteProjectMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const response = await projectAPI.deleteProject(id);
+      if (!response.success) {
+        throw new Error(response.message || 'Failed to delete project');
+      }
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['projects'] });
+      setIsDeleteDialogOpen(false);
+      setSelectedProject(null);
+      toast.success('Project deleted successfully');
+    },
+    onError: (error: any) => {
+      console.error('Error deleting project:', error);
+      toast.error(error.message || 'Failed to delete project');
+    },
+  });
+
+  const handleSubmit = (data: Omit<Project, 'id'>, id?: string) => {
+    if (id) {
+      updateProjectMutation.mutate({ id, projectData: data });
+    } else {
+      createProjectMutation.mutate(data);
+    }
+  };
+
+  const handleDelete = () => {
+    if (selectedProject) {
+      deleteProjectMutation.mutate(selectedProject.id);
+    }
+  };
+
+  // Show loading state
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  // Show error state
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 space-y-4">
+        <AlertCircle className="h-12 w-12 text-destructive" />
+        <p className="text-lg font-medium">Failed to load projects</p>
+        <Button onClick={() => queryClient.refetchQueries({ queryKey: ['projects'] })}>
+          Retry
+        </Button>
+      </div>
+    );
+  }
+
+  // Show empty state
+  if (!projectsData || projectsData.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 space-y-4">
+        <FolderOpen className="h-12 w-12 text-muted-foreground" />
+        <p className="text-lg font-medium">No projects found</p>
+        <p className="text-muted-foreground">Get started by creating a new project</p>
+        <Button onClick={() => setIsDialogOpen(true)}>
+          <PlusCircle className="mr-2 h-4 w-4" />
+          New Project
+        </Button>
+      </div>
+    );
+  }
     queryKey: ['projects'],
     queryFn: () => projectAPI.getProjects(),
   });

@@ -8,7 +8,8 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0"
+    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+    "generate-assets": "node scripts/generate-assets.js"
   },
   "dependencies": {
     "@ant-design/charts": "^2.6.0",
@@ -58,6 +59,7 @@
     "@typescript-eslint/parser": "^6.10.0",
     "@vitejs/plugin-react": "^4.1.1",
     "autoprefixer": "^10.4.21",
+    "canvas": "^3.1.2",
     "eslint": "^8.53.0",
     "eslint-plugin-react-hooks": "^4.6.0",
     "eslint-plugin-react-refresh": "^0.4.4",
@@ -65,6 +67,8 @@
     "postcss": "^8.5.6",
     "postcss-import": "^16.1.1",
     "postcss-nesting": "^13.0.2",
+    "sharp": "^0.34.3",
+    "svg-to-img": "^2.0.9",
     "tailwindcss": "^3.4.17",
     "typescript": "^5.2.2",
     "vite": "^7.0.4"
