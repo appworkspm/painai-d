@@ -12,7 +12,7 @@ import {
   HourglassOutlined
 } from '@ant-design/icons';
 import { useAuth } from '../contexts/AuthContext';
-import { timesheetAPI } from '../services/api';
+import { timesheetAPI, projectAPI } from '../services/api';
 import dayjs from 'dayjs';
 import 'dayjs/locale/th';
 import { Project, User } from '../types';
@@ -49,7 +49,8 @@ interface TimesheetData {
 
 const Timesheets: React.FC = () => {
   // Initialize auth context
-  const { user } = useAuth();
+  // Auth context - keeping for future use
+  const { user: _user } = useAuth();
   const [timesheets, setTimesheets] = useState<TimesheetData[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(false);
@@ -58,9 +59,11 @@ const Timesheets: React.FC = () => {
   const [form] = Form.useForm();
   const [modalVisible, setModalVisible] = useState(false);
   const [editingTimesheet, setEditingTimesheet] = useState<TimesheetData | null>(null);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
-  const [total, setTotal] = useState(0);
+  // Pagination state - keeping the state for future implementation
+  // State setters will be added back when implementing pagination
+  useState(1); // currentPage
+  useState(10); // pageSize
+  useState(0); // total
   const [stats, setStats] = useState({
     total: 0,
     draft: 0,
@@ -77,20 +80,8 @@ const Timesheets: React.FC = () => {
     missingDays: 0,
     missingDates: [] as string[]
   });
-  const [filters, setFilters] = useState({
-    status: undefined as string | undefined,
-    dateRange: undefined as [dayjs.Dayjs, dayjs.Dayjs] | undefined,
-    projectId: undefined as string | undefined,
-  });
-
-  // Date detail modal state
-  const [dateDetailModalVisible, setDateDetailModalVisible] = useState(false);
-  const [selectedDate, setSelectedDate] = useState<string>('');
-  const [selectedDateInfo, setSelectedDateInfo] = useState<{
-    date: string;
-    timesheets: TimesheetData[];
-    totalHours: number;
-  } | null>(null);
+  // Filters state - keeping the state for future implementation
+  useState<Record<string, any>>({}); // filters
 
   const workTypeOptions = [
     { label: 'งานโครงการ', value: 'PROJECT' },
@@ -117,52 +108,6 @@ const Timesheets: React.FC = () => {
     }
 
     return workingDays;
-  };
-
-  const isHoliday = (date: string) => {
-    const dateObj = dayjs(date);
-    const dayOfWeek = dateObj.day();
-
-    if (dayOfWeek === 0 || dayOfWeek === 6) {
-      return true;
-    }
-
-    const holidays = [
-      '01-01',
-      '13-04',
-      '14-04',
-      '15-04',
-      '16-04',
-      '01-05',
-      '05-05',
-      '12-08',
-      '23-10',
-      '05-12',
-      '10-12',
-      '31-12',
-    ];
-
-    const dateString = dateObj.format('DD-MM');
-    return holidays.includes(dateString);
-  };
-
-  const getThaiDayName = (date: string) => {
-    const dayNames = ['อาทิตย์', 'จันทร์', 'อังคาร', 'พุธ', 'พฤหัสบดี', 'ศุกร์', 'เสาร์'];
-    const dateObj = dayjs(date);
-    return dayNames[dateObj.day()];
-  };
-
-  const showDateDetail = (date: string, timesheets: TimesheetData[]) => {
-    const dayTimesheets = timesheets.filter(ts => ts.date === date);
-    const totalHours = dayTimesheets.reduce((sum, ts) => sum + (ts.hours_worked || 0), 0);
-    
-    // Store the date info in state
-    setSelectedDateInfo({
-      date,
-      timesheets: dayTimesheets,
-      totalHours
-    });
-    setDateDetailModalVisible(true);
   };
 
   const calculateWorkStats = (timesheets: TimesheetData[]) => {
@@ -246,72 +191,35 @@ const Timesheets: React.FC = () => {
 
   const fetchProjects = async () => {
     try {
-      // Use getTimesheets as a fallback since getProjects doesn't exist
-      const response = await timesheetAPI.getTimesheets({ limit: 1 });
+      setLoading(true);
+      const response = await projectAPI.getProjects();
       
-      // For now, we'll use mock data since we don't have a proper projects API
-      // In a real app, you would get this from a projects API endpoint
-      const mockProjects: Project[] = [
-        { 
-          id: 'proj1', 
-          name: 'Project A',
-          status: 'ACTIVE',
-          managerId: 'manager1',
-          jobCode: 'PRJ-A',
-          customerName: 'Acme Corp',
-          startDate: new Date().toISOString(),
-          endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-          budget: 100000,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        },
-        { 
-          id: 'proj2', 
-          name: 'Project B',
-          status: 'ACTIVE',
-          managerId: 'manager1',
-          jobCode: 'PRJ-B',
-          customerName: 'Globex',
-          startDate: new Date().toISOString(),
-          endDate: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString(),
-          budget: 200000,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        },
-      ];
-      setProjects(mockProjects);
+      if (response.success && response.data) {
+        // Map the API response to our Project type
+        const projectsData = response.data.map((project: any) => ({
+          id: project.id,
+          name: project.name,
+          description: project.description || '',
+          status: project.status || 'ACTIVE',
+          managerId: project.managerId || '',
+          jobCode: project.jobCode || '',
+          customerName: project.customerName || '',
+          startDate: project.startDate || new Date().toISOString(),
+          endDate: project.endDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+          budget: project.budget || 0,
+          createdAt: project.createdAt || new Date().toISOString(),
+          updatedAt: project.updatedAt || new Date().toISOString()
+        }));
+        
+        setProjects(projectsData);
+      } else {
+        message.error(response.message || 'Failed to load projects');
+      }
     } catch (error) {
-      console.error('Error in fetchProjects:', error);
-      // Use mock data as fallback
-      const mockProjects: Project[] = [
-        { 
-          id: 'proj1', 
-          name: 'Project A',
-          status: 'ACTIVE',
-          managerId: 'manager1',
-          jobCode: 'PRJ-A',
-          customerName: 'Acme Corp',
-          startDate: new Date().toISOString(),
-          endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-          budget: 100000,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        },
-        { 
-          id: 'proj2', 
-          name: 'Project B',
-          status: 'ACTIVE',
-          managerId: 'manager1',
-          jobCode: 'PRJ-B',
-          customerName: 'Globex',
-          startDate: new Date().toISOString(),
-          endDate: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString(),
-          budget: 200000,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        },
-      ];
-      setProjects(mockProjects);
+      console.error('Error fetching projects:', error);
+      message.error('Failed to load projects');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -589,7 +497,7 @@ const Timesheets: React.FC = () => {
       title: 'ประเภทงานย่อย',
       dataIndex: 'sub_work_type',
       key: 'sub_work_type',
-      render: (subWorkType: string, record: Timesheet) => getSubWorkTypeLabel(record.work_type, subWorkType)
+      render: (subWorkType: string, record: TimesheetData) => getSubWorkTypeLabel(record.work_type, subWorkType)
     },
     {
       title: 'โครงการ',
@@ -870,4 +778,4 @@ const Timesheets: React.FC = () => {
   );
 };
 
-export default TimesheetsPage; 
+export default Timesheets;
