@@ -18,9 +18,9 @@ export default defineConfig(({ mode }) => {
         registerType: 'autoUpdate',
         includeAssets: ['favicon.ico', 'robots.txt', 'apple-touch-icon.png'],
         manifest: {
-          name: env.VITE_APP_NAME || 'Painai',
-          short_name: 'Painai',
-          description: env.VITE_APP_DESCRIPTION || 'Painai Timesheet Management System',
+          name: 'painai-timesheet',
+          short_name: 'painai-timesheet',
+          description: 'Painai Timesheet Management System',
           theme_color: env.VITE_THEME_COLOR || '#2563eb',
           icons: [
             {

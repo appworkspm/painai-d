@@ -29,12 +29,9 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 8000;
 
-// Security middleware
-app.use(helmet());
-app.use(cors({
-  origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
-  credentials: true
-}));
+// Security middleware - Custom configuration for CSP and security headers
+import { securityMiddleware } from './middleware/security';
+app.use(securityMiddleware);
 
 // Rate limiting
 const limiter = rateLimit({
