@@ -1,10 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { projectAPI, projectProgressAPI } from '../services/api';
-import { useAuth } from '../contexts/AuthContext';
-import { Button } from '../components/ui/button';
-import { Input } from '../components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
+import { Button } from '../components/ui/Button';
+import { Input } from '../components/ui/Input';
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
 import { Badge } from '../components/ui/badge';
 import { Modal } from '../components/ui/modal';
 import { Select } from '../components/ui/select';
@@ -58,12 +56,10 @@ export default function ProjectProgress() {
   const [formData, setFormData] = useState({
     projectId: '',
     progress: 0,
-    status: 'ON_TRACK' as const,
+    status: 'ON_TRACK' as 'ON_TRACK' | 'BEHIND' | 'AHEAD' | 'COMPLETED',
     milestone: '',
     description: ''
   });
-  const { user } = useAuth();
-  const navigate = useNavigate();
 
   useEffect(() => {
     fetchData();
@@ -78,10 +74,10 @@ export default function ProjectProgress() {
       ]);
 
       if (progressesRes.success) {
-        setProgresses(progressesRes.data);
+        setProgresses(progressesRes.data ?? []);
       }
       if (projectsRes.success) {
-        setProjects(projectsRes.data);
+        setProjects(projectsRes.data ?? []);
       }
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -283,22 +279,26 @@ export default function ProjectProgress() {
 
       {/* Add/Edit Modal */}
       <Modal
-        isOpen={showModal}
-        onClose={() => {
-          setShowModal(false);
-          setEditingProgress(null);
-          resetForm();
+        open={showModal}
+        onOpenChange={(open: boolean) => {
+          if (!open) {
+            setShowModal(false);
+            setEditingProgress(null);
+            resetForm();
+          }
         }}
-        title={editingProgress ? 'Edit Progress' : 'Add Progress'}
       >
         <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="text-lg font-semibold mb-4">
+            {editingProgress ? 'Edit Progress' : 'Add Progress'}
+          </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Project
             </label>
             <Select
               value={formData.projectId}
-              onChange={(e) => setFormData({ ...formData, projectId: e.target.value })}
+              onValueChange={(value: string) => setFormData({ ...formData, projectId: value })}
               required
             >
               <option value="">Select a project</option>
@@ -319,7 +319,7 @@ export default function ProjectProgress() {
               min="0"
               max="100"
               value={formData.progress}
-              onChange={(e) => setFormData({ ...formData, progress: parseInt(e.target.value) })}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, progress: parseInt(e.target.value) })}
               required
             />
           </div>
@@ -330,7 +330,7 @@ export default function ProjectProgress() {
             </label>
             <Select
               value={formData.status}
-              onChange={(e) => setFormData({ ...formData, status: e.target.value as any })}
+              onValueChange={(value: string) => setFormData({ ...formData, status: value as 'ON_TRACK' | 'BEHIND' | 'AHEAD' | 'COMPLETED' })}
               required
             >
               <option value="ON_TRACK">On Track</option>
@@ -346,7 +346,7 @@ export default function ProjectProgress() {
             </label>
             <Input
               value={formData.milestone}
-              onChange={(e) => setFormData({ ...formData, milestone: e.target.value })}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, milestone: e.target.value })}
               placeholder="e.g., Phase 1 Complete"
             />
           </div>
@@ -357,7 +357,7 @@ export default function ProjectProgress() {
             </label>
             <Textarea
               value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setFormData({ ...formData, description: e.target.value })}
               placeholder="Describe the current progress..."
               rows={3}
             />
@@ -383,4 +383,4 @@ export default function ProjectProgress() {
       </Modal>
     </div>
   );
-} 
+}

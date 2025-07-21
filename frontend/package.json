@@ -9,7 +9,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
-    "generate-assets": "node scripts/generate-assets.js"
+    "generate-assets": "node scripts/generate-assets.js",
+    "test": "playwright test"
   },
   "dependencies": {
     "@ant-design/charts": "^2.6.0",
@@ -52,6 +53,7 @@
     "zustand": "^5.0.6"
   },
   "devDependencies": {
+    "@playwright/test": "^1.54.1",
     "@tailwindcss/typography": "^0.5.16",
     "@types/react": "^18.2.37",
     "@types/react-dom": "^18.2.15",
