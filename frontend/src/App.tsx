@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route, Navigate, Outlet, useLocation } from 'react-router-dom';
+import { Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { NotificationProvider } from './contexts/NotificationContext';
 import { ThemeProvider } from './theme/ThemeProvider';
@@ -29,6 +29,7 @@ import UserActivity from './pages/UserActivity';
 import UserActivityReport from './pages/UserActivityReport';
 import ProtectedRoute from './components/ProtectedRoute';
 import NotFound from './pages/NotFound';
+import { ErrorBoundary } from './components/ErrorBoundary';
 
 // Admin route wrapper
 const AdminRoute = ({ children }: { children: JSX.Element }) => {
@@ -38,126 +39,128 @@ const AdminRoute = ({ children }: { children: JSX.Element }) => {
 
 const App = () => {
   return (
-    <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
-      <AuthProvider>
-        <NotificationProvider>
-          <Routes>
-            {/* Public Routes */}
-            <Route path="/login" element={<Login />} />
-            <Route path="/forgot-password" element={<ForgotPassword />} />
-            
-            {/* Protected Routes */}
-            <Route
-              path="/"
-              element={
-                <ProtectedRoute>
-                  <AppLayout>
-                    <Outlet />
-                  </AppLayout>
-                </ProtectedRoute>
-              }
-            >
-              <Route index element={<Dashboard />} />
+    <ErrorBoundary>
+      <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
+        <AuthProvider>
+          <NotificationProvider>
+            <Routes>
+              {/* Public Routes */}
+              <Route path="/login" element={<Login />} />
+              <Route path="/forgot-password" element={<ForgotPassword />} />
               
-              {/* Projects */}
-              <Route path="projects" element={<Projects />} />
-              <Route 
-                path="projects/:id" 
-                element={
-                  <ProjectDetails />
-                } 
-              />
-              <Route 
-                path="projects/:id/progress" 
-                element={
-                  <ProjectProgress />
-                } 
-              />
-              
-              {/* Timesheets */}
-              <Route path="timesheets" element={<Timesheets />} />
-              <Route path="timesheets/create" element={<CreateTimesheet />} />
-              <Route path="timesheets/history" element={<TimesheetHistory />} />
-              <Route path="timesheets/approval" element={<TimesheetApproval />} />
-              
-              {/* Reports */}
-              <Route path="reports/workload" element={<WorkloadReport />} />
-              <Route path="reports/project" element={<ProjectReport />} />
-              <Route 
-                path="reports/project-cost" 
-                element={
-                  <ProjectCostReport 
-                    projectId={new URLSearchParams(location.search).get('projectId') || ''} 
-                  />
-                } 
-              />
-              <Route path="reports/user-activity" element={<UserActivityReport />} />
-              
-              {/* Cost Management */}
-              <Route path="cost/my-requests" element={<MyCostRequests />} />
-              <Route 
-                path="cost/entry" 
-                element={
-                  <ProjectCostEntry 
-                    projectId={new URLSearchParams(location.search).get('projectId') || ''} 
-                  />
-                } 
-              />
-              <Route path="cost/approval" element={<CostApproval />} />
-              
-              {/* Admin Routes */}
+              {/* Protected Routes */}
               <Route
-                path="admin"
+                path="/"
                 element={
-                  <AdminRoute>
-                    <AdminPanel />
-                  </AdminRoute>
+                  <ProtectedRoute>
+                    <AppLayout>
+                      <Outlet />
+                    </AppLayout>
+                  </ProtectedRoute>
                 }
-              />
-              <Route
-                path="users"
-                element={
-                  <AdminRoute>
-                    <Users />
-                  </AdminRoute>
-                }
-              />
-              <Route
-                path="user-roles"
-                element={
-                  <AdminRoute>
-                    <UserRoles />
-                  </AdminRoute>
-                }
-              />
-              <Route
-                path="holidays"
-                element={
-                  <AdminRoute>
-                    <HolidayManagement />
-                  </AdminRoute>
-                }
-              />
-              <Route
-                path="user-activity"
-                element={
-                  <AdminRoute>
-                    <UserActivity />
-                  </AdminRoute>
-                }
-              />
-              
-              {/* User Routes */}
-              <Route path="profile" element={<Profile />} />
-              <Route path="settings" element={<Settings />} />
-              
-              {/* 404 - Keep this last */}
-              <Route path="*" element={<NotFound />} />
-            </Route>
-          </Routes>
-        </NotificationProvider>
-      </AuthProvider>
-    </ThemeProvider>
+              >
+                <Route index element={<Dashboard />} />
+                
+                {/* Projects */}
+                <Route path="projects" element={<Projects />} />
+                <Route 
+                  path="projects/:id" 
+                  element={
+                    <ProjectDetails />
+                  } 
+                />
+                <Route 
+                  path="projects/:id/progress" 
+                  element={
+                    <ProjectProgress />
+                  } 
+                />
+                
+                {/* Timesheets */}
+                <Route path="timesheets" element={<Timesheets />} />
+                <Route path="timesheets/create" element={<CreateTimesheet />} />
+                <Route path="timesheets/history" element={<TimesheetHistory />} />
+                <Route path="timesheets/approval" element={<TimesheetApproval />} />
+                
+                {/* Reports */}
+                <Route path="reports/workload" element={<WorkloadReport />} />
+                <Route path="reports/project" element={<ProjectReport />} />
+                <Route 
+                  path="reports/project-cost" 
+                  element={
+                    <ProjectCostReport 
+                      projectId={new URLSearchParams(location.search).get('projectId') || ''} 
+                    />
+                  } 
+                />
+                <Route path="reports/user-activity" element={<UserActivityReport />} />
+                
+                {/* Cost Management */}
+                <Route path="cost/my-requests" element={<MyCostRequests />} />
+                <Route 
+                  path="cost/entry" 
+                  element={
+                    <ProjectCostEntry 
+                      projectId={new URLSearchParams(location.search).get('projectId') || ''} 
+                    />
+                  } 
+                />
+                <Route path="cost/approval" element={<CostApproval />} />
+                
+                {/* Admin Routes */}
+                <Route
+                  path="admin"
+                  element={
+                    <AdminRoute>
+                      <AdminPanel />
+                    </AdminRoute>
+                  }
+                />
+                <Route
+                  path="users"
+                  element={
+                    <AdminRoute>
+                      <Users />
+                    </AdminRoute>
+                  }
+                />
+                <Route
+                  path="user-roles"
+                  element={
+                    <AdminRoute>
+                      <UserRoles />
+                    </AdminRoute>
+                  }
+                />
+                <Route
+                  path="holidays"
+                  element={
+                    <AdminRoute>
+                      <HolidayManagement />
+                    </AdminRoute>
+                  }
+                />
+                <Route
+                  path="user-activity"
+                  element={
+                    <AdminRoute>
+                      <UserActivity />
+                    </AdminRoute>
+                  }
+                />
+                
+                {/* User Routes */}
+                <Route path="profile" element={<Profile />} />
+                <Route path="settings" element={<Settings />} />
+                
+                {/* 404 - Keep this last */}
+                <Route path="*" element={<NotFound />} />
+              </Route>
+            </Routes>
+          </NotificationProvider>
+        </AuthProvider>
+      </ThemeProvider>
+    </ErrorBoundary>
   );
 };
 

@@ -35,7 +35,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { MoreHorizontal, PlusCircle } from 'lucide-react';
+import { MoreHorizontal, PlusCircle, AlertCircle, FolderOpen } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { ProjectForm } from '@/components/ProjectForm';
 import { toast } from 'sonner';
@@ -129,19 +129,6 @@ const Projects = () => {
     },
   });
 
-  const handleSubmit = (data: Omit<Project, 'id'>, id?: string) => {
-    if (id) {
-      updateProjectMutation.mutate({ id, projectData: data });
-    } else {
-      createProjectMutation.mutate(data);
-    }
-  };
-
-  const handleDelete = () => {
-    if (selectedProject) {
-      deleteProjectMutation.mutate(selectedProject.id);
-    }
-  };
 
   // Show loading state
   if (isLoading) {
@@ -165,6 +152,7 @@ const Projects = () => {
     );
   }
 
+
   // Show empty state
   if (!projectsData || projectsData.length === 0) {
     return (
@@ -179,50 +167,9 @@ const Projects = () => {
       </div>
     );
   }
-    queryKey: ['projects'],
-    queryFn: () => projectAPI.getProjects(),
-  });
 
-  const projects = projectsData?.data || [];
+  const projects = projectsData || [];
 
-  const createProjectMutation = useMutation({
-    mutationFn: projectAPI.createProject,
-    onSuccess: () => {
-      toast.success('Project created successfully!');
-      queryClient.invalidateQueries({ queryKey: ['projects'] });
-      setIsDialogOpen(false);
-    },
-    onError: (error) => {
-      toast.error(`Failed to create project: ${error.message}`);
-    },
-  });
-
-  const updateProjectMutation = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: Partial<Project> }) =>
-      projectAPI.updateProject(id, data),
-    onSuccess: () => {
-      toast.success('Project updated successfully!');
-      queryClient.invalidateQueries({ queryKey: ['projects'] });
-      setIsDialogOpen(false);
-      setSelectedProject(null);
-    },
-    onError: (error) => {
-      toast.error(`Failed to update project: ${error.message}`);
-    },
-  });
-
-  const deleteProjectMutation = useMutation({
-    mutationFn: projectAPI.deleteProject,
-    onSuccess: () => {
-      toast.success('Project deleted successfully!');
-      queryClient.invalidateQueries({ queryKey: ['projects'] });
-      setIsDeleteDialogOpen(false);
-      setSelectedProject(null);
-    },
-    onError: (error) => {
-      toast.error(`Failed to delete project: ${error.message}`);
-    },
-  });
 
   const handleAddClick = () => {
     setSelectedProject(null);
@@ -241,7 +188,7 @@ const Projects = () => {
 
   const handleFormSubmit = (values: any) => {
     if (selectedProject) {
-      updateProjectMutation.mutate({ id: selectedProject.id, data: values });
+      updateProjectMutation.mutate({ id: selectedProject.id, projectData: values });
     } else {
       createProjectMutation.mutate(values);
     }
@@ -296,8 +243,8 @@ const Projects = () => {
                     </Badge>
                   </TableCell>
                   <TableCell>{project.manager?.name || 'N/A'}</TableCell>
-                  <TableCell>{new Date(project.startDate).toLocaleDateString()}</TableCell>
-                  <TableCell>{new Date(project.endDate).toLocaleDateString()}</TableCell>
+                  <TableCell>{project.startDate ? new Date(project.startDate).toLocaleDateString() : '-'}</TableCell>
+                  <TableCell>{project.endDate ? new Date(project.endDate).toLocaleDateString() : '-'}</TableCell>
                   <TableCell className="text-right">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>

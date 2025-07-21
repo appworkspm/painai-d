@@ -1,3 +1,22 @@
+// Holidays API
+export const holidaysAPI = {
+  async getHolidays() {
+    const res = await api.get('/api/holidays');
+    return res.data;
+  },
+  async createHoliday(data: any) {
+    const res = await api.post('/api/holidays', data);
+    return res.data;
+  },
+  async updateHoliday(id: string, data: any) {
+    const res = await api.put(`/api/holidays/${id}`, data);
+    return res.data;
+  },
+  async deleteHoliday(id: string) {
+    const res = await api.delete(`/api/holidays/${id}`);
+    return res.data;
+  },
+};
 import axios from 'axios';
 import { 
   ApiResponse, 

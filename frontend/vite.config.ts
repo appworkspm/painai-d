@@ -2,22 +2,18 @@ import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 import { visualizer } from 'rollup-plugin-visualizer';
-import { createProxyMiddleware } from 'http-proxy-middleware';
 import path from 'path';
 
-// https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
-  // Load env file based on `mode` in the current directory.
+  // Load environment variables
   const env = loadEnv(mode, process.cwd(), '');
-  
+
   return {
-    define: {
-      __APP_NAME__: JSON.stringify(env.VITE_APP_NAME || 'Painai'),
-      __APP_DESCRIPTION__: JSON.stringify(env.VITE_APP_DESCRIPTION || 'Painai Timesheet Management System'),
-      __THEME_COLOR__: JSON.stringify(env.VITE_THEME_COLOR || '#2563eb'),
-    },
     plugins: [
+      // Basic React plugin
       react(),
+      
+      // PWA configuration (can be disabled if not needed)
       VitePWA({
         registerType: 'autoUpdate',
         includeAssets: ['favicon.ico', 'robots.txt', 'apple-touch-icon.png'],
@@ -39,75 +35,60 @@ export default defineConfig(({ mode }) => {
             },
           ],
         },
+        workbox: {
+          maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // 5MB
+        },
       }),
+      
+      // Bundle analyzer (only in analyze mode)
       mode === 'analyze' && visualizer({
         open: true,
-        filename: 'bundle-analyzer-report.html',
+        filename: './dist/stats.html',
       }),
     ].filter(Boolean),
     
-    resolve: {
-      alias: {
-        '@': path.resolve(__dirname, './src'),
-      },
+    // Environment variables available in the client
+    define: {
+      __APP_NAME__: JSON.stringify(env.VITE_APP_NAME || 'Painai'),
+      __APP_DESCRIPTION__: JSON.stringify(env.VITE_APP_DESCRIPTION || 'Painai Timesheet Management System'),
+      __THEME_COLOR__: JSON.stringify(env.VITE_THEME_COLOR || '#2563eb'),
     },
     
-    // Production build settings
-    build: {
-      sourcemap: mode !== 'production',
-      minify: 'esbuild',
-      target: 'esnext',
-      chunkSizeWarningLimit: 1000,
-      rollupOptions: {
-        output: {
-          manualChunks: {
-            vendor: ['react', 'react-dom', 'react-router-dom'],
-            ui: ['@radix-ui/react-dialog', '@radix-ui/react-dropdown-menu'],
-            utils: ['date-fns', 'lodash', 'zod'],
-          },
-        },
-      },
-    },
-    
-    // Development server settings
+    // Development server configuration
     server: {
       port: 3000,
       strictPort: true,
-      proxy: {
-        '/api': {
-          target: env.VITE_API_URL || 'http://localhost:8000',
-          changeOrigin: true,
-          secure: false,
-          rewrite: (path) => path.replace(/^\/api/, ''),
-        },
-      },
-      headers: {
-        'Content-Security-Policy': env.VITE_CSP_HEADER || "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https:;",
-        'X-Content-Type-Options': 'nosniff',
-        'X-Frame-Options': 'DENY',
-        'X-XSS-Protection': '1; mode=block',
-        'Referrer-Policy': 'strict-origin-when-cross-origin',
-        'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
-      },
+      host: true,
+      origin: 'http://localhost:3000',
     },
     
-    // Preview server settings (for production build preview)
+    // Preview server configuration
     preview: {
       port: 3000,
       strictPort: true,
-      headers: {
-        'Content-Security-Policy': env.VITE_CSP_HEADER || "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https:;",
-        'X-Content-Type-Options': 'nosniff',
-        'X-Frame-Options': 'DENY',
-        'X-XSS-Protection': '1; mode=block',
-      },
     },
     
-    // Global CSS configuration
+    // Build configuration
+    build: {
+      outDir: 'dist',
+      sourcemap: mode !== 'production',
+      minify: mode === 'production' ? 'esbuild' : false,
+      cssMinify: mode === 'production',
+      target: 'esnext',
+    },
+    
+    // CSS configuration
     css: {
       devSourcemap: true,
       modules: {
         localsConvention: 'camelCaseOnly',
+      },
+    },
+    
+    // Resolve configuration
+    resolve: {
+      alias: {
+        '@': path.resolve(__dirname, './src'),
       },
     },
   };

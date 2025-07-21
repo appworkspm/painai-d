@@ -22,7 +22,7 @@ export const UserRole = {
 export interface Project {
   id: string;
   name: string;
-  description?: string;
+  description: string; // always string, default ''
   status: string; // 'ACTIVE' | 'COMPLETED' | 'ON_HOLD' | 'CANCELLED'
   managerId: string;
   jobCode?: string;
