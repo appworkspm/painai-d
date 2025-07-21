@@ -1,6 +1,5 @@
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
-import { createHtmlPlugin } from 'vite-plugin-html';
 import { VitePWA } from 'vite-plugin-pwa';
 import { visualizer } from 'rollup-plugin-visualizer';
 import { createProxyMiddleware } from 'http-proxy-middleware';
@@ -12,18 +11,13 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
   
   return {
+    define: {
+      __APP_NAME__: JSON.stringify(env.VITE_APP_NAME || 'Painai'),
+      __APP_DESCRIPTION__: JSON.stringify(env.VITE_APP_DESCRIPTION || 'Painai Timesheet Management System'),
+      __THEME_COLOR__: JSON.stringify(env.VITE_THEME_COLOR || '#2563eb'),
+    },
     plugins: [
       react(),
-      createHtmlPlugin({
-        minify: true,
-        inject: {
-          data: {
-            title: env.VITE_APP_NAME || 'Painai',
-            description: env.VITE_APP_DESCRIPTION || 'Painai Timesheet Management System',
-            themeColor: env.VITE_THEME_COLOR || '#2563eb',
-          },
-        },
-      }),
       VitePWA({
         registerType: 'autoUpdate',
         includeAssets: ['favicon.ico', 'robots.txt', 'apple-touch-icon.png'],
