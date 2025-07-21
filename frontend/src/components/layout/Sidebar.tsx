@@ -3,40 +3,31 @@
 import { useAuth } from '@/contexts/AuthContext';
 import { NavLink, useLocation } from 'react-router-dom';
 import { 
-  Home, 
   Briefcase, 
   Clock, 
-  Users, 
-  Settings, 
   DollarSign, 
   FileText, 
-  PieChart, 
   ListChecks, 
   BarChart2,
-  UserCog,
-  Calendar,
   Activity,
   LayoutDashboard,
   FileCheck,
   ClipboardList,
   UserCheck,
   ShieldCheck,
-  CalendarCheck,
-  UserPlus,
-  Key,
   BarChart3,
   FileBarChart2,
   DollarSign as DollarSignIcon,
   User as UserIcon,
   ClipboardCheck,
   Users as UsersIcon,
+  CheckCircle2,
+  Settings as SettingsIcon,
+  UserCog,
   Calendar as CalendarIcon,
-  Lock,
-  UserCog as UserCogIcon,
-  BarChart as BarChartIcon,
-  FileText as FileTextIcon,
-  CheckCircle2
+  FileText as FileTextIcon
 } from 'lucide-react';
+import React from 'react';
 import { cn } from '@/lib/utils';
 import { useState } from 'react';
 
@@ -188,7 +179,7 @@ const Sidebar = () => {
         {/* Cost Management Section */}
         <Section title="Cost Management" icon={DollarSign} sectionKey="costManagement">
           <NavItem to="/cost/my-requests" icon={ListChecks} label="My Requests" />
-          <NavItem to="/cost/entry" icon={FileText} label="New Cost Entry" />
+          <NavItem to="/cost/entry" icon={FileText} label="Cost Request" />
           <NavItem to="/cost/approval" icon={CheckCircle2} label="Approve Costs" />
           <NavItem to="/cost/reports" icon={BarChart3} label="Cost Reports" />
         </Section>
@@ -198,7 +189,7 @@ const Sidebar = () => {
           <Section title="Administration" icon={ShieldCheck} sectionKey="admin">
             <NavItem to="/admin" icon={LayoutDashboard} label="Admin Dashboard" />
             <NavItem to="/users" icon={UsersIcon} label="User Management" />
-            <NavItem to="/user-roles" icon={UserCogIcon} label="User Roles" />
+            <NavItem to="/user-roles" icon={UserCog} label="User Roles" />
             <NavItem to="/holidays" icon={CalendarIcon} label="Holiday Calendar" />
             <NavItem to="/user-activity" icon={Activity} label="User Activity" />
             <NavItem to="/system-logs" icon={FileTextIcon} label="System Logs" />
@@ -208,31 +199,65 @@ const Sidebar = () => {
         {/* User Section */}
         <div className="pt-4 mt-4 border-t border-gray-200 dark:border-gray-700">
           <NavItem to="/profile" icon={UserIcon} label="My Profile" />
-          <NavItem to="/settings" icon={Settings} label="Settings" />
+          <NavItem to="/settings" icon={SettingsIcon} label="Settings" />
         </div>
       </nav>
     </aside>
   );
 };
 
-export default Sidebar;
+  return (
+    <aside className="hidden md:flex md:flex-col md:w-64 bg-white dark:bg-gray-800 border-r dark:border-gray-700">
+      <div className="h-16 flex items-center justify-center border-b dark:border-gray-700">
+        <h1 className="text-2xl font-bold text-primary">Painai</h1>
+      </div>
+      <nav className="flex-1 px-2 py-4 space-y-2 overflow-y-auto">
+        {/* Dashboard */}
+        <NavItem to="/" icon={LayoutDashboard} label="Dashboard" exact />
+
+        {/* Projects Section */}
+        <Section title="Projects" icon={Briefcase} sectionKey="projects">
+          <NavItem to="/projects" icon={ClipboardList} label="All Projects" />
+          <NavItem to="/projects/new" icon={FileCheck} label="New Project" />
+          <NavItem to="/projects/active" icon={Activity} label="Active Projects" />
+          <NavItem to="/projects/completed" icon={CheckCircle2} label="Completed" />
+        </Section>
+
+        {/* Timesheets Section */}
+        <Section title="Timesheets" icon={Clock} sectionKey="timesheets">
+          <NavItem to="/timesheets" icon={FileText} label="My Timesheets" />
+          <NavItem to="/timesheets/create" icon={FileText} label="New Timesheet" />
+          <NavItem to="/timesheets/approval" icon={UserCheck} label="Approval Queue" />
+          <NavItem to="/timesheets/history" icon={ClipboardCheck} label="History" />
+        </Section>
+
+        {/* Reports Section */}
+        <Section title="Reports" icon={BarChart2} sectionKey="reports">
+          <NavItem to="/reports/workload" icon={Activity} label="Workload Report" />
+          <NavItem to="/reports/project" icon={FileBarChart2} label="Project Report" />
+          <NavItem to="/reports/project-cost" icon={DollarSignIcon} label="Project Cost" />
+          <NavItem to="/reports/user-activity" icon={UserIcon} label="User Activity" />
+        </Section>
+
+        {/* Cost Management Section */}
+        <Section title="Cost Management" icon={DollarSign} sectionKey="costManagement">
+          <NavItem to="/cost/my-requests" icon={ListChecks} label="My Requests" />
+          <NavItem to="/cost/entry" icon={FileText} label="Cost Request" />
+          <NavItem to="/cost/approval" icon={CheckCircle2} label="Approve Costs" />
+          <NavItem to="/cost/reports" icon={BarChart3} label="Cost Reports" />
+          
           {user?.role === 'VP' && (
-            <NavLink
-              to="/cost-approval"
-              className={({ isActive }) =>
-                cn(
-                  'flex items-center px-4 py-2 text-sm font-medium rounded-lg transition-colors',
-                  isActive
-                    ? 'bg-primary/10 text-primary dark:bg-primary/20'
-                    : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                )
-              }
-            >
-              <CheckCircle2 className="mr-3 h-5 w-5" />
-              Cost Approval
-            </NavLink>
+            <NavItem to="/cost-approval" icon={CheckCircle2} label="Cost Approval" />
           )}
-        </div>
+        </Section>
+
+        {/* Admin Section */}
+        {isAdmin && (
+          <Section title="Administration" icon={ShieldCheck} sectionKey="admin">
+            <NavItem to="/admin" icon={LayoutDashboard} label="Admin Dashboard" />
+            <NavItem to="/users" icon={UsersIcon} label="User Management" />
+          </Section>
+        )}
       </nav>
     </aside>
   );
