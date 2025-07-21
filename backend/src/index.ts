@@ -21,6 +21,7 @@ import projectProgressRoutes from './routes/projectProgress';
 import costRequestRoutes from './routes/costRequests';
 import projectCostRoutes from './routes/projectCosts';
 import dashboardRoutes from './routes/dashboard';
+import activityLogsRoutes from './routes/activityLogs';
 
 // Load environment variables
 dotenv.config();
@@ -74,6 +75,7 @@ app.use('/api/project-progress', projectProgressRoutes);
 app.use('/api/cost-requests', costRequestRoutes);
 app.use('/api/project-costs', projectCostRoutes);
 app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/activity-logs', activityLogsRoutes);
 
 // API documentation
 app.get('/api', (req, res) => {
@@ -90,7 +92,8 @@ app.get('/api', (req, res) => {
       projectProgress: '/api/project-progress',
       costRequests: '/api/cost-requests',
       projectCosts: '/api/project-costs',
-      dashboard: '/api/dashboard'
+      dashboard: '/api/dashboard',
+      activityLogs: '/api/activity-logs'
     }
   });
 });
