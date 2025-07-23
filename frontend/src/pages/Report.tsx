@@ -1,141 +1,894 @@
-import React, { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { timesheetAPI } from '../services/api';
-import { Download } from 'lucide-react';
-import { getMonth, getYear, startOfMonth, endOfMonth, format } from 'date-fns';
+import React, { useState, useEffect } from 'react';
+import { useAuth } from '../contexts/AuthContext';
+import { useNotification } from '../contexts/NotificationContext';
+import { 
+  Clock, 
+  BarChart3, 
+  TrendingUp, 
+  Download, 
+  Filter, 
+  Calendar, 
+  Users, 
+  Target, 
+  Activity, 
+  Eye, 
+  EyeOff, 
+  RefreshCw,
+  Download as DownloadIcon,
+  Share2,
+  Copy,
+  Check,
+  ArrowUpRight,
+  ArrowDownRight,
+  Minus,
+  FileText,
+  Award,
+  Percent,
+  Zap
+} from 'lucide-react';
+import { reportAPI, timesheetAPI, projectAPI, userAPI } from '../services/api';
 import { useTranslation } from 'react-i18next';
+import { format, parseISO, startOfDay, endOfDay, subDays, startOfMonth, endOfMonth } from 'date-fns';
+import { th } from 'date-fns/locale';
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
+import { Button } from '../components/ui/Button';
+import { Badge } from '../components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
+import { ReportCard } from '../components/ui/ReportCard';
+import { ReportFilters } from '../components/ui/ReportFilters';
+import { ReportExport } from '../components/ui/ReportExport';
+import { EnhancedTable } from '../components/ui/EnhancedTable';
+import {
+  BarChart as RechartsBarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+  LineChart as RechartsLineChart,
+  Line,
+  Area,
+  AreaChart,
+  ComposedChart,
+  Legend
+} from 'recharts';
 
-const getMonthOptions = () => Array.from({ length: 12 }, (_, i) => i);
-const getYearOptions = () => {
-  const now = new Date();
-  return [getYear(now) - 1, getYear(now), getYear(now) + 1];
-};
+const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#06B6D4', '#84CC16', '#F97316'];
 
-const csvHeaders = [
-  'Project',
-  'Work Type',
-  'Activity',
-  'Employee',
-  'Role',
-  'Hours',
-];
-
-function toCSV(rows: any[]) {
-  const escape = (v: any) => `"${String(v ?? '').replace(/"/g, '""')}"`;
-  return [
-    csvHeaders.join(','),
-    ...rows.map(row => csvHeaders.map(h => escape(row[h])).join(',')),
-  ].join('\r\n');
+interface WorkloadReportData {
+  totalHours: number;
+  totalUsers: number;
+  totalProjects: number;
+  activeUsers: number;
+  activeProjects: number;
+  averageHoursPerUser: number;
+  averageHoursPerProject: number;
+  totalTimesheets: number;
+  approvedTimesheets: number;
+  pendingTimesheets: number;
+  rejectedTimesheets: number;
+  users: Array<{
+    id: string;
+    name: string;
+    email: string;
+    role: string;
+    position: string;
+    hours: number;
+    projects: number;
+    timesheetCount: number;
+    averageHours: number;
+    efficiency: number;
+  }>;
+  projects: Array<{
+    id: string;
+    name: string;
+    status: string;
+    budget: number;
+    customer: string;
+    hours: number;
+    users: number;
+    timesheetCount: number;
+  }>;
+  workTypes: Array<{
+    name: string;
+    hours: number;
+    percentage: number;
+    count: number;
+  }>;
+  topUsers: Array<{
+    id: string;
+    name: string;
+    email: string;
+    role: string;
+    position: string;
+    hours: number;
+    projects: number;
+    timesheetCount: number;
+    averageHours: number;
+    efficiency: number;
+  }>;
+  topProjects: Array<{
+    id: string;
+    name: string;
+    status: string;
+    budget: number;
+    customer: string;
+    hours: number;
+    users: number;
+    timesheetCount: number;
+  }>;
+  trends?: {
+    hours?: { value: number; isPositive: boolean };
+    users?: { value: number; isPositive: boolean };
+    projects?: { value: number; isPositive: boolean };
+  };
+  workloadDistribution: Array<{
+    user: string;
+    hours: number;
+    projects: number;
+    efficiency: number;
+  }>;
+  efficiencyTrend: Array<{
+    date: string;
+    averageEfficiency: number;
+    totalHours: number;
+    activeUsers: number;
+  }>;
 }
 
 const WorkloadReport: React.FC = () => {
-  const now = new Date();
-  const [selectedMonth, setSelectedMonth] = useState(getMonth(now));
-  const [selectedYear, setSelectedYear] = useState(getYear(now));
-  const [selectedUser, setSelectedUser] = useState('');
+  const { user } = useAuth();
+  const { showNotification } = useNotification();
   const { t } = useTranslation();
-
-  const monthStart = startOfMonth(new Date(selectedYear, selectedMonth));
-  const monthEnd = endOfMonth(monthStart);
-
-  const { data, isLoading } = useQuery({
-    queryKey: ['timesheets', 'all', monthStart],
-    queryFn: () => timesheetAPI.getTimesheets({
-      start: monthStart.toISOString(),
-      end: monthEnd.toISOString(),
-      limit: 1000,
-    })
+  const [reportData, setReportData] = useState<WorkloadReportData | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
+  const [showCharts, setShowCharts] = useState(true);
+  const [activeTab, setActiveTab] = useState('summary');
+  const [exporting, setExporting] = useState(false);
+  
+  // Default filters - 30 days from today
+  const today = new Date();
+  const thirtyDaysAgo = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
+  
+  const [filters, setFilters] = useState({
+    dateRange: { 
+      start: thirtyDaysAgo, 
+      end: today 
+    },
+    user: 'all',
+    project: 'all',
+    workType: 'all',
+    department: 'all'
   });
-  const timesheets = data?.data?.data || [];
 
-  // Get all users for filter
-  const allUsers = Array.from(new Map(timesheets.map((t: any) => [t.user?.id, t.user])).values()).filter(Boolean);
+  // Fetch options for filters
+  const [filterOptions, setFilterOptions] = useState({
+    users: [],
+    projects: [],
+    workTypes: [],
+    departments: []
+  });
 
-  // Filter by user
-  const filteredTimesheets = selectedUser ? timesheets.filter((t: any) => t.user?.id === selectedUser) : timesheets;
+  useEffect(() => {
+    loadFilterOptions();
+  }, []);
 
-  // Map timesheet data to CSV structure
-  const csvRows = filteredTimesheets.map((t: any) => ({
-    'Project': t.work_type === 'LEAVE' ? t('report.leave') : (t.project?.name || t('report.no_project')),
-    'Work Type': t.work_type === 'LEAVE' ? t('report.leave') : (t.work_type === 'PROJECT' ? t('report.project') : t('report.non_project')),
-    'Activity': t.description || '',
-    'Employee': t.user?.name || '',
-    'Role': t.user?.role || '',
-    'Hours': t.duration ? Math.round((t.duration / 60) * 10) / 10 : '',
-  }));
+  useEffect(() => {
+    loadWorkloadReport();
+  }, [filters]);
 
-  const handleExport = () => {
-    const csv = toCSV(csvRows);
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'workload_report.csv';
-    a.click();
-    URL.revokeObjectURL(url);
+  const loadFilterOptions = async () => {
+    try {
+      const [usersRes, projectsRes] = await Promise.all([
+        userAPI.getUsers(),
+        projectAPI.getProjects()
+      ]);
+
+      setFilterOptions({
+        users: usersRes.data?.data?.map((u: any) => ({
+          value: u.id,
+          label: u.name
+        })) || [],
+        projects: projectsRes.data?.data?.map((p: any) => ({
+          value: p.id,
+          label: p.name
+        })) || [],
+        workTypes: [
+          { value: 'DEVELOPMENT', label: 'การพัฒนา' },
+          { value: 'TESTING', label: 'การทดสอบ' },
+          { value: 'DESIGN', label: 'การออกแบบ' },
+          { value: 'MEETING', label: 'การประชุม' },
+          { value: 'DOCUMENTATION', label: 'เอกสาร' },
+          { value: 'OTHER', label: 'อื่นๆ' }
+        ],
+        departments: [
+          { value: 'DEVELOPMENT', label: 'แผนกพัฒนา' },
+          { value: 'DESIGN', label: 'แผนกออกแบบ' },
+          { value: 'TESTING', label: 'แผนกทดสอบ' },
+          { value: 'MANAGEMENT', label: 'แผนกบริหาร' }
+        ]
+      });
+    } catch (error) {
+      console.error('Error loading filter options:', error);
+      showNotification('error', 'ไม่สามารถโหลดตัวเลือกตัวกรองได้');
+    }
   };
+
+  const loadWorkloadReport = async () => {
+    setLoading(true);
+    try {
+      const params = {
+        startDate: filters.dateRange.start ? format(filters.dateRange.start, 'yyyy-MM-dd') : undefined,
+        endDate: filters.dateRange.end ? format(filters.dateRange.end, 'yyyy-MM-dd') : undefined,
+        userId: filters.user !== 'all' ? filters.user : undefined,
+        projectId: filters.project !== 'all' ? filters.project : undefined,
+        workType: filters.workType !== 'all' ? filters.workType : undefined,
+        department: filters.department !== 'all' ? filters.department : undefined
+      };
+
+      const response = await reportAPI.getWorkloadReport(params);
+      setReportData(response.data);
+    } catch (error) {
+      console.error('Error loading workload report:', error);
+      showNotification('error', 'ไม่สามารถโหลดรายงานได้');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleFilterChange = (key: string, value: any) => {
+    setFilters(prev => ({ ...prev, [key]: value }));
+  };
+
+  const resetFilters = () => {
+    const today = new Date();
+    const thirtyDaysAgo = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
+    
+    setFilters({
+      dateRange: { start: thirtyDaysAgo, end: today },
+      user: 'all',
+      project: 'all',
+      workType: 'all',
+      department: 'all'
+    });
+  };
+
+  const handleExport = async (format: 'csv' | 'excel' | 'pdf' | 'print' | 'share' | 'copy') => {
+    setExporting(true);
+    try {
+      const params = {
+        startDate: filters.dateRange.start ? format(filters.dateRange.start, 'yyyy-MM-dd') : undefined,
+        endDate: filters.dateRange.end ? format(filters.dateRange.end, 'yyyy-MM-dd') : undefined,
+        userId: filters.user !== 'all' ? filters.user : undefined,
+        projectId: filters.project !== 'all' ? filters.project : undefined,
+        workType: filters.workType !== 'all' ? filters.workType : undefined,
+        department: filters.department !== 'all' ? filters.department : undefined
+      };
+
+      switch (format) {
+        case 'csv':
+          await reportAPI.exportWorkloadCSV(params);
+          break;
+        case 'excel':
+          // TODO: Implement Excel export
+          showNotification('info', 'การส่งออก Excel กำลังพัฒนา');
+          break;
+        case 'pdf':
+          // TODO: Implement PDF export
+          showNotification('info', 'การส่งออก PDF กำลังพัฒนา');
+          break;
+        case 'print':
+          window.print();
+          break;
+        case 'share':
+          // TODO: Implement share functionality
+          showNotification('info', 'ฟีเจอร์แชร์กำลังพัฒนา');
+          break;
+        case 'copy':
+          // Copy report summary to clipboard
+          const summary = `รายงานภาระงาน\nช่วงวันที่: ${filters.dateRange.start ? format(filters.dateRange.start, 'dd/MM/yyyy') : ''} - ${filters.dateRange.end ? format(filters.dateRange.end, 'dd/MM/yyyy') : ''}\nชั่วโมงรวม: ${formatHours(reportData?.totalHours || 0)}\nผู้ใช้ที่ใช้งาน: ${reportData?.activeUsers || 0}`;
+          navigator.clipboard.writeText(summary);
+          showNotification('success', 'คัดลอกข้อมูลแล้ว');
+          break;
+      }
+    } catch (error) {
+      console.error('Export error:', error);
+      showNotification('error', 'ไม่สามารถส่งออกรายงานได้');
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const formatNumber = (num: number) => {
+    return new Intl.NumberFormat('th-TH').format(num);
+  };
+
+  const formatHours = (hours: number) => {
+    const wholeHours = Math.floor(hours);
+    const minutes = Math.round((hours - wholeHours) * 60);
+    return `${wholeHours}h ${minutes}m`;
+  };
+
+  const formatPercentage = (value: number, total: number) => {
+    if (total === 0) return '0%';
+    return `${((value / total) * 100).toFixed(1)}%`;
+  };
+
+  const getTrendIcon = (trend?: { value: number; isPositive: boolean }) => {
+    if (!trend) return <Minus className="h-4 w-4" />;
+    return trend.isPositive ? 
+      <ArrowUpRight className="h-4 w-4" /> : 
+      <ArrowDownRight className="h-4 w-4" />;
+  };
+
+  const getEfficiencyColor = (efficiency: number) => {
+    if (efficiency >= 80) return 'text-green-600 dark:text-green-400';
+    if (efficiency >= 60) return 'text-blue-600 dark:text-blue-400';
+    if (efficiency >= 40) return 'text-yellow-600 dark:text-yellow-400';
+    return 'text-red-600 dark:text-red-400';
+  };
+
+  const tableColumns = [
+    {
+      key: 'name',
+      label: 'ผู้ใช้',
+      sortable: true,
+      render: (value: string, row: any) => (
+        <div>
+          <div className="font-medium">{row.name}</div>
+          <div className="text-sm text-gray-500">{row.email}</div>
+        </div>
+      )
+    },
+    {
+      key: 'role',
+      label: 'ตำแหน่ง',
+      sortable: true,
+      render: (value: string, row: any) => (
+        <div>
+          <div className="font-medium">{row.position}</div>
+          <div className="text-sm text-gray-500">{row.role}</div>
+        </div>
+      )
+    },
+    {
+      key: 'hours',
+      label: 'ชั่วโมง',
+      sortable: true,
+      align: 'right' as const,
+      render: (value: number, row: any) => (
+        <div className="text-right">
+          <div className="font-medium">{formatHours(value)}</div>
+          <div className="text-sm text-gray-500">เฉลี่ย {formatHours(row.averageHours)}</div>
+        </div>
+      )
+    },
+    {
+      key: 'projects',
+      label: 'โครงการ',
+      sortable: true,
+      align: 'center' as const,
+      render: (value: number) => (
+        <div className="text-center">
+          <Target className="h-4 w-4 mx-auto mb-1" />
+          <span className="text-sm">{value}</span>
+        </div>
+      )
+    },
+    {
+      key: 'timesheetCount',
+      label: 'Timesheet',
+      sortable: true,
+      align: 'center' as const,
+      render: (value: number) => (
+        <div className="text-center">
+          <FileText className="h-4 w-4 mx-auto mb-1" />
+          <span className="text-sm">{value}</span>
+        </div>
+      )
+    },
+    {
+      key: 'efficiency',
+      label: 'ประสิทธิภาพ',
+      sortable: true,
+      align: 'right' as const,
+      render: (value: number) => (
+        <div className="text-right">
+          <div className={`font-medium ${getEfficiencyColor(value)}`}>
+            {value.toFixed(1)}%
+          </div>
+          <div className="w-16 bg-gray-200 dark:bg-gray-700 rounded-full h-2 mt-1">
+            <div 
+              className="bg-blue-600 h-2 rounded-full" 
+              style={{ width: `${value}%` }}
+            />
+          </div>
+        </div>
+      )
+    }
+  ];
+
+  if (!reportData && !loading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">รายงานภาระงาน</h1>
+            <p className="text-gray-600 dark:text-gray-400 mt-2">วิเคราะห์และติดตามภาระงานของทีม</p>
+          </div>
+        </div>
+        <Card>
+          <CardContent className="flex items-center justify-center py-16">
+            <div className="text-center">
+              <Activity className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-xl font-medium text-gray-900 dark:text-gray-100 mb-2">ไม่มีข้อมูล</h3>
+              <p className="text-gray-500 dark:text-gray-400 mb-4">ไม่พบข้อมูลรายงานในช่วงเวลาที่เลือก</p>
+              <Button onClick={resetFilters}>
+                <RefreshCw className="h-4 w-4 mr-2" />
+                รีเซ็ตตัวกรอง
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <h1 className="text-2xl font-bold text-gray-900">{t('report.title', { month: format(monthStart, 'MMMM yyyy') })}</h1>
-        <button onClick={handleExport} className="btn btn-primary flex items-center">
-          <Download className="h-4 w-4 mr-2" />
-          {t('report.export_csv')}
-        </button>
-      </div>
-      <div className="flex flex-wrap gap-4 mb-4">
-        <select className="input" value={selectedUser} onChange={e => setSelectedUser(e.target.value)}>
-          <option value="">{t('report.all_users')}</option>
-          {allUsers.map((u: any) => (
-            <option key={u.id} value={u.id}>{u.name} ({u.email})</option>
-          ))}
-        </select>
-        <select className="input" value={selectedMonth} onChange={e => setSelectedMonth(Number(e.target.value))}>
-          {getMonthOptions().map(m => (
-            <option key={m} value={m}>{t('report.month', { month: format(new Date(2000, m), 'MMMM') })}</option>
-          ))}
-        </select>
-        <select className="input" value={selectedYear} onChange={e => setSelectedYear(Number(e.target.value))}>
-          {getYearOptions().map(y => (
-            <option key={y} value={y}>{y}</option>
-          ))}
-        </select>
-      </div>
-      <div className="card">
-        <div className="card-body overflow-x-auto">
-          {isLoading ? (
-            <div className="flex justify-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
-            </div>
-          ) : (
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  {csvHeaders.map((h) => (
-                    <th key={h} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t(`report.table.${h.replace(/ /g, '_').toLowerCase()}`)}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {csvRows.map((row, i) => {
-                  // Type assertion to ensure type safety
-                  const typedRow = row as Record<string, string | number>;
-                  return (
-                    <tr key={i}>
-                      {csvHeaders.map((h) => (
-                        <td key={h} className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {typedRow[h]}
-                        </td>
-                      ))}
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          )}
+      {/* Header */}
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">รายงานภาระงาน</h1>
+          <p className="text-gray-600 dark:text-gray-400 mt-2">
+            ข้อมูลระหว่าง {filters.dateRange.start ? format(filters.dateRange.start, 'dd/MM/yyyy', { locale: th }) : ''} - {filters.dateRange.end ? format(filters.dateRange.end, 'dd/MM/yyyy', { locale: th }) : ''}
+          </p>
+        </div>
+        <div className="flex items-center gap-2 flex-wrap">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowCharts(!showCharts)}
+            className="flex items-center gap-2"
+          >
+            {showCharts ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            {showCharts ? 'ซ่อนกราฟ' : 'แสดงกราฟ'}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowFilters(!showFilters)}
+            className="flex items-center gap-2"
+          >
+            <Filter className="h-4 w-4" />
+            ตัวกรอง
+          </Button>
+          <ReportExport
+            onExport={handleExport}
+            loading={loading || exporting}
+            disabled={!reportData}
+            fileName={`workload-report-${format(new Date(), 'yyyy-MM-dd')}`}
+          />
         </div>
       </div>
+
+      {/* Filters */}
+      {showFilters && (
+        <ReportFilters
+          filters={filters}
+          onFilterChange={handleFilterChange}
+          onReset={resetFilters}
+          options={filterOptions}
+          showDateRange={true}
+          showUser={true}
+          showProject={true}
+          showWorkType={true}
+          showCategory={false}
+          variant="expanded"
+        />
+      )}
+
+      {loading ? (
+        <Card>
+          <CardContent className="flex items-center justify-center py-16">
+            <div className="flex items-center gap-3">
+              <RefreshCw className="h-6 w-6 animate-spin text-blue-600" />
+              <span className="text-gray-600 dark:text-gray-400">กำลังโหลดข้อมูล...</span>
+            </div>
+          </CardContent>
+        </Card>
+      ) : reportData ? (
+        <>
+          {/* Summary Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <ReportCard
+              title="ชั่วโมงรวม"
+              value={formatHours(reportData.totalHours)}
+              subtitle={`เฉลี่ย ${formatHours(reportData.averageHoursPerUser)}/คน`}
+              icon={<Clock className="h-5 w-5" />}
+              trend={reportData.trends?.hours}
+              status="success"
+              size="lg"
+            />
+            <ReportCard
+              title="ผู้ใช้ที่ใช้งาน"
+              value={formatNumber(reportData.activeUsers)}
+              subtitle={`${formatPercentage(reportData.activeUsers, reportData.totalUsers)} ของทั้งหมด`}
+              icon={<Users className="h-5 w-5" />}
+              trend={reportData.trends?.users}
+              status="info"
+              size="lg"
+            />
+            <ReportCard
+              title="โครงการที่ใช้งาน"
+              value={formatNumber(reportData.activeProjects)}
+              subtitle={`เฉลี่ย ${formatHours(reportData.averageHoursPerProject)}/โครงการ`}
+              icon={<Target className="h-5 w-5" />}
+              trend={reportData.trends?.projects}
+              status="warning"
+              size="lg"
+            />
+            <ReportCard
+              title="ประสิทธิภาพเฉลี่ย"
+              value={reportData.users.length > 0 ? `${(reportData.users.reduce((sum, u) => sum + u.efficiency, 0) / reportData.users.length).toFixed(1)}%` : '0%'}
+              subtitle={`${reportData.totalTimesheets} Timesheet`}
+              icon={<Zap className="h-5 w-5" />}
+              status="neutral"
+              size="lg"
+            />
+          </div>
+
+          {/* Tabs */}
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+            <TabsList className="grid w-full grid-cols-4">
+              <TabsTrigger value="summary" className="flex items-center gap-2">
+                <BarChart3 className="h-4 w-4" />
+                สรุป
+              </TabsTrigger>
+              <TabsTrigger value="charts" className="flex items-center gap-2">
+                <BarChart3 className="h-4 w-4" />
+                กราฟ
+              </TabsTrigger>
+              <TabsTrigger value="details" className="flex items-center gap-2">
+                <Users className="h-4 w-4" />
+                รายละเอียด
+              </TabsTrigger>
+              <TabsTrigger value="analysis" className="flex items-center gap-2">
+                <TrendingUp className="h-4 w-4" />
+                วิเคราะห์
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="summary" className="space-y-6">
+              {/* Top Users */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Award className="h-5 w-5" />
+                    ผู้ใช้ที่มีภาระงานสูงสุด
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {reportData.topUsers.slice(0, 5).map((user, index) => (
+                      <div key={user.id} className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border">
+                        <div className="flex items-center gap-4">
+                          <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center">
+                            <span className="text-sm font-medium text-blue-600 dark:text-blue-400">{index + 1}</span>
+                          </div>
+                          <div>
+                            <p className="font-medium text-gray-900 dark:text-gray-100">{user.name}</p>
+                            <p className="text-sm text-gray-500 dark:text-gray-400">{user.position}</p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-medium text-gray-900 dark:text-gray-100">{formatHours(user.hours)}</p>
+                          <p className="text-sm text-gray-500 dark:text-gray-400">{user.projects} โครงการ</p>
+                          <p className="text-xs text-blue-600 dark:text-blue-400">ประสิทธิภาพ {user.efficiency.toFixed(1)}%</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Work Type Distribution */}
+              {reportData.workTypes && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Activity className="h-5 w-5" />
+                      การกระจายตามประเภทงาน
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {reportData.workTypes.map((workType, index) => (
+                        <div key={workType.name} className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border">
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 bg-purple-100 dark:bg-purple-900/30 rounded-full flex items-center justify-center">
+                              <span className="text-sm font-medium text-purple-600 dark:text-purple-400">{index + 1}</span>
+                            </div>
+                            <div>
+                              <p className="font-medium text-gray-900 dark:text-gray-100">{workType.name}</p>
+                              <p className="text-sm text-gray-500 dark:text-gray-400">{workType.count} รายการ</p>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <p className="font-medium text-gray-900 dark:text-gray-100">{formatHours(workType.hours)}</p>
+                            <p className="text-sm text-gray-500 dark:text-gray-400">{workType.percentage.toFixed(1)}%</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Top Projects */}
+              {reportData.topProjects && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Target className="h-5 w-5" />
+                      โครงการที่มีภาระงานสูงสุด
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      {reportData.topProjects.slice(0, 5).map((project, index) => (
+                        <div key={project.id} className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border">
+                          <div className="flex items-center gap-4">
+                            <div className="w-10 h-10 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center">
+                              <span className="text-sm font-medium text-green-600 dark:text-green-400">{index + 1}</span>
+                            </div>
+                            <div>
+                              <p className="font-medium text-gray-900 dark:text-gray-100">{project.name}</p>
+                              <p className="text-sm text-gray-500 dark:text-gray-400">{project.customer}</p>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <p className="font-medium text-gray-900 dark:text-gray-100">{formatHours(project.hours)}</p>
+                            <p className="text-sm text-gray-500 dark:text-gray-400">{project.users} ผู้ใช้</p>
+                            <p className="text-xs text-green-600 dark:text-green-400">{project.timesheetCount} Timesheet</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </TabsContent>
+
+            <TabsContent value="charts" className="space-y-6">
+              {showCharts && (
+                <>
+                  {/* Work Type Distribution Chart */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <BarChart3 className="h-5 w-5" />
+                        การกระจายตามประเภทงาน
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <ResponsiveContainer width="100%" height={300}>
+                        <PieChart>
+                          <Pie
+                            data={reportData.workTypes}
+                            cx="50%"
+                            cy="50%"
+                            labelLine={false}
+                            label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                            outerRadius={100}
+                            fill="#8884d8"
+                            dataKey="hours"
+                          >
+                            {reportData.workTypes?.map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                            ))}
+                          </Pie>
+                          <Tooltip 
+                            formatter={(value: any, name: any) => [
+                              formatHours(value), 
+                              name
+                            ]}
+                          />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </CardContent>
+                  </Card>
+
+                  {/* Workload Distribution Chart */}
+                  {reportData.workloadDistribution && (
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                          <BarChart3 className="h-5 w-5" />
+                          การกระจายภาระงาน
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <ResponsiveContainer width="100%" height={300}>
+                          <ComposedChart data={reportData.workloadDistribution.slice(0, 10)}>
+                            <CartesianGrid strokeDasharray="3 3" />
+                            <XAxis dataKey="user" />
+                            <YAxis />
+                            <Tooltip 
+                              formatter={(value: any, name: any) => [
+                                name === 'hours' ? formatHours(value) : value,
+                                name === 'hours' ? 'ชั่วโมง' : name === 'projects' ? 'โครงการ' : 'ประสิทธิภาพ'
+                              ]}
+                            />
+                            <Legend />
+                            <Bar 
+                              dataKey="hours" 
+                              fill="#3B82F6" 
+                              name="ชั่วโมง"
+                            />
+                            <Line 
+                              type="monotone" 
+                              dataKey="efficiency" 
+                              stroke="#10B981" 
+                              name="ประสิทธิภาพ"
+                            />
+                          </ComposedChart>
+                        </ResponsiveContainer>
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {/* Efficiency Trend Chart */}
+                  {reportData.efficiencyTrend && (
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                          <TrendingUp className="h-5 w-5" />
+                          แนวโน้มประสิทธิภาพ
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <ResponsiveContainer width="100%" height={300}>
+                          <AreaChart data={reportData.efficiencyTrend}>
+                            <CartesianGrid strokeDasharray="3 3" />
+                            <XAxis 
+                              dataKey="date" 
+                              tickFormatter={(value) => format(parseISO(value), 'dd/MM')}
+                            />
+                            <YAxis />
+                            <Tooltip 
+                              labelFormatter={(value) => format(parseISO(value), 'dd/MM/yyyy')}
+                              formatter={(value: any, name: any) => [
+                                name === 'averageEfficiency' ? `${value.toFixed(1)}%` : 
+                                name === 'totalHours' ? formatHours(value) : value,
+                                name === 'averageEfficiency' ? 'ประสิทธิภาพ' : 
+                                name === 'totalHours' ? 'ชั่วโมง' : 'ผู้ใช้'
+                              ]}
+                            />
+                            <Legend />
+                            <Area 
+                              type="monotone" 
+                              dataKey="averageEfficiency" 
+                              stroke="#3B82F6" 
+                              fill="#3B82F6" 
+                              fillOpacity={0.3}
+                              name="ประสิทธิภาพเฉลี่ย"
+                            />
+                            <Line 
+                              type="monotone" 
+                              dataKey="activeUsers" 
+                              stroke="#10B981" 
+                              name="ผู้ใช้ที่ใช้งาน"
+                            />
+                          </AreaChart>
+                        </ResponsiveContainer>
+                      </CardContent>
+                    </Card>
+                  )}
+                </>
+              )}
+            </TabsContent>
+
+            <TabsContent value="details" className="space-y-6">
+              {/* Detailed Table */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Users className="h-5 w-5" />
+                    รายละเอียดภาระงาน
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <EnhancedTable
+                    columns={tableColumns}
+                    data={reportData.users || []}
+                    loading={loading}
+                    pagination={true}
+                    pageSize={15}
+                    variant="bordered"
+                    striped={true}
+                    hoverable={true}
+                    emptyMessage="ไม่พบข้อมูลภาระงาน"
+                  />
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="analysis" className="space-y-6">
+              {/* Performance Analysis */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <TrendingUp className="h-5 w-5" />
+                    การวิเคราะห์ประสิทธิภาพ
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <div className="space-y-6">
+                      <h4 className="text-lg font-semibold text-gray-900 dark:text-gray-100">สถิติสำคัญ</h4>
+                      <div className="space-y-4">
+                        <div className="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                          <span className="text-gray-600 dark:text-gray-400">ชั่วโมงเฉลี่ยต่อผู้ใช้:</span>
+                          <span className="font-semibold text-gray-900 dark:text-gray-100">
+                            {formatHours(reportData.averageHoursPerUser)}
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                          <span className="text-gray-600 dark:text-gray-400">ชั่วโมงเฉลี่ยต่อโครงการ:</span>
+                          <span className="font-semibold text-gray-900 dark:text-gray-100">
+                            {formatHours(reportData.averageHoursPerProject)}
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                          <span className="text-gray-600 dark:text-gray-400">อัตราการใช้งาน:</span>
+                          <span className="font-semibold text-green-600 dark:text-green-400">
+                            {formatPercentage(reportData.activeUsers, reportData.totalUsers)}
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                          <span className="text-gray-600 dark:text-gray-400">ประสิทธิภาพเฉลี่ย:</span>
+                          <span className="font-semibold text-blue-600 dark:text-blue-400">
+                            {reportData.users.length > 0 ? `${(reportData.users.reduce((sum, u) => sum + u.efficiency, 0) / reportData.users.length).toFixed(1)}%` : '0%'}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="space-y-6">
+                      <h4 className="text-lg font-semibold text-gray-900 dark:text-gray-100">การเปรียบเทียบ</h4>
+                      <div className="space-y-4">
+                        <div className="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                          <span className="text-gray-600 dark:text-gray-400">ผู้ใช้ที่มีประสิทธิภาพสูงสุด:</span>
+                          <span className="font-semibold text-purple-600 dark:text-purple-400">
+                            {reportData.topUsers[0]?.name || '-'}
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                          <span className="text-gray-600 dark:text-gray-400">โครงการที่มีภาระงานสูงสุด:</span>
+                          <span className="font-semibold text-orange-600 dark:text-orange-400">
+                            {reportData.topProjects[0]?.name || '-'}
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                          <span className="text-gray-600 dark:text-gray-400">ประเภทงานที่ใช้เวลามากที่สุด:</span>
+                          <span className="font-semibold text-indigo-600 dark:text-indigo-400">
+                            {reportData.workTypes[0]?.name || '-'}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
+        </>
+      ) : null}
     </div>
   );
 };

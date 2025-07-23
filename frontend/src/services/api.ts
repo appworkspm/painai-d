@@ -548,21 +548,6 @@ export const reportAPI = {
   },
 
   // Export functions
-  exportTimesheetCSV: async (params?: any): Promise<void> => {
-    const response = await api.get('/api/reports/export/timesheet/csv', { 
-      params,
-      responseType: 'blob'
-    });
-    const url = window.URL.createObjectURL(new Blob([response.data]));
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', `timesheet-report-${new Date().toISOString().split('T')[0]}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    window.URL.revokeObjectURL(url);
-  },
-
   exportProjectCSV: async (params?: any): Promise<void> => {
     const response = await api.get('/api/reports/export/project/csv', { 
       params,
@@ -602,6 +587,21 @@ export const reportAPI = {
     const link = document.createElement('a');
     link.href = url;
     link.setAttribute('download', `workload-report-${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
+  },
+
+  exportTimesheetCSV: async (params?: any): Promise<void> => {
+    const response = await api.get('/api/reports/export/timesheet/csv', { 
+      params,
+      responseType: 'blob'
+    });
+    const url = window.URL.createObjectURL(new Blob([response.data]));
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `timesheet-report-${new Date().toISOString().split('T')[0]}.csv`);
     document.body.appendChild(link);
     link.click();
     link.remove();

@@ -3,6 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useNotification } from '../contexts/NotificationContext';
 import { Users as UsersIcon, Plus, Edit, Trash2, Shield, User, Mail, X, Save } from 'lucide-react';
 import { adminAPI } from '../services/api';
+import { EnhancedTable } from '../components/ui/EnhancedTable';
 
 const Users: React.FC = () => {
   const { user } = useAuth();
@@ -225,16 +226,131 @@ const Users: React.FC = () => {
     return isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800';
   };
 
-  const filteredUsers = users.filter(user => {
-    const matchesFilter = filter === 'all' || 
-      (filter === 'active' && user.isActive) ||
-      (filter === 'inactive' && !user.isActive) ||
-      user.role.toLowerCase() === filter;
-    const matchesPosition = filterPosition === 'all' || (user.position === filterPosition);
-    const matchesSearch = user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         user.email.toLowerCase().includes(searchTerm.toLowerCase());
-    return matchesFilter && matchesPosition && matchesSearch;
-  });
+  // Define table columns
+  const columns = [
+    {
+      key: 'actions',
+      title: 'การดำเนินการ',
+      dataIndex: 'id' as keyof any,
+      sortable: false,
+      filterable: false,
+      searchable: false,
+      render: (value: string, record: any) => (
+        <div className="flex space-x-2">
+          <button 
+            onClick={(e) => {
+              e.stopPropagation();
+              handleEdit(record);
+            }}
+            className="text-primary-600 hover:text-primary-900 flex items-center"
+          >
+            <Edit className="h-4 w-4 mr-1" />
+            แก้ไข
+          </button>
+          <button 
+            onClick={(e) => {
+              e.stopPropagation();
+              handleDelete(record.id);
+            }}
+            disabled={deleting === record.id}
+            className="text-red-600 hover:text-red-900 flex items-center disabled:opacity-50"
+          >
+            {deleting === record.id ? (
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-600 mr-1"></div>
+            ) : (
+              <Trash2 className="h-4 w-4 mr-1" />
+            )}
+            ลบ
+          </button>
+        </div>
+      )
+    },
+    {
+      key: 'name',
+      title: 'ชื่อผู้ใช้',
+      dataIndex: 'name' as keyof any,
+      sortable: true,
+      filterable: false,
+      searchable: true,
+      render: (value: string, record: any) => (
+        <div className="flex items-center">
+          <div className="flex-shrink-0 h-10 w-10">
+            <div className="h-10 w-10 rounded-full bg-gray-300 flex items-center justify-center">
+              <User className="h-6 w-6 text-gray-600" />
+            </div>
+          </div>
+          <div className="ml-4">
+            <div className="text-sm font-medium text-gray-900">{record.name}</div>
+            <div className="text-sm text-gray-500 flex items-center">
+              <Mail className="h-3 w-3 mr-1" />
+              {record.email}
+            </div>
+          </div>
+        </div>
+      )
+    },
+    {
+      key: 'position',
+      title: 'ตำแหน่ง',
+      dataIndex: 'position' as keyof any,
+      sortable: true,
+      filterable: true,
+      searchable: true
+    },
+    {
+      key: 'role',
+      title: 'บทบาท',
+      dataIndex: 'role' as keyof any,
+      sortable: true,
+      filterable: true,
+      searchable: true,
+      render: (value: string) => (
+        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getRoleColor(value)}`}>
+          <Shield className="h-3 w-3 mr-1" />
+          {value}
+        </span>
+      )
+    },
+    {
+      key: 'isActive',
+      title: 'สถานะ',
+      dataIndex: 'isActive' as keyof any,
+      sortable: true,
+      filterable: true,
+      searchable: false,
+      render: (value: boolean) => (
+        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(value)}`}>
+          {value ? 'ใช้งาน' : 'ไม่ใช้งาน'}
+        </span>
+      )
+    },
+    {
+      key: 'lastLogin',
+      title: 'เข้าสู่ระบบล่าสุด',
+      dataIndex: 'lastLogin' as keyof any,
+      sortable: true,
+      filterable: false,
+      searchable: false,
+      render: (value: string) => (
+        <span className="text-sm text-gray-500">
+          {value ? new Date(value).toLocaleDateString('th-TH') : 'ไม่เคยเข้าสู่ระบบ'}
+        </span>
+      )
+    },
+    {
+      key: 'createdAt',
+      title: 'วันที่สร้าง',
+      dataIndex: 'createdAt' as keyof any,
+      sortable: true,
+      filterable: false,
+      searchable: false,
+      render: (value: string) => (
+        <span className="text-sm text-gray-500">
+          {new Date(value).toLocaleDateString('th-TH')}
+        </span>
+      )
+    }
+  ];
 
   return (
     <div className="space-y-6">

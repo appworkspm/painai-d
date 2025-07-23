@@ -35,7 +35,12 @@
     "system_logs": "System Logs",
     "profile": "Profile",
     "settings": "Settings",
-    "logout": "Logout"
+    "logout": "Logout",
+    "cost_approval": "Approve Expenses",
+    "database_management": "Database Management",
+    "system_settings": "System Settings",
+    "expand_sidebar": "Expand Sidebar",
+    "collapse_sidebar": "Collapse Sidebar"
   },
   "login": {
     "slogan": "Where to go today?",

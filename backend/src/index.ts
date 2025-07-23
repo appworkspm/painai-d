@@ -60,19 +60,19 @@ app.get('/health', (req, res) => {
   });
 });
 
-// API routes
+// Routes
 app.use('/api/auth', authRoutes);
-app.use('/api/users', userRoutes);
 app.use('/api/projects', projectRoutes);
 app.use('/api/timesheets', timesheetRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/activities', activityRoutes);
+app.use('/api/activity-logs', activityLogsRoutes);
 app.use('/api/holidays', holidayRoutes);
 app.use('/api/project-progress', projectProgressRoutes);
-app.use('/api/cost-requests', costRequestRoutes);
 app.use('/api/project-costs', projectCostRoutes);
-app.use('/api/dashboard', dashboardRoutes);
-app.use('/api/activity-logs', activityLogsRoutes);
+app.use('/api/cost-requests', costRequestRoutes);
 
 // API documentation
 app.get('/api', (req, res) => {
