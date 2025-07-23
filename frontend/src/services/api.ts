@@ -141,6 +141,11 @@ export const authAPI = {
 export const usersAPI = {
   updateProfile: (data: { name: string; currentPassword?: string; newPassword?: string }) =>
     api.patch('/api/auth/profile', data),
+  
+  getTeamMembers: async (): Promise<ApiResponse<any[]>> => {
+    const response = await api.get('/api/users/team');
+    return response.data;
+  },
 };
 
 // Admin API

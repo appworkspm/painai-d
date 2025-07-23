@@ -19,7 +19,8 @@ import {
   Zap,
   CalendarDays,
   FolderOpen,
-  CheckSquare
+  CheckSquare,
+  TrendingUp
 } from 'lucide-react';
 import { format, parseISO, isThisWeek } from 'date-fns';
 import { th } from 'date-fns/locale';
@@ -44,9 +45,9 @@ import { StatCard } from '@/components/ui/StatCard';
 import { useTranslation } from 'react-i18next';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
-import { Badge } from '@/components/ui/Badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/Tabs';
-import { Progress } from '@/components/ui/Progress';
+import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Progress } from '@/components/ui/progress';
 
 const Dashboard = () => {
   const { user } = useAuth();
@@ -96,20 +97,30 @@ const Dashboard = () => {
     enabled: !!user,
   });
 
-  const projects = projectsData?.data || [];
-  const timesheets = timesheetsData?.data || [];
-  const allTimesheets = allTimesheetsData?.data || [];
-  const teamMembers = teamData?.data || [];
-  const costRequests = costRequestsData?.data || [];
-  const myCostRequests = myCostRequestsData?.data || [];
+  // Helper function to safely extract data from paginated responses
+  const getDataFromPaginated = (data: any) => (data && Array.isArray(data.data) ? data.data : []);
+  
+  const projects = getDataFromPaginated(projectsData);
+  const timesheets = getDataFromPaginated(timesheetsData);
+  const allTimesheets = getDataFromPaginated(allTimesheetsData);
+  const teamMembers = getDataFromPaginated(teamData);
+  const costRequests = getDataFromPaginated(costRequestsData);
+  const myCostRequests = getDataFromPaginated(myCostRequestsData);
 
-  // Calculate comprehensive statistics
-  const activeProjects = projects.filter((p: any) => p.status === 'ACTIVE').length;
-  const completedProjects = projects.filter((p: any) => p.status === 'COMPLETED').length;
-  const onHoldProjects = projects.filter((p: any) => p.status === 'ON_HOLD').length;
+  // Calculate comprehensive statistics with type safety
+  const activeProjects = projects.filter((p: any) => p?.status === 'ACTIVE').length;
+  const completedProjects = projects.filter((p: any) => p?.status === 'COMPLETED').length;
+  const onHoldProjects = projects.filter((p: any) => p?.status === 'ON_HOLD').length;
   
   // Timesheet statistics
-  const { totalHours, weeklyHours, pendingApprovals, approvedTimesheets, rejectedTimesheets } = timesheets.reduce((acc: any, ts: any) => {
+  // Initialize accumulator with proper types
+  const timesheetStats = (timesheets as any[]).reduce((acc: {
+    totalHours: number;
+    weeklyHours: Record<string, number>;
+    pendingApprovals: number;
+    approvedTimesheets: number;
+    rejectedTimesheets: number;
+  }, ts: any) => {
     const hours = parseFloat(ts.hours_worked) || 0;
     const overtime = parseFloat(ts.overtime_hours) || 0;
     const total = hours + overtime;
@@ -140,9 +151,11 @@ const Dashboard = () => {
     rejectedTimesheets: 0
   });
 
-  // Cost request statistics
-  const pendingCostRequests = costRequests.filter((cr: any) => cr.status === 'pending').length;
-  const approvedCostRequests = costRequests.filter((cr: any) => cr.status === 'approved').length;
+  const { totalHours, weeklyHours, pendingApprovals, approvedTimesheets, rejectedTimesheets } = timesheetStats;
+
+  // Cost request statistics with null checks
+  const pendingCostRequests = costRequests.filter((cr: any) => cr?.status === 'pending').length;
+  // const approvedCostRequests = costRequests.filter((cr: any) => cr.status === 'approved').length;
   const totalCostAmount = costRequests.reduce((sum: number, cr: any) => sum + (parseFloat(cr.amount) || 0), 0);
 
   // Team statistics
@@ -171,21 +184,21 @@ const Dashboard = () => {
     { name: 'ไม่อนุมัติ', value: rejectedTimesheets, color: '#ef4444' }
   ];
 
-  // Recent activities
+  // Recent activities with null checks
   const recentActivities = [
-    ...timesheets.slice(0, 3).map((ts: any) => ({
+    ...(timesheets || []).slice(0, 3).map((ts: any) => ({
       type: 'timesheet',
       title: 'บันทึกเวลาใหม่',
-      description: `${ts.hours_worked} ชั่วโมง • ${ts.project?.name || 'ไม่มีชื่อโปรเจค'}`,
-      date: ts.date,
+      description: `${ts?.hours_worked || 0} ชั่วโมง • ${ts?.project?.name || 'ไม่มีชื่อโปรเจค'}`,
+      date: ts?.date || new Date().toISOString(),
       icon: FileText,
       color: 'blue'
     })),
-    ...myCostRequests.slice(0, 2).map((cr: any) => ({
+    ...(myCostRequests || []).slice(0, 2).map((cr: any) => ({
       type: 'cost',
       title: 'คำขอต้นทุนใหม่',
-      description: `${cr.amount} บาท • ${cr.description}`,
-      date: cr.createdAt,
+      description: `${cr?.amount || 0} บาท • ${cr?.description || 'ไม่มีคำอธิบาย'}`,
+      date: cr?.createdAt || new Date().toISOString(),
       icon: DollarSign,
       color: 'green'
     }))
@@ -258,75 +271,83 @@ const Dashboard = () => {
 
       {/* Enhanced Stats Grid */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <StatCard
-          title={t('dashboard.total_hours')}
-          value={totalHours.toFixed(2)}
-          icon={Clock}
-          description={t('dashboard.total_hours_desc')}
-          trend="up"
-          trendValue="12%"
-          color="blue"
-        />
-        <StatCard
-          title={t('dashboard.active_projects')}
-          value={activeProjects}
-          icon={Briefcase}
-          description={`จากทั้งหมด ${projects.length} โครงการ`}
-          trend="up"
-          trendValue="8%"
-          color="green"
-        />
-        <StatCard
-          title={t('dashboard.pending_approvals')}
-          value={pendingApprovals}
-          icon={AlertCircle}
-          description={t('dashboard.pending_approvals_desc')}
-          trend="down"
-          trendValue="5%"
-          color="orange"
-        />
-        <StatCard
-          title="สมาชิกในทีม"
-          value={activeTeamMembers}
-          icon={Users}
-          description="สมาชิกที่ใช้งานอยู่"
-          trend="up"
-          trendValue="3%"
-          color="purple"
-        />
+        <div className="border rounded-lg p-4 bg-blue-50">
+          <StatCard
+            title={t('dashboard.total_hours')}
+            value={totalHours.toFixed(2)}
+            icon={Clock}
+            description={t('dashboard.total_hours_desc')}
+            className="text-blue-600"
+          />
+        </div>
+        <div className="border rounded-lg p-4 bg-green-50">
+          <StatCard
+            title={t('dashboard.active_projects')}
+            value={activeProjects.toString()}
+            icon={Briefcase}
+            description={`จากทั้งหมด ${projects.length} โครงการ`}
+            className="text-green-600"
+          />
+        </div>
+        <div className="border rounded-lg p-4 bg-amber-50">
+          <StatCard
+            title={t('dashboard.pending_approvals')}
+            value={pendingApprovals.toString()}
+            icon={AlertCircle}
+            description={t('dashboard.pending_approvals_desc')}
+            className="text-amber-600"
+          />
+        </div>
+        <div className="border rounded-lg p-4 bg-purple-50">
+          <StatCard
+            title="สมาชิกในทีม"
+            value={activeTeamMembers.toString()}
+            icon={Users}
+            description="ทั้งหมดในทีม"
+            className="text-purple-600"
+          />
+        </div>
       </div>
 
       {/* Additional Stats for Managers/Admins */}
       {(isAdmin || isManager || isVP) && (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <StatCard
-            title="ชั่วโมงรวมทีม"
-            value={totalTeamHours.toFixed(2)}
-            icon={Activity}
-            description="ชั่วโมงทำงานของทีมทั้งหมด"
-            color="indigo"
-          />
-          <StatCard
-            title="คำขอต้นทุนรออนุมัติ"
-            value={pendingCostRequests}
-            icon={DollarSign}
-            description="คำขอที่รอการอนุมัติ"
-            color="yellow"
-          />
-          <StatCard
-            title="ต้นทุนรวม"
-            value={`฿${totalCostAmount.toLocaleString()}`}
-            icon={Target}
-            description="ต้นทุนรวมทั้งหมด"
-            color="red"
-          />
-          <StatCard
-            title="อัตราการอนุมัติ"
-            value={`${((approvedTimesheets / (approvedTimesheets + rejectedTimesheets)) * 100).toFixed(1)}%`}
-            icon={CheckCircle2}
-            description="อัตราการอนุมัติไทม์ชีท"
-            color="emerald"
-          />
+          <div className="border rounded-lg p-4 bg-indigo-50">
+            <StatCard
+              title="ชั่วโมงรวมทีม"
+              value={totalTeamHours.toFixed(2)}
+              icon={Activity}
+              description="ชั่วโมงทำงานของทีมทั้งหมด"
+              className="text-indigo-600"
+            />
+          </div>
+          <div className="border rounded-lg p-4 bg-amber-50">
+            <StatCard
+              title="คำขอต้นทุนรออนุมัติ"
+              value={pendingCostRequests.toString()}
+              icon={DollarSign}
+              description="คำขอที่รอการอนุมัติ"
+              className="text-amber-600"
+            />
+          </div>
+          <div className="border rounded-lg p-4 bg-red-50">
+            <StatCard
+              title="ต้นทุนรวม"
+              value={`฿${totalCostAmount.toLocaleString()}`}
+              icon={Target}
+              description="ต้นทุนรวมทั้งหมด"
+              className="text-red-600"
+            />
+          </div>
+          <div className="border rounded-lg p-4 bg-emerald-50">
+            <StatCard
+              title="อัตราการอนุมัติ"
+              value={`${((approvedTimesheets / Math.max(1, approvedTimesheets + rejectedTimesheets)) * 100).toFixed(1)}%`}
+              icon={CheckCircle2}
+              description="อัตราการอนุมัติไทม์ชีท"
+              className="text-emerald-600"
+            />
+          </div>
         </div>
       )}
 
