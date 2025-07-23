@@ -522,4 +522,6 @@ export const ProjectProgressDashboard: React.FC = () => {
       </div>
     </div>
   );
-}; 
+};
+
+export default ProjectProgressDashboard; 

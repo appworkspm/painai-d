@@ -610,3 +610,31 @@ export const reportAPI = {
 };
 
 export default api; 
+
+// User API
+export const userAPI = {
+  getUsers: async (): Promise<ApiResponse<any[]>> => {
+    const response = await api.get('/api/users');
+    return response.data;
+  },
+
+  getUser: async (id: string): Promise<ApiResponse<any>> => {
+    const response = await api.get(`/api/users/${id}`);
+    return response.data;
+  },
+
+  createUser: async (data: any): Promise<ApiResponse<any>> => {
+    const response = await api.post('/api/users', data);
+    return response.data;
+  },
+
+  updateUser: async (id: string, data: any): Promise<ApiResponse<any>> => {
+    const response = await api.put(`/api/users/${id}`, data);
+    return response.data;
+  },
+
+  deleteUser: async (id: string): Promise<ApiResponse<any>> => {
+    const response = await api.delete(`/api/users/${id}`);
+    return response.data;
+  },
+}; 

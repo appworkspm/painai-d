@@ -472,3 +472,5 @@ export const ProjectProgressList: React.FC = () => {
     </div>
   );
 }; 
+
+export default ProjectProgressList; 
