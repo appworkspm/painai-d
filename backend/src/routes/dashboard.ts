@@ -125,7 +125,7 @@ router.get('/projects/progress', async (req: IAuthenticatedRequest, res) => {
 
     // Calculate average progress
     const totalProgress = progressData.reduce((sum: number, p: any) => sum + p.progress, 0);
-    const averageProgress = progressData.length > 0 ? totalProgress / progressData.length : 0;
+    const averageProgress = progressData.length > 0 ? (totalProgress as any) / (progressData.length as any) : 0;
 
     res.json({
       success: true,

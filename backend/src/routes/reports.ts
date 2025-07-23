@@ -436,11 +436,11 @@ router.get('/export/workload/csv', async (req: IAuthenticatedRequest, res) => {
       const totalUserHours = regularHours + overtimeHours;
       
       return {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        position: user.position,
+        id: (user as any).id,
+        name: (user as any).name,
+        email: (user as any).email,
+        role: (user as any).role,
+        position: (user as any).position,
         hours: totalUserHours,
         projects: userProjects.length,
         timesheetCount: stat._count?.id || 0
@@ -487,11 +487,11 @@ router.get('/export/workload/csv', async (req: IAuthenticatedRequest, res) => {
       const totalProjectHours = regularHours + overtimeHours;
       
       return {
-        id: project.id,
-        name: project.name,
-        status: project.status,
-        budget: project.budget,
-        customer: project.customerName,
+        id: (project as any).id,
+        name: (project as any).name,
+        status: (project as any).status,
+        budget: (project as any).budget,
+        customer: (project as any).customerName,
         hours: totalProjectHours,
         users: projectUsers.length,
         timesheetCount: stat._count?.id || 0
@@ -823,11 +823,11 @@ router.get('/workload', async (req: IAuthenticatedRequest, res) => {
       const totalUserHours = regularHours + overtimeHours;
       
       return {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        position: user.position,
+        id: (user as any).id,
+        name: (user as any).name,
+        email: (user as any).email,
+        role: (user as any).role,
+        position: (user as any).position,
         hours: totalUserHours,
         projects: userProjects.length,
         timesheetCount: stat._count?.id || 0
@@ -874,11 +874,11 @@ router.get('/workload', async (req: IAuthenticatedRequest, res) => {
       const totalProjectHours = regularHours + overtimeHours;
       
       return {
-        id: project.id,
-        name: project.name,
-        status: project.status,
-        budget: project.budget,
-        customer: project.customerName,
+        id: (project as any).id,
+        name: (project as any).name,
+        status: (project as any).status,
+        budget: (project as any).budget,
+        customer: (project as any).customerName,
         hours: totalProjectHours,
         users: projectUsers.length,
         timesheetCount: stat._count?.id || 0
@@ -1234,10 +1234,10 @@ router.get('/user-activity', async (req: IAuthenticatedRequest, res) => {
       const userActivities = activities.filter(a => a.userId === user.id);
       
       return {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
+        id: (user as any).id,
+        name: (user as any).name,
+        email: (user as any).email,
+        role: (user as any).role,
         totalActivities: userActivities.length,
         lastActive: user.lastLogin || user.updatedAt,
         loginCount: 0, // ยังไม่มี field เก็บ login count

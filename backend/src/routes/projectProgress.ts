@@ -2,8 +2,8 @@ import { Router } from 'express';
 import { authenticate, requireManager } from '../middleware/auth';
 import { prisma } from '../utils/database';
 import { IAuthenticatedRequest } from '../types';
-import * as multer from 'multer';
-import * as csv from 'csv-parser';
+import multer from 'multer';
+import csv from 'csv-parser';
 import { createObjectCsvWriter } from 'csv-writer';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -270,7 +270,7 @@ router.post('/import/:projectId', requireManager, upload.single('file'), async (
             status: row.status || 'ON_TRACK',
             milestone: row.milestone || '',
             description: row.description || '',
-            reporterId: req.user?.id
+            reportedBy: req.user?.id
           }));
 
           // Insert the data
