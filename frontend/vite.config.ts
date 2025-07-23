@@ -16,9 +16,6 @@ export default defineConfig(({ mode }) => {
       },
     },
 
-    // Public directory configuration
-    publicDir: 'public',
-
     plugins: [
       // Basic React plugin with Babel for optimization
       react({
@@ -107,6 +104,10 @@ export default defineConfig(({ mode }) => {
       port: parseInt(env.VITE_PORT || '5173', 10),
       host: true,
       open: true,
+      // Ensure the server serves files from the public directory
+      fs: {
+        strict: false,
+      },
       proxy: {
         '/api': {
           target: env.VITE_API_URL || 'http://localhost:3000',
@@ -150,6 +151,8 @@ export default defineConfig(({ mode }) => {
       },
       // Copy public files to dist
       copyPublicDir: true,
+      // Ensure locales directory is included in the build
+      assetsInclude: ['**/*.json'],
     },
     
     // CSS configuration
