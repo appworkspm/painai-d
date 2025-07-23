@@ -301,6 +301,9 @@ const Users: React.FC = () => {
               <thead className="bg-gray-50">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Actions
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     User
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -318,14 +321,34 @@ const Users: React.FC = () => {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Created
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Actions
-                  </th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {filteredUsers.map((user) => (
                   <tr key={user.id}>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                      <div className="flex space-x-2">
+                        <button 
+                          onClick={() => handleEdit(user)}
+                          className="text-primary-600 hover:text-primary-900 flex items-center"
+                        >
+                          <Edit className="h-4 w-4 mr-1" />
+                          Edit
+                        </button>
+                        <button 
+                          onClick={() => handleDelete(user.id)}
+                          disabled={deleting === user.id}
+                          className="text-red-600 hover:text-red-900 flex items-center disabled:opacity-50"
+                        >
+                          {deleting === user.id ? (
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-600 mr-1"></div>
+                          ) : (
+                            <Trash2 className="h-4 w-4 mr-1" />
+                          )}
+                          Delete
+                        </button>
+                      </div>
+                    </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
                         <div className="flex-shrink-0 h-10 w-10">
@@ -357,29 +380,6 @@ const Users: React.FC = () => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {new Date(user.createdAt).toLocaleDateString()}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <div className="flex space-x-2">
-                        <button 
-                          onClick={() => handleEdit(user)}
-                          className="text-primary-600 hover:text-primary-900 flex items-center"
-                        >
-                          <Edit className="h-4 w-4 mr-1" />
-                          Edit
-                        </button>
-                        <button 
-                          onClick={() => handleDelete(user.id)}
-                          disabled={deleting === user.id}
-                          className="text-red-600 hover:text-red-900 flex items-center disabled:opacity-50"
-                        >
-                          {deleting === user.id ? (
-                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-600 mr-1"></div>
-                          ) : (
-                            <Trash2 className="h-4 w-4 mr-1" />
-                          )}
-                          Delete
-                        </button>
-                      </div>
                     </td>
                   </tr>
                 ))}

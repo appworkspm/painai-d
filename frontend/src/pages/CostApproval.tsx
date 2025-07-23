@@ -37,6 +37,12 @@ const CostApproval = () => {
   };
 
   const columns = [
+    { title: 'Action', key: 'action', render: (_: any, record: any) => (
+      record.status === 'PENDING' ? <span>
+        <Button type="link" onClick={()=>handleApprove(record)}>อนุมัติ</Button>
+        <Button type="link" danger onClick={()=>handleReject(record)}>ไม่อนุมัติ</Button>
+      </span> : null
+    ) },
     { title: 'วันที่', dataIndex: 'date', key: 'date', render: (d: string) => dayjs(d).format('DD/MM/YYYY') },
     { title: 'ชื่อรายการ', dataIndex: 'title', key: 'title' },
     { title: 'หมวดหมู่', dataIndex: 'category', key: 'category' },
@@ -44,12 +50,6 @@ const CostApproval = () => {
     { title: 'ผู้ขอ', dataIndex: 'requesterName', key: 'requesterName' },
     { title: 'สถานะ', dataIndex: 'status', key: 'status', render: (s: string) => <Tag color={s==='PENDING'?'orange':s==='APPROVED'?'green':'red'}>{s==='PENDING'?'รออนุมัติ':s==='APPROVED'?'อนุมัติแล้ว':'ไม่อนุมัติ'}</Tag> },
     { title: 'หมายเหตุ', dataIndex: 'rejectionReason', key: 'rejectionReason' },
-    { title: 'Action', key: 'action', render: (_: any, record: any) => (
-      record.status === 'PENDING' ? <span>
-        <Button type="link" onClick={()=>handleApprove(record)}>อนุมัติ</Button>
-        <Button type="link" danger onClick={()=>handleReject(record)}>ไม่อนุมัติ</Button>
-      </span> : null
-    ) },
   ];
 
   return (

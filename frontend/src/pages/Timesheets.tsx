@@ -439,6 +439,31 @@ const Timesheets: React.FC = () => {
   // Table columns with proper typing
   const columns: ColumnsType<TimesheetTableData> = [
     {
+      title: t('timesheet.table.actions'),
+      key: 'actions',
+      width: 120,
+      fixed: 'left' as const,
+      render: (_, record: TimesheetTableData) => (
+        <Space size="middle">
+          <Button
+            type="link"
+            icon={<EditOutlined />}
+            onClick={() => handleEdit(record)}
+            disabled={state.deletingId === record.id}
+            aria-label={t('timesheet.action.edit')}
+          />
+          <Button
+            type="text"
+            danger
+            icon={<DeleteOutlined />}
+            onClick={() => handleDelete(record.id)}
+            loading={state.deletingId === record.id}
+            aria-label={t('timesheet.action.delete')}
+          />
+        </Space>
+      ),
+    },
+    {
       title: t('timesheet.table.date'),
       dataIndex: 'date',
       key: 'date',
@@ -515,31 +540,6 @@ const Timesheets: React.FC = () => {
         { text: t('timesheet.status.pending'), value: 'pending' }
       ],
       onFilter: (value, record) => record.status === value,
-    },
-    {
-      title: t('timesheet.table.actions'),
-      key: 'actions',
-      width: 120,
-      fixed: 'right' as const,
-      render: (_, record: TimesheetTableData) => (
-        <Space size="middle">
-          <Button
-            type="link"
-            icon={<EditOutlined />}
-            onClick={() => handleEdit(record)}
-            disabled={state.deletingId === record.id}
-            aria-label={t('timesheet.action.edit')}
-          />
-          <Button
-            type="text"
-            danger
-            icon={<DeleteOutlined />}
-            onClick={() => handleDelete(record.id)}
-            loading={state.deletingId === record.id}
-            aria-label={t('timesheet.action.delete')}
-          />
-        </Space>
-      ),
     },
   ];
 
