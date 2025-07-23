@@ -4,6 +4,7 @@ import * as z from 'zod';
 import { format } from 'date-fns';
 import { CalendarIcon } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/Button';
@@ -21,6 +22,9 @@ const projectSchema = z.object({
   description: z.string().optional(),
   status: z.string().min(1, 'Status is required'),
   managerId: z.string().optional(),
+  jobCode: z.string().optional(),
+  customerName: z.string().optional(),
+  paymentTerm: z.string().optional(),
   budget: z.coerce.number().min(0, 'Budget must be a positive number').optional(),
   startDate: z.date(),
   endDate: z.date(),
@@ -36,6 +40,7 @@ interface ProjectFormProps {
 }
 
 export const ProjectForm = ({ onSubmit, initialData, isLoading }: ProjectFormProps) => {
+  const { t } = useTranslation();
   const form = useForm<z.infer<typeof projectSchema>>({
     resolver: zodResolver(projectSchema),
     defaultValues: initialData ? {
@@ -49,6 +54,9 @@ export const ProjectForm = ({ onSubmit, initialData, isLoading }: ProjectFormPro
       status: 'ACTIVE',
       budget: 0,
       managerId: undefined,
+      jobCode: '',
+      customerName: '',
+      paymentTerm: '',
     },
   });
 
@@ -66,7 +74,7 @@ export const ProjectForm = ({ onSubmit, initialData, isLoading }: ProjectFormPro
           name="name"
           render={({ field }) => (
             <FormItem className="md:col-span-2">
-              <FormLabel>Project Name</FormLabel>
+              <FormLabel>{t('project_details.project_name_label')}</FormLabel>
               <FormControl>
                 <Input placeholder="Enter project name" {...field} />
               </FormControl>
@@ -80,7 +88,7 @@ export const ProjectForm = ({ onSubmit, initialData, isLoading }: ProjectFormPro
           name="description"
           render={({ field }) => (
             <FormItem className="md:col-span-2">
-              <FormLabel>Description</FormLabel>
+              <FormLabel>{t('project_details.project_description_label')}</FormLabel>
               <FormControl>
                 <Textarea placeholder="Project description" {...field} />
               </FormControl>
@@ -94,7 +102,7 @@ export const ProjectForm = ({ onSubmit, initialData, isLoading }: ProjectFormPro
           name="status"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Status</FormLabel>
+              <FormLabel>{t('project_details.project_status_label')}</FormLabel>
               <Select onValueChange={field.onChange} defaultValue={field.value}>
                 <FormControl>
                   <SelectTrigger>
@@ -102,10 +110,10 @@ export const ProjectForm = ({ onSubmit, initialData, isLoading }: ProjectFormPro
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  <SelectItem value="ACTIVE">Active</SelectItem>
-                  <SelectItem value="ON_HOLD">On Hold</SelectItem>
-                  <SelectItem value="COMPLETED">Completed</SelectItem>
-                  <SelectItem value="CANCELLED">Cancelled</SelectItem>
+                  <SelectItem value="ACTIVE">{t('project_details.status.active')}</SelectItem>
+                  <SelectItem value="ON_HOLD">{t('project_details.status.on_hold')}</SelectItem>
+                  <SelectItem value="COMPLETED">{t('project_details.status.completed')}</SelectItem>
+                  <SelectItem value="CANCELLED">{t('project_details.status.cancelled')}</SelectItem>
                 </SelectContent>
               </Select>
               <FormMessage />
@@ -118,7 +126,7 @@ export const ProjectForm = ({ onSubmit, initialData, isLoading }: ProjectFormPro
           name="managerId"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Project Manager</FormLabel>
+              <FormLabel>{t('project_details.project_manager_label')}</FormLabel>
               <Select onValueChange={field.onChange} defaultValue={field.value}>
                 <FormControl>
                   <SelectTrigger>
@@ -140,10 +148,52 @@ export const ProjectForm = ({ onSubmit, initialData, isLoading }: ProjectFormPro
 
         <FormField
           control={form.control}
+          name="jobCode"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>{t('project_details.job_code_label')}</FormLabel>
+              <FormControl>
+                <Input placeholder="Enter job code" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="customerName"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>{t('project_details.customer_name_form_label')}</FormLabel>
+              <FormControl>
+                <Input placeholder="Enter customer name" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="paymentTerm"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>{t('project_details.payment_terms_form_label')}</FormLabel>
+              <FormControl>
+                <Input placeholder="Enter payment terms" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
           name="startDate"
           render={({ field }) => (
             <FormItem className="flex flex-col">
-              <FormLabel>Start Date</FormLabel>
+              <FormLabel>{t('project_details.start_date_label')}</FormLabel>
               <Popover>
                 <PopoverTrigger asChild>
                   <FormControl>
@@ -182,7 +232,7 @@ export const ProjectForm = ({ onSubmit, initialData, isLoading }: ProjectFormPro
           name="endDate"
           render={({ field }) => (
             <FormItem className="flex flex-col">
-              <FormLabel>End Date</FormLabel>
+              <FormLabel>{t('project_details.end_date_label')}</FormLabel>
               <Popover>
                 <PopoverTrigger asChild>
                   <FormControl>
@@ -221,7 +271,7 @@ export const ProjectForm = ({ onSubmit, initialData, isLoading }: ProjectFormPro
           name="budget"
           render={({ field }) => (
             <FormItem className="md:col-span-2">
-              <FormLabel>Budget</FormLabel>
+              <FormLabel>{t('project_details.budget_label')}</FormLabel>
               <FormControl>
                 <Input type="number" placeholder="Enter project budget" {...field} />
               </FormControl>

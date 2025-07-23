@@ -98,6 +98,30 @@
       "deployment": "นำขึ้นระบบ",
       "other": "อื่น ๆ"
     },
+  "calendar": {
+    "today": "วันนี้",
+    "more": "เพิ่มเติม",
+    "legend": "คำอธิบาย",
+    "timesheet": "ไทม์ชีท",
+    "meeting": "ประชุม",
+    "deadline": "กำหนดส่ง",
+    "holiday": "วันหยุด"
+  },
+  "notifications": {
+    "title": "การแจ้งเตือน",
+    "all": "ทั้งหมด",
+    "unread": "ยังไม่อ่าน",
+    "timesheet": "ไทม์ชีท",
+    "project": "โครงการ",
+    "approval": "การอนุมัติ",
+    "no_notifications": "ไม่มีการแจ้งเตือน",
+    "mark_all_read": "ทำเครื่องหมายว่าอ่านแล้วทั้งหมด",
+    "clear_all": "ลบทั้งหมด",
+    "settings": "ตั้งค่า",
+    "email_notifications": "การแจ้งเตือนทางอีเมล",
+    "push_notifications": "การแจ้งเตือนแบบพุช",
+    "sound_notifications": "การแจ้งเตือนด้วยเสียง"
+  },
     "status": {
       "draft": "ฉบับร่าง",
       "submitted": "ส่งแล้ว",

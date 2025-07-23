@@ -2,6 +2,7 @@
 
 import { useAuth } from '@/contexts/AuthContext';
 import { NavLink, useLocation } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { 
   Briefcase, 
   Clock, 
@@ -25,19 +26,32 @@ import {
   Settings as SettingsIcon,
   UserCog,
   Calendar as CalendarIcon,
-  FileText as FileTextIcon
+  FileText as FileTextIcon,
+  FolderOpen,
+  Plus,
+  History,
+  TrendingUp,
+  PieChart,
+  Building2,
+  Shield,
+  Cog,
+  LogOut
 } from 'lucide-react';
 import React from 'react';
 import { cn } from '@/lib/utils';
 import { useState } from 'react';
 
 const Sidebar = () => {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const location = useLocation();
+  const { t } = useTranslation();
   const isAdmin = user?.role === 'admin';
+  const isManager = user?.role === 'manager';
+  const isVP = user?.role === 'vp';
   
   // State for collapsible menu sections
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
+    dashboard: true,
     projects: true,
     timesheets: true,
     reports: true,
@@ -150,56 +164,82 @@ const Sidebar = () => {
       </div>
       <nav className="flex-1 px-2 py-4 space-y-2 overflow-y-auto">
         {/* Dashboard */}
-        <NavItem to="/" icon={LayoutDashboard} label="Dashboard" exact />
+        <Section title={t('menu.dashboard')} icon={LayoutDashboard} sectionKey="dashboard">
+          <NavItem to="/" icon={TrendingUp} label={t('menu.overview')} exact />
+          <NavItem to="/dashboard" icon={PieChart} label={t('menu.analytics')} />
+        </Section>
 
         {/* Projects Section */}
-        <Section title="Projects" icon={Briefcase} sectionKey="projects">
-          <NavItem to="/projects" icon={ClipboardList} label="All Projects" />
-          <NavItem to="/projects/new" icon={FileCheck} label="New Project" />
-          <NavItem to="/projects/active" icon={Activity} label="Active Projects" />
-          <NavItem to="/projects/completed" icon={CheckCircle2} label="Completed" />
+        <Section title={t('menu.project_management')} icon={FolderOpen} sectionKey="projects">
+          <NavItem to="/projects" icon={ClipboardList} label={t('menu.all_projects')} />
+          <NavItem to="/projects/create" icon={Plus} label={t('menu.create_project')} />
+          <NavItem to="/projects/active" icon={Activity} label={t('menu.active_projects')} />
+          <NavItem to="/projects/completed" icon={CheckCircle2} label={t('menu.completed_projects')} />
         </Section>
 
         {/* Timesheets Section */}
-        <Section title="Timesheets" icon={Clock} sectionKey="timesheets">
-          <NavItem to="/timesheets" icon={FileText} label="My Timesheets" />
-          <NavItem to="/timesheets/create" icon={FileText} label="New Timesheet" />
-          <NavItem to="/timesheets/approval" icon={UserCheck} label="Approval Queue" />
-          <NavItem to="/timesheets/history" icon={ClipboardCheck} label="History" />
+        <Section title={t('menu.timesheet_management')} icon={Clock} sectionKey="timesheets">
+          <NavItem to="/timesheets" icon={FileText} label={t('menu.my_timesheets')} />
+          <NavItem to="/timesheets/create" icon={Plus} label={t('menu.create_timesheet')} />
+          <NavItem to="/timesheets/history" icon={History} label={t('menu.timesheet_history')} />
+          {(isAdmin || isManager || isVP) && (
+            <NavItem to="/timesheets/approval" icon={UserCheck} label={t('menu.timesheet_approval')} />
+          )}
         </Section>
 
         {/* Reports Section */}
-        <Section title="Reports" icon={BarChart2} sectionKey="reports">
-          <NavItem to="/reports/workload" icon={Activity} label="Workload Report" />
-          <NavItem to="/reports/project" icon={FileBarChart2} label="Project Report" />
-          <NavItem to="/reports/project-cost" icon={DollarSignIcon} label="Project Cost" />
-          <NavItem to="/reports/user-activity" icon={UserIcon} label="User Activity" />
+        <Section title={t('menu.reports')} icon={BarChart2} sectionKey="reports">
+          <NavItem to="/reports/workload" icon={Activity} label={t('menu.workload_report')} />
+          <NavItem to="/reports/project" icon={FileBarChart2} label={t('menu.project_report')} />
+          <NavItem to="/reports/project-cost" icon={DollarSignIcon} label={t('menu.project_cost_report')} />
+          <NavItem to="/reports/timesheet" icon={FileText} label={t('menu.timesheet_report')} />
+          {(isAdmin || isVP) && (
+            <NavItem to="/reports/user-activity" icon={UserIcon} label={t('menu.user_activity_report')} />
+          )}
         </Section>
 
         {/* Cost Management Section */}
-        <Section title="Cost Management" icon={DollarSign} sectionKey="costManagement">
-          <NavItem to="/cost/my-requests" icon={ListChecks} label="My Requests" />
-          <NavItem to="/cost/entry" icon={FileText} label="Cost Request" />
-          <NavItem to="/cost/approval" icon={CheckCircle2} label="Approve Costs" />
-          <NavItem to="/cost/reports" icon={BarChart3} label="Cost Reports" />
+        <Section title={t('menu.cost_management')} icon={DollarSign} sectionKey="costManagement">
+          <NavItem to="/cost/my-requests" icon={ListChecks} label={t('menu.my_cost_requests')} />
+          <NavItem to="/cost/entry" icon={Plus} label={t('menu.cost_entry')} />
+          {(isAdmin || isManager || isVP) && (
+            <NavItem to="/cost/approval" icon={CheckCircle2} label={t('menu.cost_approval')} />
+          )}
         </Section>
 
         {/* Admin Section */}
-        {isAdmin && (
-          <Section title="Administration" icon={ShieldCheck} sectionKey="admin">
-            <NavItem to="/admin" icon={LayoutDashboard} label="Admin Dashboard" />
-            <NavItem to="/users" icon={UsersIcon} label="User Management" />
-            <NavItem to="/user-roles" icon={UserCog} label="User Roles" />
-            <NavItem to="/holidays" icon={CalendarIcon} label="Holiday Calendar" />
-            <NavItem to="/user-activity" icon={Activity} label="User Activity" />
-            <NavItem to="/system-logs" icon={FileTextIcon} label="System Logs" />
+        {(isAdmin || isVP) && (
+          <Section title={t('menu.administration')} icon={Shield} sectionKey="admin">
+            {isAdmin && (
+              <NavItem to="/admin" icon={LayoutDashboard} label={t('menu.admin_panel')} />
+            )}
+            <NavItem to="/users" icon={UsersIcon} label={t('menu.user_management')} />
+            {isAdmin && (
+              <NavItem to="/user-roles" icon={UserCog} label={t('menu.user_roles')} />
+            )}
+            <NavItem to="/holidays" icon={CalendarIcon} label={t('menu.holiday_management')} />
+            <NavItem to="/user-activity" icon={Activity} label={t('menu.user_activity')} />
+            {isAdmin && (
+              <NavItem to="/system-logs" icon={FileTextIcon} label={t('menu.system_logs')} />
+            )}
           </Section>
         )}
 
         {/* User Section */}
         <div className="pt-4 mt-4 border-t border-gray-200 dark:border-gray-700">
-          <NavItem to="/profile" icon={UserIcon} label="My Profile" />
-          <NavItem to="/settings" icon={SettingsIcon} label="Settings" />
+          <NavItem to="/profile" icon={UserIcon} label={t('menu.profile')} />
+          <NavItem to="/settings" icon={Cog} label={t('menu.settings')} />
+          <button
+            onClick={logout}
+            className={cn(
+              'w-full flex items-center px-4 py-2 text-sm font-medium rounded-lg transition-colors',
+              'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700',
+              'group'
+            )}
+          >
+            <LogOut className="mr-3 h-5 w-5 flex-shrink-0" />
+            <span>{t('menu.logout')}</span>
+          </button>
         </div>
       </nav>
     </aside>

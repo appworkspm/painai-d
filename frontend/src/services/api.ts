@@ -208,12 +208,34 @@ export const projectAPI = {
     return response.data;
   },
 
-  createProject: async (projectData: { name: string; description: string; status: string; managerId: string }): Promise<ApiResponse<any>> => {
+  createProject: async (projectData: { 
+    name: string; 
+    description: string; 
+    status: string; 
+    managerId: string;
+    jobCode?: string;
+    customerName?: string;
+    paymentTerm?: string;
+    startDate?: Date;
+    endDate?: Date;
+    budget?: number;
+  }): Promise<ApiResponse<any>> => {
     const response = await api.post('/api/projects', projectData);
     return response.data;
   },
 
-  updateProject: async (id: string, projectData: { name?: string; description?: string; status?: string; managerId?: string }): Promise<ApiResponse<any>> => {
+  updateProject: async (id: string, projectData: { 
+    name?: string; 
+    description?: string; 
+    status?: string; 
+    managerId?: string;
+    jobCode?: string;
+    customerName?: string;
+    paymentTerm?: string;
+    startDate?: Date;
+    endDate?: Date;
+    budget?: number;
+  }): Promise<ApiResponse<any>> => {
     const response = await api.put(`/api/projects/${id}`, projectData);
     return response.data;
   },

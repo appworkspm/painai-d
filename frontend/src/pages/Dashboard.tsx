@@ -1,77 +1,632 @@
 import { useQuery } from '@tanstack/react-query';
-import { StatCard } from '@/components/ui/StatCard';
-import { Clock, Briefcase, CheckCircle, AlertCircle } from 'lucide-react';
+import { 
+  Clock, 
+  Briefcase, 
+  AlertCircle, 
+  Users, 
+  FileText,
+  CheckCircle2,
+  DollarSign,
+  Target,
+  Activity,
+  PieChart,
+  BarChart3,
+  Plus,
+  Settings,
+  Bell,
+  Star,
+  Award,
+  Zap,
+  CalendarDays,
+  FolderOpen,
+  CheckSquare
+} from 'lucide-react';
+import { format, parseISO, isThisWeek } from 'date-fns';
+import { th } from 'date-fns/locale';
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  PieChart as RechartsPieChart,
+  Pie,
+  Cell,
+  AreaChart,
+  Area
+} from 'recharts';
+
 import { useAuth } from '@/contexts/AuthContext';
-import { projectAPI, timesheetAPI } from '@/services/api';
+import { projectAPI, timesheetAPI, usersAPI, costRequestAPI } from '@/services/api';
+import { StatCard } from '@/components/ui/StatCard';
 import { useTranslation } from 'react-i18next';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
+import { Button } from '@/components/ui/Button';
+import { Badge } from '@/components/ui/Badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/Tabs';
+import { Progress } from '@/components/ui/Progress';
 
 const Dashboard = () => {
   const { user } = useAuth();
   const { t } = useTranslation();
+  const isAdmin = user?.role === 'admin';
+  const isManager = user?.role === 'manager';
+  const isVP = user?.role === 'vp';
 
   // Fetch projects
-  const { data: projectsData } = useQuery({
+  const { data: projectsData, isLoading: isLoadingProjects } = useQuery({
     queryKey: ['projects'],
     queryFn: () => projectAPI.getProjects(),
   });
 
   // Fetch user's timesheets
-  const { data: timesheetsData } = useQuery({
+  const { data: timesheetsData, isLoading: isLoadingTimesheets } = useQuery({
     queryKey: ['my-timesheets'],
     queryFn: () => timesheetAPI.getMyTimesheets(),
-    enabled: !!user, // Only run if user is available
+    enabled: !!user,
+  });
+
+  // Fetch all timesheets (for managers/admins)
+  const { data: allTimesheetsData } = useQuery({
+    queryKey: ['all-timesheets'],
+    queryFn: () => timesheetAPI.getTimesheets(),
+    enabled: isAdmin || isManager || isVP,
+  });
+
+  // Fetch team members (for managers/admins)
+  const { data: teamData } = useQuery({
+    queryKey: ['team-members'],
+    queryFn: () => usersAPI.getTeamMembers(),
+    enabled: isAdmin || isManager || isVP,
+  });
+
+  // Fetch cost requests
+  const { data: costRequestsData } = useQuery({
+    queryKey: ['cost-requests'],
+    queryFn: () => costRequestAPI.getCostRequests(),
+    enabled: isAdmin || isManager || isVP,
+  });
+
+  // Fetch user's cost requests
+  const { data: myCostRequestsData } = useQuery({
+    queryKey: ['my-cost-requests'],
+    queryFn: () => costRequestAPI.getCostRequests({ userId: user?.id }),
+    enabled: !!user,
   });
 
   const projects = projectsData?.data || [];
-  const timesheets = timesheetsData?.data?.data || [];
+  const timesheets = timesheetsData?.data || [];
+  const allTimesheets = allTimesheetsData?.data || [];
+  const teamMembers = teamData?.data || [];
+  const costRequests = costRequestsData?.data || [];
+  const myCostRequests = myCostRequestsData?.data || [];
 
-  // --- Calculations ---
+  // Calculate comprehensive statistics
   const activeProjects = projects.filter((p: any) => p.status === 'ACTIVE').length;
-
-  const totalHours = timesheets.reduce((acc: number, ts: any) => {
+  const completedProjects = projects.filter((p: any) => p.status === 'COMPLETED').length;
+  const onHoldProjects = projects.filter((p: any) => p.status === 'ON_HOLD').length;
+  
+  // Timesheet statistics
+  const { totalHours, weeklyHours, pendingApprovals, approvedTimesheets, rejectedTimesheets } = timesheets.reduce((acc: any, ts: any) => {
     const hours = parseFloat(ts.hours_worked) || 0;
     const overtime = parseFloat(ts.overtime_hours) || 0;
-    return acc + hours + overtime;
+    const total = hours + overtime;
+    
+    // Weekly hours for chart
+    const date = parseISO(ts.date);
+    if (isThisWeek(date, { weekStartsOn: 1 })) {
+      const day = format(date, 'EEEE', { locale: th });
+      acc.weeklyHours[day] = (acc.weeklyHours[day] || 0) + total;
+    }
+
+    // Status counts
+    if (ts.status === 'approved') {
+      acc.approvedTimesheets += 1;
+    } else if (ts.status === 'rejected') {
+      acc.rejectedTimesheets += 1;
+    } else if (['draft', 'submitted'].includes(ts.status)) {
+      acc.pendingApprovals += 1;
+    }
+
+    acc.totalHours += total;
+    return acc;
+  }, { 
+    totalHours: 0, 
+    weeklyHours: {} as Record<string, number>,
+    pendingApprovals: 0,
+    approvedTimesheets: 0,
+    rejectedTimesheets: 0
+  });
+
+  // Cost request statistics
+  const pendingCostRequests = costRequests.filter((cr: any) => cr.status === 'pending').length;
+  const approvedCostRequests = costRequests.filter((cr: any) => cr.status === 'approved').length;
+  const totalCostAmount = costRequests.reduce((sum: number, cr: any) => sum + (parseFloat(cr.amount) || 0), 0);
+
+  // Team statistics
+  const activeTeamMembers = teamMembers.filter((member: any) => member.isActive).length;
+  const totalTeamHours = allTimesheets.reduce((sum: number, ts: any) => {
+    return sum + (parseFloat(ts.hours_worked) || 0) + (parseFloat(ts.overtime_hours) || 0);
   }, 0);
 
-  const pendingApprovals = timesheets.filter((ts: any) => ts.status === 'draft' || ts.status === 'submitted').length;
-  const approvedTimesheets = timesheets.filter((ts: any) => ts.status === 'approved').length;
+  // Prepare comprehensive chart data
+  const weeklyChartData = Object.entries(weeklyHours).map(([day, hours]) => ({
+    day: day.charAt(0).toUpperCase() + day.slice(1, 3),
+    hours: Number(Number(hours).toFixed(2))
+  }));
+
+  // Project status distribution
+  const projectStatusData = [
+    { name: 'กำลังดำเนินการ', value: activeProjects, color: '#10b981' },
+    { name: 'เสร็จสิ้น', value: completedProjects, color: '#3b82f6' },
+    { name: 'ระงับ', value: onHoldProjects, color: '#f59e0b' }
+  ];
+
+  // Timesheet status distribution
+  const timesheetStatusData = [
+    { name: 'อนุมัติแล้ว', value: approvedTimesheets, color: '#10b981' },
+    { name: 'รออนุมัติ', value: pendingApprovals, color: '#f59e0b' },
+    { name: 'ไม่อนุมัติ', value: rejectedTimesheets, color: '#ef4444' }
+  ];
+
+  // Recent activities
+  const recentActivities = [
+    ...timesheets.slice(0, 3).map((ts: any) => ({
+      type: 'timesheet',
+      title: 'บันทึกเวลาใหม่',
+      description: `${ts.hours_worked} ชั่วโมง • ${ts.project?.name || 'ไม่มีชื่อโปรเจค'}`,
+      date: ts.date,
+      icon: FileText,
+      color: 'blue'
+    })),
+    ...myCostRequests.slice(0, 2).map((cr: any) => ({
+      type: 'cost',
+      title: 'คำขอต้นทุนใหม่',
+      description: `${cr.amount} บาท • ${cr.description}`,
+      date: cr.createdAt,
+      icon: DollarSign,
+      color: 'green'
+    }))
+  ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 5);
+
+  // Loading state
+  if (isLoadingProjects || isLoadingTimesheets) {
+    return (
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
+          <div>
+            <div className="h-8 w-64 bg-gray-200 rounded animate-pulse" />
+            <div className="h-4 w-80 bg-gray-200 rounded mt-2 animate-pulse" />
+          </div>
+        </div>
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="h-32 bg-gray-200 rounded-lg animate-pulse" />
+          ))}
+        </div>
+        <div className="grid gap-4 md:grid-cols-2">
+          <div className="h-80 bg-gray-200 rounded-lg animate-pulse" />
+          <div className="h-80 bg-gray-200 rounded-lg animate-pulse" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">{t('dashboard.title')}</h1>
-        <p className="text-muted-foreground">{t('dashboard.welcome', { name: user?.name })}</p>
+      {/* Header Section */}
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-3xl font-bold">{t('dashboard.title')}</h1>
+          <p className="text-muted-foreground">
+            {t('dashboard.welcome', { name: user?.name })} • {format(new Date(), 'd MMMM yyyy', { locale: th })}
+          </p>
+        </div>
+        <div className="flex items-center space-x-2">
+          <Button variant="outline" size="sm">
+            <Bell className="h-4 w-4 mr-2" />
+            {t('dashboard.notifications')}
+          </Button>
+          <Button variant="outline" size="sm">
+            <Settings className="h-4 w-4 mr-2" />
+            {t('dashboard.settings')}
+          </Button>
+        </div>
       </div>
 
+      {/* Quick Actions */}
+      <div className="grid gap-4 md:grid-cols-4">
+        <Button className="h-20 flex flex-col items-center justify-center space-y-2" variant="outline">
+          <Plus className="h-6 w-6" />
+          <span className="text-sm">{t('dashboard.create_timesheet')}</span>
+        </Button>
+        <Button className="h-20 flex flex-col items-center justify-center space-y-2" variant="outline">
+          <FolderOpen className="h-6 w-6" />
+          <span className="text-sm">{t('dashboard.view_projects')}</span>
+        </Button>
+        <Button className="h-20 flex flex-col items-center justify-center space-y-2" variant="outline">
+          <DollarSign className="h-6 w-6" />
+          <span className="text-sm">{t('dashboard.cost_requests')}</span>
+        </Button>
+        <Button className="h-20 flex flex-col items-center justify-center space-y-2" variant="outline">
+          <BarChart3 className="h-6 w-6" />
+          <span className="text-sm">{t('dashboard.view_reports')}</span>
+        </Button>
+      </div>
+
+      {/* Enhanced Stats Grid */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <StatCard
           title={t('dashboard.total_hours')}
           value={totalHours.toFixed(2)}
           icon={Clock}
           description={t('dashboard.total_hours_desc')}
+          trend="up"
+          trendValue="12%"
+          color="blue"
         />
         <StatCard
           title={t('dashboard.active_projects')}
           value={activeProjects}
           icon={Briefcase}
-          description={t('dashboard.active_projects_desc')}
+          description={`จากทั้งหมด ${projects.length} โครงการ`}
+          trend="up"
+          trendValue="8%"
+          color="green"
         />
         <StatCard
           title={t('dashboard.pending_approvals')}
           value={pendingApprovals}
           icon={AlertCircle}
           description={t('dashboard.pending_approvals_desc')}
+          trend="down"
+          trendValue="5%"
+          color="orange"
         />
         <StatCard
-          title={t('dashboard.approved_timesheets')}
-          value={approvedTimesheets}
-          icon={CheckCircle}
-          description={t('dashboard.approved_timesheets_desc')}
+          title="สมาชิกในทีม"
+          value={activeTeamMembers}
+          icon={Users}
+          description="สมาชิกที่ใช้งานอยู่"
+          trend="up"
+          trendValue="3%"
+          color="purple"
         />
       </div>
 
-      {/* More components like charts or recent activity will go here */}
+      {/* Additional Stats for Managers/Admins */}
+      {(isAdmin || isManager || isVP) && (
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <StatCard
+            title="ชั่วโมงรวมทีม"
+            value={totalTeamHours.toFixed(2)}
+            icon={Activity}
+            description="ชั่วโมงทำงานของทีมทั้งหมด"
+            color="indigo"
+          />
+          <StatCard
+            title="คำขอต้นทุนรออนุมัติ"
+            value={pendingCostRequests}
+            icon={DollarSign}
+            description="คำขอที่รอการอนุมัติ"
+            color="yellow"
+          />
+          <StatCard
+            title="ต้นทุนรวม"
+            value={`฿${totalCostAmount.toLocaleString()}`}
+            icon={Target}
+            description="ต้นทุนรวมทั้งหมด"
+            color="red"
+          />
+          <StatCard
+            title="อัตราการอนุมัติ"
+            value={`${((approvedTimesheets / (approvedTimesheets + rejectedTimesheets)) * 100).toFixed(1)}%`}
+            icon={CheckCircle2}
+            description="อัตราการอนุมัติไทม์ชีท"
+            color="emerald"
+          />
+        </div>
+      )}
+
+      {/* Main Dashboard Content with Tabs */}
+      <Tabs defaultValue="overview" className="space-y-4">
+        <TabsList className="grid w-full grid-cols-4">
+          <TabsTrigger value="overview">{t('dashboard.overview')}</TabsTrigger>
+          <TabsTrigger value="analytics">{t('dashboard.analytics')}</TabsTrigger>
+          <TabsTrigger value="projects">{t('dashboard.projects')}</TabsTrigger>
+          <TabsTrigger value="activities">{t('dashboard.activities')}</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="overview" className="space-y-4">
+          <div className="grid gap-4 md:grid-cols-2">
+            {/* Weekly Hours Chart */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <Clock className="h-5 w-5 mr-2" />
+                  สถิติชั่วโมงทำงานรายสัปดาห์
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="h-[300px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={weeklyChartData}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="day" />
+                      <YAxis />
+                      <Tooltip 
+                        formatter={(value) => [`${value} ชั่วโมง`, "ชั่วโมงทำงาน"]}
+                        labelFormatter={(label) => `วัน${label}`}
+                      />
+                      <Bar 
+                        dataKey="hours" 
+                        fill="#3b82f6" 
+                        name="ชั่วโมงทำงาน"
+                        radius={[4, 4, 0, 0]}
+                      />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Project Status Distribution */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <PieChart className="h-5 w-5 mr-2" />
+                  สถานะโครงการ
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="h-[300px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <RechartsPieChart>
+                      <Pie
+                        data={projectStatusData}
+                        cx="50%"
+                        cy="50%"
+                        outerRadius={80}
+                        dataKey="value"
+                        label={({ name, value }) => `${name}: ${value}`}
+                      >
+                        {projectStatusData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <Tooltip />
+                    </RechartsPieChart>
+                  </ResponsiveContainer>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="analytics" className="space-y-4">
+          <div className="grid gap-4 md:grid-cols-2">
+            {/* Timesheet Status Distribution */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <FileText className="h-5 w-5 mr-2" />
+                  สถานะไทม์ชีท
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="h-[300px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <RechartsPieChart>
+                      <Pie
+                        data={timesheetStatusData}
+                        cx="50%"
+                        cy="50%"
+                        outerRadius={80}
+                        dataKey="value"
+                        label={({ name, value }) => `${name}: ${value}`}
+                      >
+                        {timesheetStatusData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <Tooltip />
+                    </RechartsPieChart>
+                  </ResponsiveContainer>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Performance Trends */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <TrendingUp className="h-5 w-5 mr-2" />
+                  แนวโน้มประสิทธิภาพ
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="h-[300px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={weeklyChartData}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="day" />
+                      <YAxis />
+                      <Tooltip />
+                      <Area 
+                        type="monotone" 
+                        dataKey="hours" 
+                        stroke="#3b82f6" 
+                        fill="#3b82f6" 
+                        fillOpacity={0.3}
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="projects" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <FolderOpen className="h-5 w-5 mr-2" />
+                โครงการล่าสุด
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-4 md:grid-cols-3">
+                {projects.slice(0, 6).map((project: any) => (
+                  <div key={project.id} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
+                    <div className="flex justify-between items-start mb-3">
+                      <div>
+                        <h3 className="font-medium text-lg">{project.name}</h3>
+                        <p className="text-sm text-muted-foreground">
+                          {project.jobCode && `Job Code: ${project.jobCode}`}
+                        </p>
+                      </div>
+                      <Badge variant={
+                        project.status === 'ACTIVE' ? 'default' :
+                        project.status === 'COMPLETED' ? 'secondary' : 'outline'
+                      }>
+                        {project.status === 'ACTIVE' ? 'กำลังดำเนินการ' : 
+                         project.status === 'COMPLETED' ? 'เสร็จสิ้น' : 'ระงับ'}
+                      </Badge>
+                    </div>
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span>ความคืบหน้า</span>
+                        <span>{project.progress || 0}%</span>
+                      </div>
+                      <Progress value={project.progress || 0} className="h-2" />
+                      <div className="text-sm text-muted-foreground">
+                        <div>ผู้จัดการ: {project.manager?.name || 'ไม่ระบุ'}</div>
+                        <div>งบประมาณ: {project.budget ? `฿${Number(project.budget).toLocaleString()}` : 'ไม่ระบุ'}</div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="activities" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <Activity className="h-5 w-5 mr-2" />
+                กิจกรรมล่าสุด
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {recentActivities.map((activity, index) => (
+                  <div key={index} className="flex items-start space-x-4 p-3 rounded-lg hover:bg-gray-50 transition-colors">
+                    <div className={`p-2 rounded-full ${
+                      activity.color === 'blue' ? 'bg-blue-100' :
+                      activity.color === 'green' ? 'bg-green-100' :
+                      'bg-gray-100'
+                    }`}>
+                      <activity.icon className={`h-4 w-4 ${
+                        activity.color === 'blue' ? 'text-blue-600' :
+                        activity.color === 'green' ? 'text-green-600' :
+                        'text-gray-600'
+                      }`} />
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex justify-between items-start">
+                        <p className="font-medium">{activity.title}</p>
+                        <span className="text-sm text-muted-foreground">
+                          {format(new Date(activity.date), 'd MMM HH:mm', { locale: th })}
+                        </span>
+                      </div>
+                      <p className="text-sm text-muted-foreground">{activity.description}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+
+      {/* Quick Insights */}
+      <div className="grid gap-4 md:grid-cols-3">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center text-sm">
+              <Zap className="h-4 w-4 mr-2" />
+              ข้อมูลด่วน
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="flex justify-between items-center">
+              <span className="text-sm">ประสิทธิภาพเฉลี่ย</span>
+              <Badge variant="outline">85%</Badge>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-sm">เป้าหมายรายสัปดาห์</span>
+              <Badge variant="outline">40 ชม.</Badge>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-sm">คะแนนความพึงพอใจ</span>
+              <Badge variant="outline">4.8/5</Badge>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center text-sm">
+              <CalendarDays className="h-4 w-4 mr-2" />
+              ปฏิทิน
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-center py-4">
+              <div className="text-2xl font-bold">{format(new Date(), 'd')}</div>
+              <div className="text-sm text-muted-foreground">{format(new Date(), 'MMMM yyyy', { locale: th })}</div>
+            </div>
+            <div className="space-y-2">
+              <div className="flex items-center space-x-2 text-sm">
+                <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                <span>ประชุมทีม 14:00</span>
+              </div>
+              <div className="flex items-center space-x-2 text-sm">
+                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                <span>ส่งรายงาน 16:00</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center text-sm">
+              <Star className="h-4 w-4 mr-2" />
+              ความสำเร็จ
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="flex items-center space-x-2">
+              <Award className="h-4 w-4 text-yellow-500" />
+              <span className="text-sm">เสร็จสิ้นโครงการ 3 โครงการ</span>
+            </div>
+            <div className="flex items-center space-x-2">
+              <CheckSquare className="h-4 w-4 text-green-500" />
+              <span className="text-sm">อนุมัติไทม์ชีท 25 รายการ</span>
+            </div>
+            <div className="flex items-center space-x-2">
+              <Target className="h-4 w-4 text-blue-500" />
+              <span className="text-sm">บรรลุเป้าหมาย 90%</span>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 };

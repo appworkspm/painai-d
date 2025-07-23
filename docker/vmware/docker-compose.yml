@@ -1,0 +1,60 @@
+version: '3.8'
+
+services:
+  # Database Service
+  db:
+    image: postgres:15-alpine
+    container_name: painai-db
+    restart: always
+    environment:
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+      POSTGRES_DB: ${DB_NAME:-painai}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - painai-network
+
+  # Backend Service
+  backend:
+    build:
+      context: ../../
+      dockerfile: docker/vmware/backend.Dockerfile
+    container_name: painai-backend
+    restart: always
+    depends_on:
+      - db
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@db:5432/${DB_NAME:-painai}?schema=public
+      JWT_SECRET: ${JWT_SECRET:-your-secret-key}
+      PORT: 3000
+    ports:
+      - "3000:3000"
+    networks:
+      - painai-network
+
+  # Frontend Service
+  frontend:
+    build:
+      context: ../../
+      dockerfile: docker/vmware/frontend.Dockerfile
+    container_name: painai-frontend
+    restart: always
+    depends_on:
+      - backend
+    ports:
+      - "80:80"
+    networks:
+      - painai-network
+
+# Volumes
+volumes:
+  postgres_data:
+
+# Networks
+networks:
+  painai-network:
+    driver: bridge

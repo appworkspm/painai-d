@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { projectAPI } from '@/services/api';
+import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/Button';
 import {
   Table,
@@ -42,6 +43,7 @@ import { toast } from 'sonner';
 import { Project } from '@/types';
 
 const Projects = () => {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -207,10 +209,10 @@ const Projects = () => {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Projects</h1>
+        <h1 className="text-2xl font-bold">{t('project_details.projects_title')}</h1>
         <Button onClick={handleAddClick}>
           <PlusCircle className="mr-2 h-4 w-4" />
-          Add Project
+          {t('project_details.add_project')}
         </Button>
       </div>
 
@@ -218,18 +220,19 @@ const Projects = () => {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Project Name</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Manager</TableHead>
-              <TableHead>Start Date</TableHead>
-              <TableHead>End Date</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
+              <TableHead>{t('project_details.project_name_column')}</TableHead>
+              <TableHead>{t('project_details.job_code_column')}</TableHead>
+              <TableHead>{t('project_details.status_column')}</TableHead>
+              <TableHead>{t('project_details.manager_column')}</TableHead>
+              <TableHead>{t('project_details.start_date_column')}</TableHead>
+              <TableHead>{t('project_details.end_date_column')}</TableHead>
+              <TableHead className="text-right">{t('project_details.actions_column')}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={6} className="h-24 text-center">
+                <TableCell colSpan={7} className="h-24 text-center">
                   Loading...
                 </TableCell>
               </TableRow>
@@ -237,6 +240,7 @@ const Projects = () => {
               projects.map((project: Project) => (
                 <TableRow key={project.id}>
                   <TableCell className="font-medium">{project.name}</TableCell>
+                  <TableCell>{project.jobCode || '-'}</TableCell>
                   <TableCell>
                     <Badge variant={getStatusBadgeVariant(project.status)}>
                       {project.status}
@@ -254,16 +258,16 @@ const Projects = () => {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                        <DropdownMenuLabel>{t('project_details.actions_column')}</DropdownMenuLabel>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem onClick={() => handleEditClick(project)}>
-                          Edit Project
+                          {t('project_details.edit_project_action')}
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           className="text-red-600"
                           onClick={() => handleDeleteClick(project)}
                         >
-                          Delete Project
+                          {t('project_details.delete_project_action')}
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -278,7 +282,7 @@ const Projects = () => {
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="sm:max-w-[600px]">
           <DialogHeader>
-            <DialogTitle>{selectedProject ? 'Edit Project' : 'Add New Project'}</DialogTitle>
+            <DialogTitle>{selectedProject ? t('project_details.edit_project') : t('project_details.add_new_project')}</DialogTitle>
             <DialogDescription>
               {selectedProject ? 'Update the details of your project.' : 'Fill in the form to create a new project.'}
             </DialogDescription>
