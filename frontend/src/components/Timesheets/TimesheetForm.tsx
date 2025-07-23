@@ -137,7 +137,7 @@ const TimesheetForm: React.FC<TimesheetFormProps> = ({
         >
           <Select
             showSearch
-            placeholder="Select a project"
+            placeholder="เลือกโครงการ"
             optionFilterProp="children"
             filterOption={(input, option) =>
               (option?.children as string).toLowerCase().includes(input.toLowerCase())
@@ -160,7 +160,7 @@ const TimesheetForm: React.FC<TimesheetFormProps> = ({
             { max: 255, message: 'Task description cannot exceed 255 characters' },
           ]}
         >
-          <Input placeholder="What did you work on?" maxLength={255} />
+          <Input placeholder="อธิบายงานที่ทำ" maxLength={255} />
         </Form.Item>
 
         <Form.Item
@@ -170,7 +170,7 @@ const TimesheetForm: React.FC<TimesheetFormProps> = ({
         >
           <TextArea
             rows={3}
-            placeholder="Additional notes or details"
+            placeholder="หมายเหตุเพิ่มเติม (ถ้ามี)"
             maxLength={1000}
             showCount
           />

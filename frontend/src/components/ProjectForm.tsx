@@ -76,7 +76,7 @@ export const ProjectForm = ({ onSubmit, initialData, isLoading }: ProjectFormPro
             <FormItem className="md:col-span-2">
               <FormLabel>{t('project_details.project_name_label')}</FormLabel>
               <FormControl>
-                <Input placeholder="Enter project name" {...field} />
+                <Input placeholder="กรอกชื่อโครงการ" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -90,7 +90,7 @@ export const ProjectForm = ({ onSubmit, initialData, isLoading }: ProjectFormPro
             <FormItem className="md:col-span-2">
               <FormLabel>{t('project_details.project_description_label')}</FormLabel>
               <FormControl>
-                <Textarea placeholder="Project description" {...field} />
+                <Textarea placeholder="อธิบายรายละเอียดโครงการ" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -106,7 +106,7 @@ export const ProjectForm = ({ onSubmit, initialData, isLoading }: ProjectFormPro
               <Select onValueChange={field.onChange} defaultValue={field.value}>
                 <FormControl>
                   <SelectTrigger>
-                    <SelectValue placeholder="Select a status" />
+                    <SelectValue placeholder="เลือกสถานะโครงการ" />
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
@@ -130,7 +130,7 @@ export const ProjectForm = ({ onSubmit, initialData, isLoading }: ProjectFormPro
               <Select onValueChange={field.onChange} defaultValue={field.value}>
                 <FormControl>
                   <SelectTrigger>
-                    <SelectValue placeholder="Select a manager" />
+                    <SelectValue placeholder="เลือกผู้จัดการโครงการ" />
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
@@ -153,7 +153,7 @@ export const ProjectForm = ({ onSubmit, initialData, isLoading }: ProjectFormPro
             <FormItem>
               <FormLabel>{t('project_details.job_code_label')}</FormLabel>
               <FormControl>
-                <Input placeholder="Enter job code" {...field} />
+                <Input placeholder="กรอกรหัสงาน" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -167,7 +167,7 @@ export const ProjectForm = ({ onSubmit, initialData, isLoading }: ProjectFormPro
             <FormItem>
               <FormLabel>{t('project_details.customer_name_form_label')}</FormLabel>
               <FormControl>
-                <Input placeholder="Enter customer name" {...field} />
+                <Input placeholder="กรอกชื่อลูกค้า" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -181,7 +181,7 @@ export const ProjectForm = ({ onSubmit, initialData, isLoading }: ProjectFormPro
             <FormItem>
               <FormLabel>{t('project_details.payment_terms_form_label')}</FormLabel>
               <FormControl>
-                <Input placeholder="Enter payment terms" {...field} />
+                <Input placeholder="กรอกเงื่อนไขการชำระเงิน" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -207,7 +207,7 @@ export const ProjectForm = ({ onSubmit, initialData, isLoading }: ProjectFormPro
                       {field.value ? (
                         format(field.value, "PPP")
                       ) : (
-                        <span>Pick a date</span>
+                        <span>เลือกวันที่</span>
                       )}
                       <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                     </Button>
@@ -246,7 +246,7 @@ export const ProjectForm = ({ onSubmit, initialData, isLoading }: ProjectFormPro
                       {field.value ? (
                         format(field.value, "PPP")
                       ) : (
-                        <span>Pick a date</span>
+                        <span>เลือกวันที่</span>
                       )}
                       <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                     </Button>
@@ -273,7 +273,7 @@ export const ProjectForm = ({ onSubmit, initialData, isLoading }: ProjectFormPro
             <FormItem className="md:col-span-2">
               <FormLabel>{t('project_details.budget_label')}</FormLabel>
               <FormControl>
-                <Input type="number" placeholder="Enter project budget" {...field} />
+                <Input type="number" placeholder="กรอกงบประมาณโครงการ" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>

@@ -104,7 +104,7 @@ const FiltersPanel: React.FC<FiltersPanelProps> = ({
           <div className="filter-group">
             <label className="filter-label">Search</label>
             <Input
-              placeholder="Search by task or project..."
+                              placeholder="ค้นหาตามงานหรือโครงการ..."
               prefix={<SearchOutlined />}
               value={searchValue}
               onChange={handleSearchChange}

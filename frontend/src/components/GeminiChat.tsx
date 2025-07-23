@@ -35,7 +35,7 @@ export const GeminiChat: React.FC = () => {
             <TextArea
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
-              placeholder="Ask me anything..."
+              placeholder="ถามอะไรก็ได้..."
               autoSize={{ minRows: 3, maxRows: 6 }}
               disabled={isLoading}
             />
