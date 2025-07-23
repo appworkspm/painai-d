@@ -1,87 +1,141 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNotification } from '../contexts/NotificationContext';
-import { useQuery, useMutation, useQueryClient } from 'react-query';
-import { CheckCircle, XCircle, Clock, User, Calendar, FileText, MessageSquare, Eye, EyeOff } from 'lucide-react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { CheckCircle, XCircle, Clock, Eye, EyeOff, Loader2, FileText, Calendar, User as UserIcon } from 'lucide-react';
 import { timesheetAPI } from '../services/api';
+import { Timesheet, PaginatedResponse, ApiResponse, User } from '../types';
+
+type FilterType = 'all' | 'pending' | 'approved' | 'rejected';
+
+interface RejectTimesheetParams {
+  timesheetId: string;
+  reason: string;
+}
+
+// Extended interface for timesheet with approval-specific fields
+interface TimesheetWithApproval extends Omit<Timesheet, 'project'> {
+  status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'SUBMITTED';
+  rejection_reason?: string;
+  work_type?: 'PROJECT' | 'NON_PROJECT' | 'LEAVE';
+  date?: string;
+  activity?: string;
+  hours_worked?: number;
+  overtime_hours?: number;
+  user?: User;
+  project?: {
+    id: string;
+    name: string;
+  };
+}
 
 const TimesheetApproval: React.FC = () => {
-  const { user } = useAuth();
+  // User context is available if needed
+  useAuth();
   const { showNotification } = useNotification();
   const queryClient = useQueryClient();
   
-  const [filter, setFilter] = useState('pending');
-  const [selectedTimesheet, setSelectedTimesheet] = useState<any>(null);
-  const [showRejectModal, setShowRejectModal] = useState(false);
-  const [rejectReason, setRejectReason] = useState('');
-  const [showDetails, setShowDetails] = useState(false);
+  const [filter, setFilter] = useState<FilterType>('pending');
+  const [selectedTimesheet, setSelectedTimesheet] = useState<TimesheetWithApproval | null>(null);
+  const [showRejectModal, setShowRejectModal] = useState<boolean>(false);
+  const [rejectReason, setRejectReason] = useState<string>('');
+  const [showDetails, setShowDetails] = useState<boolean>(false);
 
-  // Fetch real timesheet data
-  const statusMap: Record<string, string | undefined> = {
-    pending: 'submitted',
-    approved: 'approved',
-    rejected: 'rejected',
-    all: undefined
-  };
-
-  const { data: timesheetsData, isLoading } = useQuery(
-    ['timesheets-approval', filter],
-    () => timesheetAPI.getTimesheets({ 
-      limit: 100, 
-      status: statusMap[filter]
-    }),
-    {
-      refetchInterval: 30000,
-    }
-  );
-
-  const timesheets = timesheetsData?.data || [];
-
-  // Approve mutation
-  const approveMutation = useMutation(
-    (timesheetId: string) => timesheetAPI.approveTimesheet(timesheetId),
-    {
-      onSuccess: () => {
-        showNotification({
-          message: 'Timesheet approved successfully',
-          type: 'success'
+  // Fetch timesheets with proper typing and error handling
+  const { 
+    data: timesheetsResponse, 
+    isPending: isLoading
+  } = useQuery<PaginatedResponse<TimesheetWithApproval>, Error>({
+    queryKey: ['timesheets-approval', filter],
+    queryFn: async (): Promise<PaginatedResponse<TimesheetWithApproval>> => {
+      try {
+        const response = await timesheetAPI.getTimesheets({
+          status: filter === 'all' ? undefined : filter.toUpperCase(),
+          page: 1,
+          limit: 100,
         });
-        queryClient.invalidateQueries(['timesheets-approval']);
-      },
-      onError: (error: any) => {
-        showNotification({
-          message: 'Failed to approve timesheet',
-          description: error.response?.data?.message || 'An error occurred',
-          type: 'error'
-        });
+        
+        // Transform the response to match the expected type
+        const typedResponse = response as unknown as {
+          data: Array<TimesheetWithApproval>;
+          pagination: {
+            total: number;
+            page: number;
+            limit: number;
+            totalPages: number;
+          };
+        };
+        
+        return {
+          data: typedResponse.data,
+          pagination: typedResponse.pagination
+        };
+      } catch (error) {
+        console.error('Error fetching timesheets:', error);
+        throw new Error('Failed to fetch timesheets');
       }
-    }
-  );
+    },
+    refetchInterval: 30000,
+  });
 
-  // Reject mutation
-  const rejectMutation = useMutation(
-    ({ timesheetId, reason }: { timesheetId: string; reason: string }) => 
-      timesheetAPI.rejectTimesheet(timesheetId, { reason }),
-    {
-      onSuccess: () => {
-        showNotification({
-          message: 'Timesheet rejected successfully',
-          type: 'success'
-        });
-        setShowRejectModal(false);
-        setRejectReason('');
-        setSelectedTimesheet(null);
-        queryClient.invalidateQueries(['timesheets-approval']);
-      },
-      onError: (error: any) => {
-        showNotification({
-          message: 'Failed to reject timesheet',
-          description: error.response?.data?.message || 'An error occurred',
-          type: 'error'
-        });
+  const timesheets: TimesheetWithApproval[] = timesheetsResponse?.data || [];
+
+  // Approve mutation with proper typing and error handling
+  const approveMutation = useMutation<ApiResponse<TimesheetWithApproval>, Error, string>({
+    mutationFn: async (timesheetId: string) => {
+      try {
+        const response = await timesheetAPI.approveTimesheet(timesheetId);
+        return response as ApiResponse<TimesheetWithApproval>;
+      } catch (error) {
+        console.error('Error approving timesheet:', error);
+        throw new Error('Failed to approve timesheet. Please try again.');
       }
+    },
+    onSuccess: () => {
+      showNotification({
+        message: 'Timesheet approved successfully',
+        type: 'success'
+      });
+      queryClient.invalidateQueries({ queryKey: ['timesheets-approval'] });
+    },
+    onError: (error: Error & { response?: { data?: { message?: string } } }) => {
+      showNotification({
+        message: 'Failed to approve timesheet',
+        description: error.response?.data?.message || error.message || 'An error occurred',
+        type: 'error'
+      });
     }
-  );
+  });
+
+  // Reject mutation with proper typing and error handling
+  const rejectMutation = useMutation<ApiResponse<TimesheetWithApproval>, Error, RejectTimesheetParams>({
+    mutationFn: async ({ timesheetId, reason }) => {
+      try {
+        const response = await timesheetAPI.rejectTimesheet(timesheetId, { reason });
+        return response as ApiResponse<TimesheetWithApproval>;
+      } catch (error) {
+        console.error('Error rejecting timesheet:', error);
+        throw new Error('Failed to reject timesheet. Please try again.');
+      }
+    },
+    onSuccess: () => {
+      showNotification({
+        message: 'Timesheet rejected successfully',
+        type: 'success'
+      });
+      setShowRejectModal(false);
+      setRejectReason('');
+      setSelectedTimesheet(null);
+      queryClient.invalidateQueries({ queryKey: ['timesheets-approval'] });
+    },
+    onError: (error: any) => {
+      showNotification({
+        message: 'Failed to reject timesheet',
+        description: error.response?.data?.message || 'An error occurred',
+        type: 'error'
+      });
+    }
+  });
 
   const handleApprove = async (timesheetId: string) => {
     if (window.confirm('Are you sure you want to approve this timesheet?')) {
@@ -143,18 +197,27 @@ const TimesheetApproval: React.FC = () => {
     return minutes > 0 ? `${wholeHours}h ${minutes}m` : `${wholeHours}h`;
   };
 
-  const filteredTimesheets = timesheets.filter(ts => {
-    if (filter === 'all') return true;
-    if (filter === 'pending') return ts.status?.toUpperCase() === 'SUBMITTED';
-    return ts.status?.toUpperCase() === filter.toUpperCase();
-  });
+  // Helper function to filter timesheets by status
+  const getFilteredTimesheets = (timesheets: TimesheetWithApproval[], statusFilter: FilterType): TimesheetWithApproval[] => {
+    if (!Array.isArray(timesheets)) return [];
+    
+    return timesheets.filter((ts) => {
+      if (statusFilter === 'all') return true;
+      if (statusFilter === 'pending') return ts.status?.toUpperCase() === 'SUBMITTED';
+      return ts.status?.toUpperCase() === statusFilter.toUpperCase();
+    });
+  };
 
+  // Get filtered timesheets based on current filter
+  const filteredTimesheets = getFilteredTimesheets(timesheets, filter);
+
+  // Calculate stats with proper type safety
   const stats = {
     pending: timesheets.filter(ts => ts.status?.toUpperCase() === 'SUBMITTED').length,
     approved: timesheets.filter(ts => ts.status?.toUpperCase() === 'APPROVED').length,
     rejected: timesheets.filter(ts => ts.status?.toUpperCase() === 'REJECTED').length,
     total: timesheets.length
-  };
+  } as const;
 
   return (
     <div className="space-y-6">
@@ -235,7 +298,7 @@ const TimesheetApproval: React.FC = () => {
             <div className="flex space-x-2">
               <select
                 value={filter}
-                onChange={(e) => setFilter(e.target.value)}
+                onChange={(e) => setFilter(e.target.value as FilterType)}
                 className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="pending">รออนุมัติ</option>
@@ -267,7 +330,7 @@ const TimesheetApproval: React.FC = () => {
                       {/* User Info */}
                       <div className="flex-shrink-0">
                         <div className="h-10 w-10 rounded-full bg-primary-100 flex items-center justify-center">
-                          <User className="h-5 w-5 text-primary-600" />
+                              <UserIcon className="h-5 w-5 text-primary-600" />
                         </div>
                       </div>
                       
@@ -279,9 +342,9 @@ const TimesheetApproval: React.FC = () => {
                           <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(timesheet.status)}`}>
                             {timesheet.status}
                           </span>
-                          <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getWorkTypeColor(timesheet.work_type)}`}>
-                            {timesheet.work_type?.replace('_', ' ') || 'Unknown'}
-                          </span>
+                            <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getWorkTypeColor(timesheet.work_type || '')}`}>
+                              {timesheet.work_type?.replace('_', ' ') || 'Unknown'}
+                            </span>
                         </div>
                         
                         <div className="space-y-1">
@@ -330,19 +393,27 @@ const TimesheetApproval: React.FC = () => {
                         <>
                           <button
                             onClick={() => handleApprove(timesheet.id)}
-                            disabled={approveMutation.isLoading}
+                            disabled={approveMutation.isPending}
                             className="flex items-center px-3 py-1 text-sm text-green-600 hover:text-green-900 hover:bg-green-50 rounded-lg transition-colors disabled:opacity-50"
                           >
-                            <CheckCircle className="h-4 w-4 mr-1" />
-                            อนุมัติ
+                            {approveMutation.isPending ? (
+                              <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                            ) : (
+                              <CheckCircle className="h-4 w-4 mr-1" />
+                            )}
+                            {approveMutation.isPending ? 'กำลังดำเนินการ...' : 'อนุมัติ'}
                           </button>
                           <button
                             onClick={() => handleReject(timesheet)}
-                            disabled={rejectMutation.isLoading}
+                            disabled={rejectMutation.isPending}
                             className="flex items-center px-3 py-1 text-sm text-red-600 hover:text-red-900 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
                           >
-                            <XCircle className="h-4 w-4 mr-1" />
-                            ไม่อนุมัติ
+                            {rejectMutation.isPending ? (
+                              <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                            ) : (
+                              <XCircle className="h-4 w-4 mr-1" />
+                            )}
+                            {rejectMutation.isPending ? 'กำลังดำเนินการ...' : 'ไม่อนุมัติ'}
                           </button>
                         </>
                       )}
@@ -390,14 +461,15 @@ const TimesheetApproval: React.FC = () => {
               
               <div className="flex space-x-3">
                 <button
+                  type="button"
                   onClick={handleRejectSubmit}
-                  disabled={rejectMutation.isLoading || !rejectReason.trim()}
-                  className="flex-1 bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                  disabled={rejectMutation.isPending}
+                  className="w-full inline-flex justify-center items-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 sm:ml-3 sm:w-auto sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {rejectMutation.isLoading ? (
+                  {rejectMutation.isPending ? (
                     <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                      กำลังส่ง...
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      กำลังดำเนินการ...
                     </>
                   ) : (
                     <>

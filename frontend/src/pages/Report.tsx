@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useQuery } from 'react-query';
+import { useQuery } from '@tanstack/react-query';
 import { timesheetAPI } from '../services/api';
 import { Download } from 'lucide-react';
 import { getMonth, getYear, startOfMonth, endOfMonth, format } from 'date-fns';
@@ -38,11 +38,14 @@ const WorkloadReport: React.FC = () => {
   const monthStart = startOfMonth(new Date(selectedYear, selectedMonth));
   const monthEnd = endOfMonth(monthStart);
 
-  const { data, isLoading } = useQuery(['timesheets', 'all', monthStart], () => timesheetAPI.getTimesheets({
-    start: monthStart.toISOString(),
-    end: monthEnd.toISOString(),
-    limit: 1000,
-  }));
+  const { data, isLoading } = useQuery({
+    queryKey: ['timesheets', 'all', monthStart],
+    queryFn: () => timesheetAPI.getTimesheets({
+      start: monthStart.toISOString(),
+      end: monthEnd.toISOString(),
+      limit: 1000,
+    })
+  });
   const timesheets = data?.data?.data || [];
 
   // Get all users for filter
@@ -115,13 +118,19 @@ const WorkloadReport: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {csvRows.map((row, i) => (
-                  <tr key={i}>
-                    {csvHeaders.map((h) => (
-                      <td key={h} className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{row[h]}</td>
-                    ))}
-                  </tr>
-                ))}
+                {csvRows.map((row, i) => {
+                  // Type assertion to ensure type safety
+                  const typedRow = row as Record<string, string | number>;
+                  return (
+                    <tr key={i}>
+                      {csvHeaders.map((h) => (
+                        <td key={h} className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {typedRow[h]}
+                        </td>
+                      ))}
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           )}

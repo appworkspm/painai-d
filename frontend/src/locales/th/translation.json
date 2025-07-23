@@ -258,6 +258,11 @@
       "update_failed": "อัปเดตโปรไฟล์ไม่สำเร็จ"
     }
   },
+  "settings": {
+    "title": "การตั้งค่า",
+    "language": "ภาษา",
+    "select_language": "เลือกภาษาที่ต้องการ"
+  },
   "project_details": {
     "team_title": "สมาชิกทีม",
     "add_member": "เพิ่มสมาชิก",

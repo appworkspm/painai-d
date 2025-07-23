@@ -258,6 +258,11 @@
       "update_failed": "Failed to update profile"
     }
   },
+  "settings": {
+    "title": "Settings",
+    "language": "Language",
+    "select_language": "Select your preferred language"
+  },
   "project_details": {
     "team_title": "Team Members",
     "add_member": "Add Member",
