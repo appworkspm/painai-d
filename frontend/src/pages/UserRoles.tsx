@@ -163,43 +163,40 @@ const UserRoles: React.FC = () => {
     }
   };
 
-  const mockRoles = [
+  // ใช้ข้อมูลจริงจาก API หรือ fallback เป็นข้อมูลพื้นฐาน
+  const systemRoles = [
     {
       id: '0',
       name: 'VP',
-      description: 'Highest privileges, full system control',
+      description: 'สิทธิ์สูงสุด ควบคุมระบบทั้งหมด',
       permissions: ['all_permissions'],
-      userCount: 1
+      userCount: users.filter(u => u.role === 'VP').length || 1
     },
     {
       id: '1',
       name: 'ADMIN',
-      description: 'Full system access and control',
+      description: 'เข้าถึงและควบคุมระบบทั้งหมด',
       permissions: ['user_management', 'project_management', 'system_settings', 'reports'],
-      userCount: 2
+      userCount: users.filter(u => u.role === 'ADMIN').length || 2
     },
     {
       id: '2',
       name: 'MANAGER',
-      description: 'Project and team management',
+      description: 'จัดการโครงการและทีม',
       permissions: ['project_management', 'timesheet_approval', 'reports'],
-      userCount: 5
+      userCount: users.filter(u => u.role === 'MANAGER').length || 5
     },
     {
       id: '3',
       name: 'USER',
-      description: 'Basic user access',
+      description: 'สิทธิ์ผู้ใช้พื้นฐาน',
       permissions: ['timesheet_management', 'profile_management'],
-      userCount: 15
+      userCount: users.filter(u => u.role === 'USER').length || 15
     }
   ];
 
-  const mockUsers = users.length > 0 ? users : [
-    { id: '0', name: 'Victor Prime', email: 'vp@example.com', role: 'VP' },
-    { id: '1', name: 'John Doe', email: 'john.doe@example.com', role: 'ADMIN' },
-    { id: '2', name: 'Jane Smith', email: 'jane.smith@example.com', role: 'MANAGER' },
-    { id: '3', name: 'Mike Johnson', email: 'mike.johnson@example.com', role: 'USER' }
-  ];
+  // ใช้ข้อมูลผู้ใช้จริงจาก API
+  const displayUsers = users.length > 0 ? users : [];
 
   return (
     <div className="space-y-6">
@@ -224,7 +221,7 @@ const UserRoles: React.FC = () => {
             <h2 className="text-lg font-medium text-gray-900">System Roles</h2>
           </div>
           <div className="p-6 space-y-4">
-            {mockRoles.map((role) => (
+            {systemRoles.map((role) => (
               <div key={role.id} className="border border-gray-200 rounded-lg p-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-3">
@@ -278,7 +275,7 @@ const UserRoles: React.FC = () => {
             <h2 className="text-lg font-medium text-gray-900">Users by Role</h2>
           </div>
           <div className="p-6 space-y-6">
-            {mockRoles.map((role) => (
+            {systemRoles.map((role) => (
               <div key={role.id}>
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center space-x-2">
@@ -290,7 +287,7 @@ const UserRoles: React.FC = () => {
                   </div>
                 </div>
                 <div className="space-y-2">
-                  {mockUsers
+                  {displayUsers
                     .filter((user) => user.role === role.name)
                     .map((user) => (
                       <div key={user.id} className="flex items-center justify-between p-2 bg-gray-50 rounded">

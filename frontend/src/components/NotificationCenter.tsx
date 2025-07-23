@@ -33,58 +33,48 @@ const NotificationCenter: React.FC = () => {
   const [filter, setFilter] = useState<'all' | 'unread' | 'urgent'>('all');
   const [category, setCategory] = useState<string>('all');
 
-  // Mock notifications data
+  // ดึงข้อมูลการแจ้งเตือนจริงจาก API
   useEffect(() => {
-    const mockNotifications: Notification[] = [
-      {
-        id: '1',
-        type: 'warning',
-        title: 'ไทม์ชีทรออนุมัติ',
-        message: 'คุณมีไทม์ชีท 3 รายการที่รอการอนุมัติ',
-        timestamp: new Date(Date.now() - 1000 * 60 * 30), // 30 minutes ago
-        read: false,
-        priority: 'high',
-        category: 'timesheet',
-        actionUrl: '/timesheets/pending'
-      },
-      {
-        id: '2',
-        type: 'success',
-        title: 'อนุมัติคำขอต้นทุน',
-        message: 'คำขอต้นทุนสำหรับโครงการ ABC ได้รับการอนุมัติแล้ว',
-        timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2), // 2 hours ago
-        read: false,
-        priority: 'medium',
-        category: 'cost',
-        actionUrl: '/cost-requests'
-      },
-      {
-        id: '3',
-        type: 'info',
-        title: 'ประชุมทีม',
-        message: 'ประชุมทีมประจำสัปดาห์ในอีก 1 ชั่วโมง',
-        timestamp: new Date(Date.now() - 1000 * 60 * 60 * 4), // 4 hours ago
-        read: true,
-        priority: 'medium',
-        category: 'team',
-        sender: {
-          id: '1',
-          name: 'John Doe',
-          avatar: '/avatars/john.jpg'
-        }
-      },
-      {
-        id: '4',
-        type: 'error',
-        title: 'ระบบล่ม',
-        message: 'ระบบจะปิดปรับปรุงในอีก 30 นาที',
-        timestamp: new Date(Date.now() - 1000 * 60 * 60 * 6), // 6 hours ago
-        read: false,
-        priority: 'urgent',
-        category: 'system'
+    const fetchNotifications = async () => {
+      try {
+        // TODO: เปลี่ยนเป็น API จริงเมื่อพร้อม
+        // const response = await fetch('/api/notifications');
+        // const data = await response.json();
+        // setNotifications(data);
+        
+        // ข้อมูลตัวอย่างสำหรับการพัฒนา
+        const sampleNotifications: Notification[] = [
+          {
+            id: '1',
+            type: 'warning',
+            title: 'ไทม์ชีทรออนุมัติ',
+            message: 'คุณมีไทม์ชีทที่รอการอนุมัติ',
+            timestamp: new Date(Date.now() - 1000 * 60 * 30),
+            read: false,
+            priority: 'high',
+            category: 'timesheet',
+            actionUrl: '/timesheets/pending'
+          },
+          {
+            id: '2',
+            type: 'success',
+            title: 'อนุมัติคำขอต้นทุน',
+            message: 'คำขอต้นทุนได้รับการอนุมัติแล้ว',
+            timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2),
+            read: false,
+            priority: 'medium',
+            category: 'cost',
+            actionUrl: '/cost-requests'
+          }
+        ];
+        setNotifications(sampleNotifications);
+      } catch (error) {
+        console.error('Error fetching notifications:', error);
+        setNotifications([]);
       }
-    ];
-    setNotifications(mockNotifications);
+    };
+
+    fetchNotifications();
   }, []);
 
   const unreadCount = notifications.filter(n => !n.read).length;

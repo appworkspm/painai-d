@@ -23,12 +23,12 @@ interface FiltersPanelProps {
 }
 
 const statusOptions = [
-  { value: 'ALL', label: 'All Statuses' },
-  { value: 'DRAFT', label: 'Draft' },
-  { value: 'SUBMITTED', label: 'Submitted' },
-  { value: 'APPROVED', label: 'Approved' },
-  { value: 'REJECTED', label: 'Rejected' },
-  { value: 'PENDING', label: 'Pending' },
+  { value: 'ALL', label: 'ทุกสถานะ' },
+  { value: 'DRAFT', label: 'ร่าง' },
+  { value: 'SUBMITTED', label: 'ส่งแล้ว' },
+  { value: 'APPROVED', label: 'อนุมัติแล้ว' },
+  { value: 'REJECTED', label: 'ไม่อนุมัติ' },
+  { value: 'PENDING', label: 'รอการอนุมัติ' },
 ];
 
 const FiltersPanel: React.FC<FiltersPanelProps> = ({

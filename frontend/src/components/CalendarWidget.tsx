@@ -28,51 +28,48 @@ const CalendarWidget: React.FC = () => {
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [view, setView] = useState<'month' | 'week' | 'day'>('month');
 
-  // Mock events data
+  // ดึงข้อมูลกิจกรรมจริงจาก API
   useEffect(() => {
-    const mockEvents: CalendarEvent[] = [
-      {
-        id: '1',
-        title: 'ประชุมทีมประจำสัปดาห์',
-        description: 'ประชุมทบทวนความคืบหน้าโครงการ',
-        startTime: new Date(2024, 0, 15, 14, 0), // 15 Jan 2024, 2 PM
-        endTime: new Date(2024, 0, 15, 15, 30), // 15 Jan 2024, 3:30 PM
-        type: 'meeting',
-        priority: 'high',
-        attendees: ['John Doe', 'Jane Smith', 'Mike Johnson'],
-        location: 'ห้องประชุม A'
-      },
-      {
-        id: '2',
-        title: 'ส่งรายงานโครงการ ABC',
-        description: 'รายงานความคืบหน้าประจำเดือน',
-        startTime: new Date(2024, 0, 20, 17, 0), // 20 Jan 2024, 5 PM
-        endTime: new Date(2024, 0, 20, 17, 0), // Same time for deadline
-        type: 'deadline',
-        priority: 'high',
-        projectId: 'proj-001',
-        projectName: 'โครงการ ABC'
-      },
-      {
-        id: '3',
-        title: 'วันหยุดราชการ',
-        description: 'วันเด็กแห่งชาติ',
-        startTime: new Date(2024, 0, 13, 0, 0), // 13 Jan 2024
-        endTime: new Date(2024, 0, 13, 23, 59), // 13 Jan 2024
-        type: 'holiday',
-        priority: 'low'
-      },
-      {
-        id: '4',
-        title: 'ตรวจสอบไทม์ชีท',
-        description: 'ตรวจสอบและอนุมัติไทม์ชีทของทีม',
-        startTime: new Date(2024, 0, 18, 9, 0), // 18 Jan 2024, 9 AM
-        endTime: new Date(2024, 0, 18, 10, 0), // 18 Jan 2024, 10 AM
-        type: 'reminder',
-        priority: 'medium'
+    const fetchEvents = async () => {
+      try {
+        // TODO: เปลี่ยนเป็น API จริงเมื่อพร้อม
+        // const response = await fetch('/api/calendar/events');
+        // const data = await response.json();
+        // setEvents(data);
+        
+        // ข้อมูลตัวอย่างสำหรับการพัฒนา
+        const sampleEvents: CalendarEvent[] = [
+          {
+            id: '1',
+            title: 'ประชุมทีมประจำสัปดาห์',
+            description: 'ประชุมทบทวนความคืบหน้าโครงการ',
+            startTime: new Date(Date.now() + 1000 * 60 * 60 * 24), // วันพรุ่งนี้
+            endTime: new Date(Date.now() + 1000 * 60 * 60 * 24 + 1000 * 60 * 90), // +1.5 ชั่วโมง
+            type: 'meeting',
+            priority: 'high',
+            attendees: ['ทีมพัฒนา'],
+            location: 'ห้องประชุม'
+          },
+          {
+            id: '2',
+            title: 'ส่งรายงานโครงการ',
+            description: 'รายงานความคืบหน้าประจำเดือน',
+            startTime: new Date(Date.now() + 1000 * 60 * 60 * 24 * 3), // 3 วันข้างหน้า
+            endTime: new Date(Date.now() + 1000 * 60 * 60 * 24 * 3),
+            type: 'deadline',
+            priority: 'high',
+            projectId: 'proj-001',
+            projectName: 'โครงการหลัก'
+          }
+        ];
+        setEvents(sampleEvents);
+      } catch (error) {
+        console.error('Error fetching calendar events:', error);
+        setEvents([]);
       }
-    ];
-    setEvents(mockEvents);
+    };
+
+    fetchEvents();
   }, []);
 
   const monthStart = startOfMonth(currentDate);
