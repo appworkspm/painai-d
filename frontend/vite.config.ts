@@ -137,8 +137,19 @@ export default defineConfig(({ mode }) => {
             // Split vendor and app code
             vendor: ['react', 'react-dom', 'react-router-dom', 'react-query', 'i18next', 'react-i18next'],
           },
+          // Ensure proper handling of JSON files
+          assetFileNames: (assetInfo) => {
+            if (assetInfo.name?.endsWith('.json')) {
+              return 'locales/[name][extname]';
+            }
+            return 'assets/[name]-[hash][extname]';
+          },
         },
+        // Ensure JSON files are properly processed
+        preserveEntrySignatures: 'strict',
       },
+      // Copy public files to dist
+      copyPublicDir: true,
     },
     
     // CSS configuration
