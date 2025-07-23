@@ -2,8 +2,8 @@ import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
 
 // Import translations directly (they will be inlined in the bundle)
-import enTranslation from '../public/locales/en/translation.json';
-import thTranslation from '../public/locales/th/translation.json';
+import enTranslation from './locales/en/translation.json';
+import thTranslation from './locales/th/translation.json';
 
 // Initialize i18n
 export const initI18n = async () => {
