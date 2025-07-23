@@ -16,9 +16,13 @@ export const connectDatabase = async () => {
   try {
     await prisma.$connect();
     console.log('✅ Database connected successfully');
+    
+    // Test the connection with a simple query
+    await prisma.$queryRaw`SELECT 1`;
+    console.log('✅ Database connection test successful');
   } catch (error) {
     console.error('❌ Database connection failed:', error);
-    process.exit(1);
+    throw error;
   }
 };
 
@@ -31,6 +35,17 @@ export const disconnectDatabase = async () => {
   }
 };
 
+// Add connection health check
+export const checkDatabaseConnection = async () => {
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+    return true;
+  } catch (error) {
+    console.error('❌ Database connection check failed:', error);
+    return false;
+  }
+};
+
 // Graceful shutdown
 process.on('SIGINT', async () => {
   await disconnectDatabase();
@@ -40,4 +55,17 @@ process.on('SIGINT', async () => {
 process.on('SIGTERM', async () => {
   await disconnectDatabase();
   process.exit(0);
+});
+
+// Handle uncaught exceptions
+process.on('uncaughtException', async (error) => {
+  console.error('❌ Uncaught Exception:', error);
+  await disconnectDatabase();
+  process.exit(1);
+});
+
+process.on('unhandledRejection', async (reason, promise) => {
+  console.error('❌ Unhandled Rejection at:', promise, 'reason:', reason);
+  await disconnectDatabase();
+  process.exit(1);
 }); 

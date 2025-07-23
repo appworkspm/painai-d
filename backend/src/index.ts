@@ -9,7 +9,7 @@ import path from 'path';
 
 import { errorHandler } from './middleware/errorHandler';
 import { notFoundHandler } from './middleware/notFoundHandler';
-import { connectDatabase, disconnectDatabase } from './utils/database';
+import { connectDatabase, disconnectDatabase, checkDatabaseConnection } from './utils/database';
 import authRoutes from './routes/auth';
 import userRoutes from './routes/users';
 import projectRoutes from './routes/projects';
@@ -52,12 +52,30 @@ app.use(compression());
 app.use(morgan('combined'));
 
 // Health check endpoint
-app.get('/health', (req, res) => {
-  res.json({ 
-    status: 'OK', 
-    timestamp: new Date().toISOString(),
-    environment: process.env.NODE_ENV 
-  });
+app.get('/health', async (req, res) => {
+  try {
+    const dbConnected = await checkDatabaseConnection();
+    res.json({ 
+      status: dbConnected ? 'OK' : 'WARNING',
+      timestamp: new Date().toISOString(),
+      environment: process.env.NODE_ENV,
+      database: {
+        connected: dbConnected,
+        status: dbConnected ? 'healthy' : 'disconnected'
+      }
+    });
+  } catch (error) {
+    res.status(503).json({
+      status: 'ERROR',
+      timestamp: new Date().toISOString(),
+      environment: process.env.NODE_ENV,
+      database: {
+        connected: false,
+        status: 'error',
+        error: error instanceof Error ? error.message : String(error)
+      }
+    });
+  }
 });
 
 // Routes
@@ -165,13 +183,37 @@ const server = app.listen(PORT, async () => {
   console.log(`📊 Environment: ${process.env.NODE_ENV}`);
   console.log(`🔗 Health check: http://localhost:${PORT}/health`);
   
-  // Connect to database
-  try {
-    await connectDatabase();
-  } catch (error) {
-    console.error('❌ Failed to connect to database:', error);
-    process.exit(1);
+  // Connect to database with retry logic
+  let retries = 5;
+  while (retries > 0) {
+    try {
+      await connectDatabase();
+      break;
+    } catch (error) {
+      retries--;
+      console.error(`❌ Database connection failed. Retries left: ${retries}`);
+      if (retries === 0) {
+        console.error('❌ Failed to connect to database after all retries. Exiting...');
+        process.exit(1);
+      }
+      // Wait 5 seconds before retrying
+      await new Promise(resolve => setTimeout(resolve, 5000));
+    }
   }
+  
+  // Set up periodic connection health checks
+  setInterval(async () => {
+    const isConnected = await checkDatabaseConnection();
+    if (!isConnected) {
+      console.warn('⚠️ Database connection lost, attempting to reconnect...');
+      try {
+        await connectDatabase();
+        console.log('✅ Database reconnected successfully');
+      } catch (error) {
+        console.error('❌ Failed to reconnect to database:', error);
+      }
+    }
+  }, 30000); // Check every 30 seconds
 });
 
 // Graceful shutdown
