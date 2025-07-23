@@ -153,6 +153,10 @@ export default defineConfig(({ mode }) => {
       copyPublicDir: true,
       // Ensure locales directory is included in the build
       assetsInclude: ['**/*.json'],
+      // Ensure JSON files are properly handled
+      commonjsOptions: {
+        esmExternals: true,
+      },
     },
     
     // CSS configuration
