@@ -191,6 +191,7 @@ const Sidebar = () => {
           <NavItem to="/projects/create" icon={Plus} label={t('menu.create_project', 'สร้างโครงการใหม่')} />
           <NavItem to="/projects/active" icon={Activity} label={t('menu.active_projects', 'โครงการที่ทำอยู่')} />
           <NavItem to="/projects/completed" icon={CheckCircle2} label={t('menu.completed_projects', 'โครงการที่เสร็จแล้ว')} />
+          <NavItem to="/projects/dashboard" icon={LayoutDashboard} label={t('menu.project_dashboard', 'แดชบอร์ดโครงการ')} />
         </Section>
 
         {/* Timesheets Section */}

@@ -9,6 +9,7 @@ import Dashboard from './pages/Dashboard';
 import Projects from './pages/Projects';
 import ProjectDetails from './pages/ProjectDetails';
 import ProjectProgress from './pages/ProjectProgress';
+import ProjectDashboard from './pages/ProjectDashboard';
 import Timesheets from './pages/Timesheets';
 import CreateTimesheet from './pages/CreateTimesheet';
 import TimesheetHistory from './pages/TimesheetHistory';
@@ -64,6 +65,7 @@ const App = () => {
                 
                 {/* Projects */}
                 <Route path="projects" element={<Projects />} />
+                <Route path="projects/dashboard" element={<ProjectDashboard />} />
                 <Route 
                   path="projects/:id" 
                   element={

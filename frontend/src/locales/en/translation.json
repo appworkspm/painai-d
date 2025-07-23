@@ -14,6 +14,7 @@
     "create_project": "New Project",
     "active_projects": "Active Projects",
     "completed_projects": "Completed",
+    "project_dashboard": "Project Dashboard",
     "project_details": "Details",
     "reports": "Reports",
     "workload_report": "Workload",
