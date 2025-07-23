@@ -238,34 +238,34 @@ const Dashboard = () => {
           </p>
         </div>
         <div className="flex items-center space-x-2">
-          <Button variant="outline" size="sm">
+          <Button variant="outline" size="sm" onClick={() => window.location.href = '/profile'}>
             <Bell className="h-4 w-4 mr-2" />
-            {t('dashboard.notifications')}
+            การแจ้งเตือน
           </Button>
-          <Button variant="outline" size="sm">
+          <Button variant="outline" size="sm" onClick={() => window.location.href = '/settings'}>
             <Settings className="h-4 w-4 mr-2" />
-            {t('dashboard.settings')}
+            ตั้งค่า
           </Button>
         </div>
       </div>
 
       {/* Quick Actions */}
       <div className="grid gap-4 md:grid-cols-4">
-        <Button className="h-20 flex flex-col items-center justify-center space-y-2" variant="outline">
+        <Button className="h-20 flex flex-col items-center justify-center space-y-2" variant="outline" onClick={() => window.location.href = '/timesheets/create'}>
           <Plus className="h-6 w-6" />
-          <span className="text-sm">{t('dashboard.create_timesheet')}</span>
+          <span className="text-sm">บันทึกงาน</span>
         </Button>
-        <Button className="h-20 flex flex-col items-center justify-center space-y-2" variant="outline">
+        <Button className="h-20 flex flex-col items-center justify-center space-y-2" variant="outline" onClick={() => window.location.href = '/projects'}>
           <FolderOpen className="h-6 w-6" />
-          <span className="text-sm">{t('dashboard.view_projects')}</span>
+          <span className="text-sm">ดูโครงการ</span>
         </Button>
-        <Button className="h-20 flex flex-col items-center justify-center space-y-2" variant="outline">
+        <Button className="h-20 flex flex-col items-center justify-center space-y-2" variant="outline" onClick={() => window.location.href = '/cost/my-requests'}>
           <DollarSign className="h-6 w-6" />
-          <span className="text-sm">{t('dashboard.cost_requests')}</span>
+          <span className="text-sm">คำขอค่าใช้จ่าย</span>
         </Button>
-        <Button className="h-20 flex flex-col items-center justify-center space-y-2" variant="outline">
+        <Button className="h-20 flex flex-col items-center justify-center space-y-2" variant="outline" onClick={() => window.location.href = '/reports/workload'}>
           <BarChart3 className="h-6 w-6" />
-          <span className="text-sm">{t('dashboard.view_reports')}</span>
+          <span className="text-sm">ดูรายงาน</span>
         </Button>
       </div>
 

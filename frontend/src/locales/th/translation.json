@@ -62,7 +62,13 @@
     "pending_approvals": "รอการอนุมัติ",
     "pending_approvals_desc": "ไทม์ชีทที่รอการอนุมัติ",
     "approved_timesheets": "ไทม์ชีทที่อนุมัติแล้ว",
-    "approved_timesheets_desc": "ไทม์ชีทของคุณที่ได้รับการอนุมัติแล้ว"
+    "approved_timesheets_desc": "ไทม์ชีทของคุณที่ได้รับการอนุมัติแล้ว",
+    "create_timesheet": "บันทึกงาน",
+    "view_projects": "ดูโครงการ",
+    "cost_requests": "คำขอค่าใช้จ่าย",
+    "view_reports": "ดูรายงาน",
+    "notifications": "การแจ้งเตือน",
+    "settings": "ตั้งค่า"
   },
   "report": {
     "title": "รายงานปริมาณงาน (เดือน {{month}})",

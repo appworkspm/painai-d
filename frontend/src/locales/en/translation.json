@@ -62,7 +62,13 @@
     "pending_approvals": "Pending Approvals",
     "pending_approvals_desc": "Timesheets waiting for approval.",
     "approved_timesheets": "Approved Timesheets",
-    "approved_timesheets_desc": "Your timesheets that have been approved."
+    "approved_timesheets_desc": "Your timesheets that have been approved.",
+    "create_timesheet": "Log Work",
+    "view_projects": "View Projects",
+    "cost_requests": "Cost Requests",
+    "view_reports": "View Reports",
+    "notifications": "Notifications",
+    "settings": "Settings"
   },
   "report": {
     "title": "Workload Report (Month {{month}})",
