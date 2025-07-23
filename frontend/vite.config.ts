@@ -9,9 +9,26 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
 
   return {
+    // Resolve configuration
+    resolve: {
+      alias: {
+        '@': path.resolve(__dirname, './src'),
+      },
+    },
+
+    // Public directory configuration
+    publicDir: 'public',
+
     plugins: [
-      // Basic React plugin
-      react(),
+      // Basic React plugin with Babel for optimization
+      react({
+        babel: {
+          plugins: [],
+          // Enable Fast Refresh
+          babelrc: false,
+          configFile: false,
+        },
+      }),
       
       // PWA configuration (can be disabled if not needed)
       VitePWA({
@@ -37,6 +54,37 @@ export default defineConfig(({ mode }) => {
         },
         workbox: {
           maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // 5MB
+          globPatterns: ['**/*.{js,css,html,ico,png,svg,json}'],
+          runtimeCaching: [
+            {
+              urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
+              handler: 'CacheFirst',
+              options: {
+                cacheName: 'google-fonts-cache',
+                expiration: {
+                  maxEntries: 10,
+                  maxAgeSeconds: 60 * 60 * 24 * 30, // 30 days
+                },
+                cacheableResponse: {
+                  statuses: [0, 200],
+                },
+              },
+            },
+            {
+              urlPattern: /^https:\/\/fonts\.gstatic\.com\/.*/i,
+              handler: 'CacheFirst',
+              options: {
+                cacheName: 'gstatic-fonts-cache',
+                expiration: {
+                  maxEntries: 10,
+                  maxAgeSeconds: 60 * 60 * 24 * 30, // 30 days
+                },
+                cacheableResponse: {
+                  statuses: [0, 200],
+                },
+              },
+            },
+          ],
         },
       }),
       
@@ -56,16 +104,22 @@ export default defineConfig(({ mode }) => {
     
     // Development server configuration
     server: {
-      port: 3000,
-      strictPort: true,
+      port: parseInt(env.VITE_PORT || '5173', 10),
       host: true,
-      origin: 'http://localhost:3000',
+      open: true,
+      proxy: {
+        '/api': {
+          target: env.VITE_API_URL || 'http://localhost:3000',
+          changeOrigin: true,
+          rewrite: (path) => path.replace(/^\/api/, ''),
+        },
+      },
     },
     
     // Preview server configuration
     preview: {
-      port: 3000,
-      strictPort: true,
+      port: parseInt(env.VITE_PREVIEW_PORT || '4173', 10),
+      host: true,
     },
     
     // Build configuration
@@ -75,6 +129,16 @@ export default defineConfig(({ mode }) => {
       minify: mode === 'production' ? 'esbuild' : false,
       cssMinify: mode === 'production',
       target: 'esnext',
+      // Ensure JSON files are properly included in the build
+      assetsInlineLimit: 0, // Disable inlining of assets to ensure JSON files are copied
+      rollupOptions: {
+        output: {
+          manualChunks: {
+            // Split vendor and app code
+            vendor: ['react', 'react-dom', 'react-router-dom', 'react-query', 'i18next', 'react-i18next'],
+          },
+        },
+      },
     },
     
     // CSS configuration
@@ -82,13 +146,6 @@ export default defineConfig(({ mode }) => {
       devSourcemap: true,
       modules: {
         localsConvention: 'camelCaseOnly',
-      },
-    },
-    
-    // Resolve configuration
-    resolve: {
-      alias: {
-        '@': path.resolve(__dirname, './src'),
       },
     },
   };
