@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { authAPI } from '../services/api';
+import { useTranslation } from 'react-i18next';
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState('');
@@ -9,6 +10,7 @@ export default function ForgotPassword() {
   const [error, setError] = useState('');
   const [isSuccess, setIsSuccess] = useState(false);
   const navigate = useNavigate();
+  const { t } = useTranslation();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -20,12 +22,12 @@ export default function ForgotPassword() {
       const res = await authAPI.forgotPassword({ email });
       if (res.success) {
         setIsSuccess(true);
-        setMessage('ส่งลิงก์รีเซ็ตรหัสผ่านไปยังอีเมลของคุณแล้ว กรุณาตรวจสอบกล่องจดหมาย');
+        setMessage(t('forgot.success'));
       } else {
-        setError(res.message || 'เกิดข้อผิดพลาดในการส่งอีเมล');
+        setError(res.message || t('forgot.error.send'));
       }
     } catch (err: any) {
-      setError(err?.response?.data?.message || err.message || 'เกิดข้อผิดพลาดในการเชื่อมต่อ');
+      setError(err?.response?.data?.message || err.message || t('forgot.error.network'));
     } finally {
       setLoading(false);
     }
@@ -39,11 +41,10 @@ export default function ForgotPassword() {
     <div className="min-h-screen flex">
       {/* Left Side */}
       <div className="hidden md:flex flex-col justify-center items-center w-1/2 bg-gradient-to-br from-blue-700 to-blue-400 relative">
-        <div className="text-white text-2xl font-bold mb-2 tracking-widest drop-shadow">วันนี้ไปไหน?</div>
-        <div className="text-white mb-2 font-semibold text-lg tracking-wide">Design by appworks</div>
-        <div className="text-white text-xs opacity-80">version 1.0 Powered by Cursor AI</div>
+        <div className="text-white text-2xl font-bold mb-2 tracking-widest drop-shadow">{t('login.slogan')}</div>
+        <div className="text-white mb-2 font-semibold text-lg tracking-wide">{t('login.design_by')}</div>
+        <div className="text-white text-xs opacity-80">{t('login.version')}</div>
       </div>
-      
       {/* Right Side */}
       <div className="flex flex-col justify-center items-center w-full md:w-1/2 bg-white">
         <div className="w-full max-w-md bg-white p-10 rounded-xl shadow-lg">
@@ -54,12 +55,8 @@ export default function ForgotPassword() {
               <path d="M7 11V7a5 5 0 1110 0v4" stroke="#1976d2" strokeWidth="2"/>
             </svg>
           </div>
-          
-          <h2 className="text-2xl font-bold text-center mb-2 text-gray-800">ลืมรหัสผ่าน?</h2>
-          <p className="text-gray-600 text-center mb-6">
-            กรุณากรอกอีเมลที่ใช้ในการลงทะเบียน เราจะส่งลิงก์สำหรับรีเซ็ตรหัสผ่านไปให้คุณ
-          </p>
-
+          <h2 className="text-2xl font-bold text-center mb-2 text-gray-800">{t('forgot.title')}</h2>
+          <p className="text-gray-600 text-center mb-6">{t('forgot.desc')}</p>
           {!isSuccess ? (
             <form onSubmit={handleSubmit}>
               <div className="mb-4">
@@ -72,7 +69,7 @@ export default function ForgotPassword() {
                   </span>
                   <input
                     type="email"
-                    placeholder="อีเมล"
+                    placeholder={t('forgot.email')}
                     className="w-full outline-none bg-transparent"
                     value={email}
                     onChange={e => setEmail(e.target.value)}
@@ -81,19 +78,17 @@ export default function ForgotPassword() {
                   />
                 </div>
               </div>
-
               {error && (
                 <div className="bg-red-100 text-red-700 px-3 py-2 rounded text-center mb-4 animate-shake border border-red-300">
                   {error}
                 </div>
               )}
-
               <button
                 type="submit"
                 className="w-full bg-gradient-to-r from-blue-600 to-blue-400 text-white py-2 rounded font-bold text-lg hover:from-blue-700 hover:to-blue-500 transition disabled:opacity-60 mb-4"
                 disabled={loading}
               >
-                {loading ? 'กำลังส่ง...' : 'ส่งลิงก์รีเซ็ตรหัสผ่าน'}
+                {loading ? t('forgot.sending') : t('forgot.send_button')}
               </button>
             </form>
           ) : (
@@ -108,17 +103,16 @@ export default function ForgotPassword() {
                 onClick={handleBackToLogin}
                 className="w-full bg-gray-600 text-white py-2 rounded font-bold text-lg hover:bg-gray-700 transition"
               >
-                กลับไปหน้าเข้าสู่ระบบ
+                {t('forgot.back_to_login')}
               </button>
             </div>
           )}
-
           <div className="text-center mt-4">
             <button
               onClick={handleBackToLogin}
               className="text-blue-600 hover:underline text-sm"
             >
-              ← กลับไปหน้าเข้าสู่ระบบ
+              ← {t('forgot.back_to_login')}
             </button>
           </div>
         </div>

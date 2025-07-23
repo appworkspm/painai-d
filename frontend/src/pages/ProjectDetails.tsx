@@ -6,6 +6,7 @@ import { FolderOpen, Users, Calendar, Clock, CheckCircle, AlertCircle, BarChart3
 import { LineChart as RLineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { projectAPI, projectTeamAPI, projectTaskAPI, projectTimelineAPI, adminAPI } from '../services/api';
 import { Card, Row, Col, Statistic, Table, Tag, Space, Button, Input, Select, DatePicker, message, Spin, Empty, Skeleton } from 'antd';
+import { useTranslation } from 'react-i18next';
 
 const { Search: AntSearch } = Input;
 
@@ -119,6 +120,7 @@ const ProjectDetails: React.FC = () => {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('ACTIVE');
   const [error, setError] = useState<string | null>(null);
+  const { t } = useTranslation();
 
   // Export functionality
   const exportProjectsToCSV = () => {
@@ -381,13 +383,13 @@ const ProjectDetails: React.FC = () => {
   const renderTeam = () => (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h3 className="text-lg font-medium text-gray-900">สมาชิกทีม</h3>
+        <h3 className="text-lg font-medium text-gray-900">{t('project_details.team_title')}</h3>
         <Button 
           type="primary" 
           icon={<Plus className="h-4 w-4" />}
           onClick={handleAddMember}
         >
-          เพิ่มสมาชิก
+          {t('project_details.add_member')}
         </Button>
       </div>
       
@@ -439,7 +441,7 @@ const ProjectDetails: React.FC = () => {
                   </Button>
                 )}
                 {record.user.id === managerId && (
-                  <Tag color="blue">ผู้จัดการ</Tag>
+                  <Tag color="blue">{t('project_details.manager_tag')}</Tag>
                 )}
               </Space>
             )
@@ -452,13 +454,13 @@ const ProjectDetails: React.FC = () => {
   const renderTasks = () => (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h3 className="text-lg font-medium text-gray-900">งานในโครงการ</h3>
+        <h3 className="text-lg font-medium text-gray-900">{t('project_details.tasks_title')}</h3>
         <Button 
           type="primary" 
           icon={<Plus className="h-4 w-4" />}
           onClick={handleAddTask}
         >
-          เพิ่มงาน
+          {t('project_details.add_task')}
         </Button>
       </div>
       
@@ -486,9 +488,9 @@ const ProjectDetails: React.FC = () => {
             key: 'status',
             render: (status: string) => {
               const statusConfig = {
-                COMPLETED: { color: 'success', text: 'เสร็จสิ้น' },
-                IN_PROGRESS: { color: 'processing', text: 'กำลังดำเนินการ' },
-                PENDING: { color: 'default', text: 'รอดำเนินการ' }
+                COMPLETED: { color: 'success', text: t('project_details.status.completed') },
+                IN_PROGRESS: { color: 'processing', text: t('project_details.status.in_progress') },
+                PENDING: { color: 'default', text: t('project_details.status.pending') }
               };
               const config = statusConfig[status as keyof typeof statusConfig] || { color: 'default', text: status };
               return <Tag color={config.color}>{config.text}</Tag>;
@@ -519,7 +521,7 @@ const ProjectDetails: React.FC = () => {
                   icon={<Edit className="h-4 w-4" />}
                   onClick={() => handleEditTask(record)}
                 >
-                  แก้ไข
+                  {t('project_details.edit_task')}
                 </Button>
                 <Button 
                   type="text" 
@@ -527,7 +529,7 @@ const ProjectDetails: React.FC = () => {
                   icon={<Trash2 className="h-4 w-4" />}
                   onClick={() => handleDeleteTask(record.id)}
                 >
-                  ลบ
+                  {t('project_details.delete_task')}
                 </Button>
               </Space>
             )
@@ -539,10 +541,10 @@ const ProjectDetails: React.FC = () => {
 
   const renderTimeline = () => (
     <div className="space-y-6">
-      <h3 className="text-lg font-medium text-gray-900">ไทม์ไลน์โครงการ</h3>
+      <h3 className="text-lg font-medium text-gray-900">{t('project_details.timeline_title')}</h3>
       
       {timeline.length === 0 ? (
-        <Empty description="ยังไม่มีกิจกรรมในไทม์ไลน์" />
+        <Empty description={t('project_details.no_timeline_activity')} />
       ) : (
         <div className="space-y-4">
           {timeline.map((item: any) => (
@@ -572,7 +574,7 @@ const ProjectDetails: React.FC = () => {
       {/* Project Information */}
       <div className="bg-white rounded-lg shadow">
         <div className="px-6 py-4 border-b border-gray-200">
-          <h3 className="text-lg font-medium text-gray-900">ข้อมูลโครงการ</h3>
+          <h3 className="text-lg font-medium text-gray-900">{t('project_details.project_info_title')}</h3>
         </div>
         <div className="p-6">
           <Row gutter={24}>
@@ -580,27 +582,27 @@ const ProjectDetails: React.FC = () => {
             <Col span={12}>
               <div className="space-y-4">
                 <div>
-                  <h4 className="text-sm font-medium text-gray-500">ชื่อโครงการ</h4>
+                  <h4 className="text-sm font-medium text-gray-500">{t('project_details.project_name_label')}</h4>
                   <p className="mt-1 text-sm text-gray-900 font-medium">{project?.name || '-'}</p>
                 </div>
                 <div>
-                  <h4 className="text-sm font-medium text-gray-500">คำอธิบาย</h4>
+                  <h4 className="text-sm font-medium text-gray-500">{t('project_details.project_description_label')}</h4>
                   <p className="mt-1 text-sm text-gray-900">{project?.description || '-'}</p>
                 </div>
                 <div>
-                  <h4 className="text-sm font-medium text-gray-500">สถานะ</h4>
+                  <h4 className="text-sm font-medium text-gray-500">{t('project_details.project_status_label')}</h4>
                   <Tag color={project?.status === 'ACTIVE' ? 'success' : project?.status === 'COMPLETED' ? 'default' : 'warning'}>
-                    {project?.status === 'ACTIVE' ? 'กำลังดำเนินการ' : 
-                     project?.status === 'COMPLETED' ? 'เสร็จสิ้น' : 
-                     project?.status === 'ON_HOLD' ? 'ระงับ' : project?.status}
+                    {project?.status === 'ACTIVE' ? t('project_details.status.active') : 
+                     project?.status === 'COMPLETED' ? t('project_details.status.completed') : 
+                     project?.status === 'ON_HOLD' ? t('project_details.status.on_hold') : project?.status}
                   </Tag>
                 </div>
                 <div>
-                  <h4 className="text-sm font-medium text-gray-500">ผู้จัดการโครงการ</h4>
+                  <h4 className="text-sm font-medium text-gray-500">{t('project_details.project_manager_label')}</h4>
                   <p className="mt-1 text-sm text-gray-900">{project?.manager?.name || '-'}</p>
                 </div>
                 <div>
-                  <h4 className="text-sm font-medium text-gray-500">รหัสงาน (Job Code)</h4>
+                  <h4 className="text-sm font-medium text-gray-500">{t('project_details.project_job_code_label')}</h4>
                   <p className="mt-1 text-sm text-gray-900">{project?.jobCode || '-'}</p>
                 </div>
               </div>
@@ -610,30 +612,30 @@ const ProjectDetails: React.FC = () => {
             <Col span={12}>
               <div className="space-y-4">
                 <div>
-                  <h4 className="text-sm font-medium text-gray-500">ชื่อลูกค้า</h4>
+                  <h4 className="text-sm font-medium text-gray-500">{t('project_details.customer_name_label')}</h4>
                   <p className="mt-1 text-sm text-gray-900">{project?.customerName || '-'}</p>
                 </div>
                 <div>
-                  <h4 className="text-sm font-medium text-gray-500">เงื่อนไขการชำระเงิน</h4>
+                  <h4 className="text-sm font-medium text-gray-500">{t('project_details.payment_terms_label')}</h4>
                   <p className="mt-1 text-sm text-gray-900">{project?.paymentTerm || '-'}</p>
                   {project?.paymentCondition && (
                     <p className="mt-1 text-xs text-gray-500">{project.paymentCondition}</p>
                   )}
                 </div>
                 <div>
-                  <h4 className="text-sm font-medium text-gray-500">งบประมาณ</h4>
+                  <h4 className="text-sm font-medium text-gray-500">{t('project_details.budget_label')}</h4>
                   <p className="mt-1 text-sm text-gray-900 font-medium">
                     {project?.budget ? `฿${Number(project.budget).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '-'}
                   </p>
                 </div>
                 <div>
-                  <h4 className="text-sm font-medium text-gray-500">วันที่เริ่มต้น</h4>
+                  <h4 className="text-sm font-medium text-gray-500">{t('project_details.start_date_label')}</h4>
                   <p className="mt-1 text-sm text-gray-900">
                     {project?.startDate ? dayjs(project.startDate).format('DD/MM/YYYY') : '-'}
                   </p>
                 </div>
                 <div>
-                  <h4 className="text-sm font-medium text-gray-500">วันที่สิ้นสุด</h4>
+                  <h4 className="text-sm font-medium text-gray-500">{t('project_details.end_date_label')}</h4>
                   <p className="mt-1 text-sm text-gray-900">
                     {project?.endDate ? dayjs(project.endDate).format('DD/MM/YYYY') : '-'}
                   </p>
@@ -649,7 +651,7 @@ const ProjectDetails: React.FC = () => {
         <Col span={6}>
           <Card>
             <Statistic
-              title="งานที่ค้าง"
+              title={t('project_details.pending_tasks_title')}
               value={totalTasks - completedTasks}
               valueStyle={{ color: '#faad14' }}
               prefix={<Clock className="h-4 w-4" />}
@@ -659,7 +661,7 @@ const ProjectDetails: React.FC = () => {
         <Col span={6}>
           <Card>
             <Statistic
-              title="อัตราความสำเร็จ"
+              title={t('project_details.completion_rate_title')}
               value={totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0}
               suffix="%"
               valueStyle={{ color: '#3f8600' }}
@@ -670,7 +672,7 @@ const ProjectDetails: React.FC = () => {
         <Col span={6}>
           <Card>
             <Statistic
-              title="กิจกรรมล่าสุด"
+              title={t('project_details.recent_activity_title')}
               value={timeline.length}
               prefix={<Calendar className="h-4 w-4" />}
             />
@@ -679,7 +681,7 @@ const ProjectDetails: React.FC = () => {
         <Col span={6}>
           <Card>
             <Statistic
-              title="วันที่สร้าง"
+              title={t('project_details.created_at_title')}
               value={project?.createdAt ? dayjs(project.createdAt).format('DD/MM/YYYY') : '-'}
               prefix={<FolderOpen className="h-4 w-4" />}
             />
@@ -689,11 +691,11 @@ const ProjectDetails: React.FC = () => {
 
       {/* Progress Bar */}
       <Card>
-        <h3 className="text-lg font-medium text-gray-900 mb-4">ความคืบหน้าโครงการ</h3>
+        <h3 className="text-lg font-medium text-gray-900 mb-4">{t('project_details.project_progress_title')}</h3>
         <div className="space-y-4">
           <div>
             <div className="flex justify-between text-sm text-gray-600 mb-2">
-              <span>ความคืบหน้ารวม</span>
+              <span>{t('project_details.overall_progress_label')}</span>
               <span>{progress}%</span>
             </div>
             <div className="w-full bg-gray-200 rounded-full h-2">
@@ -709,7 +711,7 @@ const ProjectDetails: React.FC = () => {
       {/* Project Timeline Summary */}
       {timeline.length > 0 && (
         <Card>
-          <h3 className="text-lg font-medium text-gray-900 mb-4">กิจกรรมล่าสุด</h3>
+          <h3 className="text-lg font-medium text-gray-900 mb-4">{t('project_details.recent_activities_title')}</h3>
           <div className="space-y-3">
             {timeline.slice(0, 5).map((item: any) => (
               <div key={item.id} className="flex items-start">
@@ -731,7 +733,7 @@ const ProjectDetails: React.FC = () => {
             {timeline.length > 5 && (
               <div className="text-center pt-2">
                 <Button type="link" onClick={() => setActiveTab('timeline')}>
-                  ดูกิจกรรมทั้งหมด ({timeline.length} รายการ)
+                  {t('project_details.view_all_activities', { count: timeline.length })}
                 </Button>
               </div>
             )}
@@ -747,8 +749,8 @@ const ProjectDetails: React.FC = () => {
         <div className="flex items-center gap-3">
           <FolderOpen className="h-8 w-8 text-primary-600" />
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">รายการโครงการ</h1>
-            <p className="text-sm text-gray-600">ค้นหาและดูรายละเอียดโครงการทั้งหมด</p>
+            <h1 className="text-2xl font-bold text-gray-900">{t('project_details.project_list_title')}</h1>
+            <p className="text-sm text-gray-600">{t('project_details.project_list_description')}</p>
           </div>
         </div>
         <Button 
@@ -756,7 +758,7 @@ const ProjectDetails: React.FC = () => {
           icon={<Download className="h-4 w-4" />}
           onClick={exportProjectsToCSV}
         >
-          ส่งออกรายการ
+          {t('project_details.export_projects')}
         </Button>
       </div>
 
@@ -765,7 +767,7 @@ const ProjectDetails: React.FC = () => {
         <Row gutter={16}>
           <Col span={8}>
             <AntSearch
-              placeholder="ค้นหาตามชื่อโครงการ, คำอธิบาย, หรือผู้จัดการ"
+              placeholder={t('project_details.search_placeholder')}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               prefix={<Search className="h-4 w-4 text-gray-400" />}
@@ -778,21 +780,21 @@ const ProjectDetails: React.FC = () => {
               onChange={setStatusFilter}
               size="large"
               style={{ width: '100%' }}
-              placeholder="เลือกสถานะ"
+              placeholder={t('project_details.select_status')}
             >
-              <Select.Option value="all">สถานะทั้งหมด</Select.Option>
-              <Select.Option value="ACTIVE">กำลังดำเนินการ</Select.Option>
-              <Select.Option value="ON_HOLD">ระงับ</Select.Option>
-              <Select.Option value="COMPLETED">เสร็จสิ้น</Select.Option>
-              <Select.Option value="CANCELLED">ยกเลิก</Select.Option>
-              <Select.Option value="ESCALATED_TO_SUPPORT">Escalated to Support</Select.Option>
-              <Select.Option value="SIGNED_CONTRACT">Signed Contract</Select.Option>
+              <Select.Option value="all">{t('project_details.all_status')}</Select.Option>
+              <Select.Option value="ACTIVE">{t('project_details.active_status')}</Select.Option>
+              <Select.Option value="ON_HOLD">{t('project_details.on_hold_status')}</Select.Option>
+              <Select.Option value="COMPLETED">{t('project_details.completed_status')}</Select.Option>
+              <Select.Option value="CANCELLED">{t('project_details.cancelled_status')}</Select.Option>
+              <Select.Option value="ESCALATED_TO_SUPPORT">{t('project_details.escalated_to_support_status')}</Select.Option>
+              <Select.Option value="SIGNED_CONTRACT">{t('project_details.signed_contract_status')}</Select.Option>
             </Select>
           </Col>
           <Col span={8}>
             <div className="flex items-center gap-2">
               <Filter className="h-4 w-4 text-gray-400" />
-              <span className="text-sm text-gray-600">พบ {filteredProjects.length} โครงการ</span>
+              <span className="text-sm text-gray-600">{t('project_details.found_projects', { count: filteredProjects.length })}</span>
             </div>
           </Col>
         </Row>
@@ -803,7 +805,7 @@ const ProjectDetails: React.FC = () => {
         <Col span={4}>
           <Card>
             <Statistic
-              title="โครงการทั้งหมด"
+              title={t('project_details.total_projects_title')}
               value={filteredProjects.length}
               prefix={<FolderOpen className="h-4 w-4" />}
             />
@@ -812,7 +814,7 @@ const ProjectDetails: React.FC = () => {
         <Col span={4}>
           <Card>
             <Statistic
-              title="กำลังดำเนินการ"
+              title={t('project_details.active_projects_title')}
               value={filteredProjects.filter(p => p.status === 'ACTIVE').length}
               valueStyle={{ color: '#3f8600' }}
               prefix={<CheckCircle className="h-4 w-4" />}
@@ -822,7 +824,7 @@ const ProjectDetails: React.FC = () => {
         <Col span={4}>
           <Card>
             <Statistic
-              title="ระงับ"
+              title={t('project_details.on_hold_projects_title')}
               value={filteredProjects.filter(p => p.status === 'ON_HOLD').length}
               valueStyle={{ color: '#faad14' }}
               prefix={<AlertCircle className="h-4 w-4" />}
@@ -832,7 +834,7 @@ const ProjectDetails: React.FC = () => {
         <Col span={4}>
           <Card>
             <Statistic
-              title="เสร็จสิ้น"
+              title={t('project_details.completed_projects_title')}
               value={filteredProjects.filter(p => p.status === 'COMPLETED').length}
               valueStyle={{ color: '#1890ff' }}
               prefix={<BarChart3 className="h-4 w-4" />}
@@ -842,7 +844,7 @@ const ProjectDetails: React.FC = () => {
         <Col span={4}>
           <Card>
             <Statistic
-              title="Escalated to Support"
+              title={t('project_details.escalated_to_support_projects_title')}
               value={filteredProjects.filter(p => p.status === 'ESCALATED_TO_SUPPORT').length}
               valueStyle={{ color: '#722ed1' }}
               prefix={<AlertCircle className="h-4 w-4" />}
@@ -852,7 +854,7 @@ const ProjectDetails: React.FC = () => {
         <Col span={4}>
           <Card>
             <Statistic
-              title="Signed Contract"
+              title={t('project_details.signed_contract_projects_title')}
               value={filteredProjects.filter(p => p.status === 'SIGNED_CONTRACT').length}
               valueStyle={{ color: '#b37feb' }}
               prefix={<CheckCircle className="h-4 w-4" />}
@@ -865,14 +867,14 @@ const ProjectDetails: React.FC = () => {
       <Card 
         title={
           <div className="flex items-center justify-between">
-            <span>รายการโครงการ</span>
+            <span>{t('project_details.project_table_title')}</span>
             <Button 
               type="default" 
               icon={<Download className="h-4 w-4" />}
               onClick={exportProjectsToCSV}
               size="small"
             >
-              ส่งออก CSV
+              {t('project_details.export_csv')}
             </Button>
           </div>
         }
@@ -885,11 +887,11 @@ const ProjectDetails: React.FC = () => {
             pageSize: 10,
             showSizeChanger: true,
             showQuickJumper: true,
-            showTotal: (total, range) => `${range[0]}-${range[1]} จาก ${total} รายการ`
+            showTotal: (total, range) => `${range[0]}-${range[1]} ${t('project_details.from_total_projects', { total })}`
           }}
           columns={[
             {
-              title: 'ชื่อโครงการ',
+              title: t('project_details.project_name_column'),
               dataIndex: 'name',
               key: 'name',
               render: (name: string, record: any) => (
@@ -900,36 +902,36 @@ const ProjectDetails: React.FC = () => {
               )
             },
             {
-              title: 'ผู้จัดการ',
+              title: t('project_details.project_manager_column'),
               dataIndex: 'manager',
               key: 'manager',
               render: (manager: any) => manager?.name || '-'
             },
             {
-              title: 'สถานะ',
+              title: t('project_details.project_status_column'),
               dataIndex: 'status',
               key: 'status',
               render: (status: string) => {
                 const statusConfig = {
-                  ACTIVE: { color: 'success', text: 'กำลังดำเนินการ' },
-                  ON_HOLD: { color: 'warning', text: 'ระงับ' },
-                  COMPLETED: { color: 'default', text: 'เสร็จสิ้น' },
-                  CANCELLED: { color: 'error', text: 'ยกเลิก' },
-                  ESCALATED_TO_SUPPORT: { color: 'processing', text: 'Escalated to Support' },
-                  SIGNED_CONTRACT: { color: 'purple', text: 'Signed Contract' }
+                  ACTIVE: { color: 'success', text: t('project_details.status.active') },
+                  ON_HOLD: { color: 'warning', text: t('project_details.status.on_hold') },
+                  COMPLETED: { color: 'default', text: t('project_details.status.completed') },
+                  CANCELLED: { color: 'error', text: t('project_details.status.cancelled') },
+                  ESCALATED_TO_SUPPORT: { color: 'processing', text: t('project_details.status.escalated_to_support') },
+                  SIGNED_CONTRACT: { color: 'purple', text: t('project_details.status.signed_contract') }
                 };
                 const config = statusConfig[status as keyof typeof statusConfig] || { color: 'default', text: status };
                 return <Tag color={config.color}>{config.text}</Tag>;
               }
             },
             {
-              title: 'วันที่สร้าง',
+              title: t('project_details.created_at_column'),
               dataIndex: 'createdAt',
               key: 'createdAt',
               render: (date: string) => dayjs(date).format('DD/MM/YYYY')
             },
             {
-              title: 'การดำเนินการ',
+              title: t('project_details.actions_column'),
               key: 'actions',
               render: (record: any) => (
                 <Space>
@@ -937,7 +939,7 @@ const ProjectDetails: React.FC = () => {
                     type="link" 
                     onClick={() => window.location.href = `/projects/${record.id}/details`}
                   >
-                    ดูรายละเอียด
+                    {t('project_details.view_details')}
                   </Button>
                 </Space>
               )
@@ -967,7 +969,7 @@ const ProjectDetails: React.FC = () => {
             image={Empty.PRESENTED_IMAGE_SIMPLE}
           >
             <Button type="primary" onClick={() => id ? loadAll() : loadAllProjects()}>
-              ลองใหม่
+              {t('project_details.try_again')}
             </Button>
           </Empty>
         </div>
@@ -981,7 +983,7 @@ const ProjectDetails: React.FC = () => {
     if (!project) {
       return (
         <div className="p-6">
-          <Empty description="ไม่พบข้อมูลโครงการ" />
+          <Empty description={t('project_details.project_not_found')} />
         </div>
       );
     }
@@ -1004,7 +1006,7 @@ const ProjectDetails: React.FC = () => {
           <Col span={6}>
             <Card>
               <Statistic
-                title="ความคืบหน้า"
+                title={t('project_details.project_progress_rate_title')}
                 value={progress}
                 suffix="%"
                 prefix={<BarChart3 className="h-4 w-4" />}
@@ -1014,7 +1016,7 @@ const ProjectDetails: React.FC = () => {
           <Col span={6}>
             <Card>
               <Statistic
-                title="งานทั้งหมด"
+                title={t('project_details.total_tasks_title')}
                 value={totalTasks}
                 prefix={<CheckCircle className="h-4 w-4" />}
               />
@@ -1023,7 +1025,7 @@ const ProjectDetails: React.FC = () => {
           <Col span={6}>
             <Card>
               <Statistic
-                title="งานเสร็จสิ้น"
+                title={t('project_details.completed_tasks_title')}
                 value={completedTasks}
                 valueStyle={{ color: '#3f8600' }}
                 prefix={<CheckCircle className="h-4 w-4" />}
@@ -1033,7 +1035,7 @@ const ProjectDetails: React.FC = () => {
           <Col span={6}>
             <Card>
               <Statistic
-                title="สมาชิกทีม"
+                title={t('project_details.team_members_title')}
                 value={team.length}
                 prefix={<Users className="h-4 w-4" />}
               />
@@ -1046,10 +1048,10 @@ const ProjectDetails: React.FC = () => {
           <Col span={8}>
             <Card>
               <Statistic
-                title="ระยะเวลาโครงการ"
+                title={t('project_details.project_duration_title')}
                 value={project?.startDate && project?.endDate ? 
                   Math.ceil(dayjs(project.endDate).diff(dayjs(project.startDate), 'day', true)) : 0}
-                suffix="วัน"
+                suffix={t('project_details.days')}
                 prefix={<Calendar className="h-4 w-4" />}
               />
             </Card>
@@ -1057,9 +1059,9 @@ const ProjectDetails: React.FC = () => {
           <Col span={8}>
             <Card>
               <Statistic
-                title="งบประมาณที่ใช้"
+                title={t('project_details.budget_utilised_title')}
                 value={project?.budget ? Number(project.budget).toLocaleString() : 0}
-                suffix="บาท"
+                suffix={t('project_details.baht')}
                 prefix={<BarChart3 className="h-4 w-4" />}
               />
             </Card>
@@ -1067,10 +1069,10 @@ const ProjectDetails: React.FC = () => {
           <Col span={8}>
             <Card>
               <Statistic
-                title="สถานะโครงการ"
-                value={project?.status === 'ACTIVE' ? 'กำลังดำเนินการ' : 
-                       project?.status === 'COMPLETED' ? 'เสร็จสิ้น' : 
-                       project?.status === 'ON_HOLD' ? 'ระงับ' : 'ไม่ระบุ'}
+                title={t('project_details.project_status_description')}
+                value={project?.status === 'ACTIVE' ? t('project_details.status.active') : 
+                       project?.status === 'COMPLETED' ? t('project_details.status.completed') : 
+                       project?.status === 'ON_HOLD' ? t('project_details.status.on_hold') : t('project_details.status.not_specified')}
                 valueStyle={{ 
                   color: project?.status === 'ACTIVE' ? '#3f8600' : 
                          project?.status === 'COMPLETED' ? '#1890ff' : 
@@ -1087,10 +1089,10 @@ const ProjectDetails: React.FC = () => {
           <div className="border-b border-gray-200">
             <nav className="-mb-px flex space-x-8">
               {[
-                { id: 'overview', label: 'ภาพรวม', icon: BarChart3 },
-                { id: 'team', label: 'ทีม', icon: Users },
-                { id: 'tasks', label: 'งาน', icon: CheckCircle },
-                { id: 'timeline', label: 'ไทม์ไลน์', icon: Calendar }
+                { id: 'overview', label: t('project_details.overview_tab'), icon: BarChart3 },
+                { id: 'team', label: t('project_details.team_tab'), icon: Users },
+                { id: 'tasks', label: t('project_details.tasks_tab'), icon: CheckCircle },
+                { id: 'timeline', label: t('project_details.timeline_tab'), icon: Calendar }
               ].map((tab) => (
                 <button
                   key={tab.id}

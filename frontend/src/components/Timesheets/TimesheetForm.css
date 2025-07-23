@@ -1,0 +1,82 @@
+.timesheet-form .ant-form-item-label > label {
+  font-weight: 500;
+  color: #333;
+}
+
+.timesheet-form .ant-input,
+.timesheet-form .ant-picker,
+.timesheet-form .ant-select-selector,
+.timesheet-form .ant-input-number {
+  border-radius: 4px;
+  border: 1px solid #d9d9d9;
+  transition: all 0.3s;
+}
+
+.timesheet-form .ant-input:focus,
+.timesheet-form .ant-picker-focused,
+.timesheet-form .ant-select-focused .ant-select-selector,
+.timesheet-form .ant-input-number:focus,
+.timesheet-form .ant-input-number-focused {
+  border-color: #1890ff;
+  box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2);
+}
+
+.timesheet-form .ant-form-item {
+  margin-bottom: 16px;
+}
+
+.timesheet-form .form-row {
+  display: flex;
+  gap: 16px;
+}
+
+.timesheet-form .form-row .form-item-date {
+  flex: 2;
+  margin-right: 0;
+}
+
+.timesheet-form .form-row .form-item-hours {
+  flex: 1;
+  margin-right: 0;
+}
+
+.timesheet-form .ant-input-number {
+  width: 100%;
+}
+
+.timesheet-form .ant-modal-body {
+  padding: 24px;
+}
+
+.timesheet-form .ant-modal-footer {
+  padding: 10px 24px 24px;
+  text-align: right;
+  background: transparent;
+  border-top: none;
+}
+
+.timesheet-form .ant-modal-footer button + button {
+  margin-left: 8px;
+}
+
+/* Responsive styles */
+@media (max-width: 576px) {
+  .timesheet-form .form-row {
+    flex-direction: column;
+    gap: 0;
+  }
+  
+  .timesheet-form .form-row .form-item-date,
+  .timesheet-form .form-row .form-item-hours {
+    flex: none;
+    width: 100%;
+  }
+  
+  .timesheet-form .ant-modal-body {
+    padding: 16px;
+  }
+  
+  .timesheet-form .ant-modal-footer {
+    padding: 10px 16px 16px;
+  }
+}

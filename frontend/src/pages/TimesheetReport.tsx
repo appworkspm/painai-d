@@ -3,10 +3,12 @@ import { useAuth } from '../contexts/AuthContext';
 import { useNotification } from '../contexts/NotificationContext';
 import { Clock, BarChart3, CheckCircle, AlertCircle, Download, Filter, Calendar, TrendingUp, RefreshCw, FileText } from 'lucide-react';
 import { reportAPI } from '../services/api';
+import { useTranslation } from 'react-i18next';
 
 const TimesheetReport: React.FC = () => {
   const { user } = useAuth();
   const { showNotification } = useNotification();
+  const { t } = useTranslation();
   const [reportData, setReportData] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
@@ -172,41 +174,39 @@ const TimesheetReport: React.FC = () => {
                 <Clock className="h-6 w-6 text-blue-600" />
               </div>
               <div>
-                <h1 className="text-xl font-semibold text-gray-900">รายงานไทม์ชีท</h1>
-                <p className="text-sm text-gray-500">Timesheet Report</p>
+                <h1 className="text-xl font-semibold text-gray-900">{t('timesheet_report.title')}</h1>
+                <p className="text-sm text-gray-500">{t('timesheet_report.subtitle')}</p>
               </div>
             </div>
             <div className="flex items-center gap-3">
               <button
                 onClick={() => setShowFilters(!showFilters)}
                 className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  showFilters 
-                    ? 'bg-blue-100 text-blue-700' 
+                  showFilters
+                    ? 'bg-blue-600 text-white'
                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                 }`}
               >
                 <Filter className="h-4 w-4" />
-                ตัวกรอง
+                {t('timesheet_report.filter_button')}
                 {getActiveFiltersCount() > 0 && (
-                  <span className="bg-blue-500 text-white text-xs rounded-full px-2 py-1 min-w-[20px] text-center">
-                    {getActiveFiltersCount()}
-                  </span>
+                  <span className="ml-2 bg-blue-500 text-white rounded-full px-2 py-0.5 text-xs">{getActiveFiltersCount()}</span>
                 )}
               </button>
               <button
-                onClick={resetFilters}
-                className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors"
-              >
-                <RefreshCw className="h-4 w-4" />
-                รีเซ็ต
-              </button>
-              <button 
                 onClick={handleExport}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
-                disabled={loading || !reportData}
+                className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium bg-green-600 text-white hover:bg-green-700"
+                disabled={loading}
               >
                 <Download className="h-4 w-4" />
-                Export
+                {t('timesheet_report.export_button')}
+              </button>
+              <button
+                onClick={resetFilters}
+                className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium bg-gray-200 text-gray-700 hover:bg-gray-300"
+              >
+                <RefreshCw className="h-4 w-4" />
+                {t('timesheet_report.reset_filters')}
               </button>
             </div>
           </div>
@@ -219,7 +219,7 @@ const TimesheetReport: React.FC = () => {
           <div className="bg-white rounded-xl shadow-sm border p-6 mb-6">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">ช่วงวันที่</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">{t('timesheet_report.date_range_label')}</label>
                 <div className="flex gap-2">
                   <input
                     type="date"
@@ -227,7 +227,7 @@ const TimesheetReport: React.FC = () => {
                     onChange={(e) => setDateRange(prev => ({ ...prev, start: e.target.value }))}
                     className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
-                  <span className="flex items-center text-gray-500">ถึง</span>
+                  <span className="flex items-center text-gray-500">{t('timesheet_report.to_label')}</span>
                   <input
                     type="date"
                     value={dateRange.end}
@@ -238,34 +238,34 @@ const TimesheetReport: React.FC = () => {
               </div>
               
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">สถานะ</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">{t('timesheet_report.status_label')}</label>
                 <select
                   value={selectedStatus}
                   onChange={(e) => setSelectedStatus(e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 >
-                  <option value="all">ทุกสถานะ</option>
-                  <option value="APPROVED">อนุมัติแล้ว</option>
-                  <option value="PENDING">รออนุมัติ</option>
-                  <option value="REJECTED">ไม่อนุมัติ</option>
+                  <option value="all">{t('timesheet_report.all_status')}</option>
+                  <option value="APPROVED">{t('timesheet_report.approved')}</option>
+                  <option value="PENDING">{t('timesheet_report.pending')}</option>
+                  <option value="REJECTED">{t('timesheet_report.rejected')}</option>
                 </select>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">โครงการ</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">{t('timesheet_report.project_label')}</label>
                 <select
                   value={selectedProject}
                   onChange={(e) => setSelectedProject(e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 >
-                  <option value="all">ทุกโครงการ</option>
-                  <option value="Non-Project">ไม่ใช่งานโครงการ</option>
+                  <option value="all">{t('timesheet_report.all_projects')}</option>
+                  <option value="Non-Project">{t('timesheet_report.non_project')}</option>
                   {/* TODO: Add dynamic project list */}
                 </select>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">ประเภทงาน</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">{t('timesheet_report.work_type_label')}</label>
                 <select
                   value={selectedWorkType}
                   onChange={(e) => {
@@ -275,14 +275,14 @@ const TimesheetReport: React.FC = () => {
                   }}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 >
-                  <option value="all">ทุกประเภท</option>
-                  <option value="Project">งานโครงการ</option>
-                  <option value="Non-Project">ไม่ใช่งานโครงการ</option>
+                  <option value="all">{t('timesheet_report.all_work_types')}</option>
+                  <option value="Project">{t('timesheet_report.project_work')}</option>
+                  <option value="Non-Project">{t('timesheet_report.non_project_work')}</option>
                 </select>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">ประเภทย่อย</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">{t('timesheet_report.sub_work_type_label')}</label>
                 <select
                   value={selectedSubWorkType}
                   onChange={(e) => {
@@ -292,124 +292,124 @@ const TimesheetReport: React.FC = () => {
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   disabled={selectedWorkType === 'all'}
                 >
-                  <option value="all">ทุกประเภทย่อย</option>
+                  <option value="all">{t('timesheet_report.all_sub_work_types')}</option>
                   {selectedWorkType === 'Project' && (
                     <>
-                      <option value="Development">การพัฒนา</option>
-                      <option value="Testing">การทดสอบ</option>
-                      <option value="Design">การออกแบบ</option>
-                      <option value="Documentation">เอกสาร</option>
-                      <option value="Meeting">การประชุม</option>
-                      <option value="Research">การวิจัย</option>
+                      <option value="Development">{t('timesheet_report.development')}</option>
+                      <option value="Testing">{t('timesheet_report.testing')}</option>
+                      <option value="Design">{t('timesheet_report.design')}</option>
+                      <option value="Documentation">{t('timesheet_report.documentation')}</option>
+                      <option value="Meeting">{t('timesheet_report.meeting')}</option>
+                      <option value="Research">{t('timesheet_report.research')}</option>
                     </>
                   )}
                   {selectedWorkType === 'Non-Project' && (
                     <>
-                      <option value="Administrative">งานบริหาร</option>
-                      <option value="Training">การฝึกอบรม</option>
-                      <option value="Maintenance">การบำรุงรักษา</option>
-                      <option value="Support">การสนับสนุน</option>
-                      <option value="Break">พักผ่อน</option>
+                      <option value="Administrative">{t('timesheet_report.administrative')}</option>
+                      <option value="Training">{t('timesheet_report.training')}</option>
+                      <option value="Maintenance">{t('timesheet_report.maintenance')}</option>
+                      <option value="Support">{t('timesheet_report.support')}</option>
+                      <option value="Break">{t('timesheet_report.break')}</option>
                     </>
                   )}
                 </select>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">กิจกรรม</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">{t('timesheet_report.activity_label')}</label>
                 <select
                   value={selectedActivity}
                   onChange={(e) => setSelectedActivity(e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   disabled={selectedSubWorkType === 'all'}
                 >
-                  <option value="all">ทุกกิจกรรม</option>
+                  <option value="all">{t('timesheet_report.all_activities')}</option>
                   {selectedSubWorkType === 'Development' && (
                     <>
-                      <option value="Coding">การเขียนโค้ด</option>
-                      <option value="Debugging">การแก้ไขบั๊ก</option>
-                      <option value="Code Review">การรีวิวโค้ด</option>
-                      <option value="Refactoring">การปรับปรุงโค้ด</option>
+                      <option value="Coding">{t('timesheet_report.coding')}</option>
+                      <option value="Debugging">{t('timesheet_report.debugging')}</option>
+                      <option value="Code Review">{t('timesheet_report.code_review')}</option>
+                      <option value="Refactoring">{t('timesheet_report.refactoring')}</option>
                     </>
                   )}
                   {selectedSubWorkType === 'Testing' && (
                     <>
-                      <option value="Unit Testing">การทดสอบหน่วย</option>
-                      <option value="Integration Testing">การทดสอบบูรณาการ</option>
-                      <option value="Manual Testing">การทดสอบด้วยมือ</option>
-                      <option value="Test Planning">การวางแผนทดสอบ</option>
+                      <option value="Unit Testing">{t('timesheet_report.unit_testing')}</option>
+                      <option value="Integration Testing">{t('timesheet_report.integration_testing')}</option>
+                      <option value="Manual Testing">{t('timesheet_report.manual_testing')}</option>
+                      <option value="Test Planning">{t('timesheet_report.test_planning')}</option>
                     </>
                   )}
                   {selectedSubWorkType === 'Design' && (
                     <>
-                      <option value="UI/UX Design">การออกแบบ UI/UX</option>
-                      <option value="System Design">การออกแบบระบบ</option>
-                      <option value="Database Design">การออกแบบฐานข้อมูล</option>
-                      <option value="Architecture Design">การออกแบบสถาปัตยกรรม</option>
+                      <option value="UI/UX Design">{t('timesheet_report.ui_ux_design')}</option>
+                      <option value="System Design">{t('timesheet_report.system_design')}</option>
+                      <option value="Database Design">{t('timesheet_report.database_design')}</option>
+                      <option value="Architecture Design">{t('timesheet_report.architecture_design')}</option>
                     </>
                   )}
                   {selectedSubWorkType === 'Documentation' && (
                     <>
-                      <option value="Technical Documentation">เอกสารเทคนิค</option>
-                      <option value="User Manual">คู่มือผู้ใช้</option>
-                      <option value="API Documentation">เอกสาร API</option>
-                      <option value="Requirements Documentation">เอกสารความต้องการ</option>
+                      <option value="Technical Documentation">{t('timesheet_report.technical_documentation')}</option>
+                      <option value="User Manual">{t('timesheet_report.user_manual')}</option>
+                      <option value="API Documentation">{t('timesheet_report.api_documentation')}</option>
+                      <option value="Requirements Documentation">{t('timesheet_report.requirements_documentation')}</option>
                     </>
                   )}
                   {selectedSubWorkType === 'Meeting' && (
                     <>
-                      <option value="Project Meeting">การประชุมโครงการ</option>
-                      <option value="Client Meeting">การประชุมลูกค้า</option>
-                      <option value="Team Meeting">การประชุมทีม</option>
-                      <option value="Planning Meeting">การประชุมวางแผน</option>
+                      <option value="Project Meeting">{t('timesheet_report.project_meeting')}</option>
+                      <option value="Client Meeting">{t('timesheet_report.client_meeting')}</option>
+                      <option value="Team Meeting">{t('timesheet_report.team_meeting')}</option>
+                      <option value="Planning Meeting">{t('timesheet_report.planning_meeting')}</option>
                     </>
                   )}
                   {selectedSubWorkType === 'Research' && (
                     <>
-                      <option value="Technology Research">การวิจัยเทคโนโลยี</option>
-                      <option value="Market Research">การวิจัยตลาด</option>
-                      <option value="Best Practices Research">การวิจัยแนวทางปฏิบัติ</option>
-                      <option value="Competitor Analysis">การวิเคราะห์คู่แข่ง</option>
+                      <option value="Technology Research">{t('timesheet_report.technology_research')}</option>
+                      <option value="Market Research">{t('timesheet_report.market_research')}</option>
+                      <option value="Best Practices Research">{t('timesheet_report.best_practices_research')}</option>
+                      <option value="Competitor Analysis">{t('timesheet_report.competitor_analysis')}</option>
                     </>
                   )}
                   {selectedSubWorkType === 'Administrative' && (
                     <>
-                      <option value="Email Management">การจัดการอีเมล</option>
-                      <option value="Report Writing">การเขียนรายงาน</option>
-                      <option value="Planning">การวางแผน</option>
-                      <option value="Administrative Tasks">งานบริหาร</option>
+                      <option value="Email Management">{t('timesheet_report.email_management')}</option>
+                      <option value="Report Writing">{t('timesheet_report.report_writing')}</option>
+                      <option value="Planning">{t('timesheet_report.planning')}</option>
+                      <option value="Administrative Tasks">{t('timesheet_report.administrative_tasks')}</option>
                     </>
                   )}
                   {selectedSubWorkType === 'Training' && (
                     <>
-                      <option value="Skill Development">การพัฒนาทักษะ</option>
-                      <option value="Workshop">การประชุมเชิงปฏิบัติการ</option>
-                      <option value="Online Course">หลักสูตรออนไลน์</option>
-                      <option value="Knowledge Sharing">การแบ่งปันความรู้</option>
+                      <option value="Skill Development">{t('timesheet_report.skill_development')}</option>
+                      <option value="Workshop">{t('timesheet_report.workshop')}</option>
+                      <option value="Online Course">{t('timesheet_report.online_course')}</option>
+                      <option value="Knowledge Sharing">{t('timesheet_report.knowledge_sharing')}</option>
                     </>
                   )}
                   {selectedSubWorkType === 'Maintenance' && (
                     <>
-                      <option value="System Maintenance">การบำรุงรักษาระบบ</option>
-                      <option value="Bug Fixes">การแก้ไขบั๊ก</option>
-                      <option value="Performance Optimization">การปรับปรุงประสิทธิภาพ</option>
-                      <option value="Security Updates">การอัปเดตความปลอดภัย</option>
+                      <option value="System Maintenance">{t('timesheet_report.system_maintenance')}</option>
+                      <option value="Bug Fixes">{t('timesheet_report.bug_fixes')}</option>
+                      <option value="Performance Optimization">{t('timesheet_report.performance_optimization')}</option>
+                      <option value="Security Updates">{t('timesheet_report.security_updates')}</option>
                     </>
                   )}
                   {selectedSubWorkType === 'Support' && (
                     <>
-                      <option value="Technical Support">การสนับสนุนเทคนิค</option>
-                      <option value="User Support">การสนับสนุนผู้ใช้</option>
-                      <option value="Troubleshooting">การแก้ไขปัญหา</option>
-                      <option value="Issue Resolution">การแก้ไขปัญหา</option>
+                      <option value="Technical Support">{t('timesheet_report.technical_support')}</option>
+                      <option value="User Support">{t('timesheet_report.user_support')}</option>
+                      <option value="Troubleshooting">{t('timesheet_report.troubleshooting')}</option>
+                      <option value="Issue Resolution">{t('timesheet_report.issue_resolution')}</option>
                     </>
                   )}
                   {selectedSubWorkType === 'Break' && (
                     <>
-                      <option value="Lunch Break">พักเที่ยง</option>
-                      <option value="Coffee Break">พักกาแฟ</option>
-                      <option value="Rest Break">พักผ่อน</option>
-                      <option value="Personal Time">เวลาส่วนตัว</option>
+                      <option value="Lunch Break">{t('timesheet_report.lunch_break')}</option>
+                      <option value="Coffee Break">{t('timesheet_report.coffee_break')}</option>
+                      <option value="Rest Break">{t('timesheet_report.rest_break')}</option>
+                      <option value="Personal Time">{t('timesheet_report.personal_time')}</option>
                     </>
                   )}
                 </select>
@@ -423,7 +423,7 @@ const TimesheetReport: React.FC = () => {
           <div className="flex items-center justify-center py-12">
             <div className="flex items-center gap-3">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-              <span className="text-gray-600">กำลังโหลดข้อมูล...</span>
+              <span className="text-gray-600">{t('timesheet_report.loading_message')}</span>
             </div>
           </div>
         )}
@@ -432,8 +432,8 @@ const TimesheetReport: React.FC = () => {
         {!loading && !reportData && (
           <div className="bg-white rounded-xl shadow-sm border p-8 text-center">
             <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">ไม่พบข้อมูล</h3>
-            <p className="text-gray-500">ไม่พบข้อมูลรายงานในช่วงเวลาที่เลือก</p>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">{t('timesheet_report.no_data_title')}</h3>
+            <p className="text-gray-500">{t('timesheet_report.no_data_message')}</p>
           </div>
         )}
 
@@ -448,7 +448,7 @@ const TimesheetReport: React.FC = () => {
                     <FileText className="h-6 w-6 text-blue-600" />
                   </div>
                   <div className="ml-4">
-                    <p className="text-sm font-medium text-gray-500">รายการรวม</p>
+                    <p className="text-sm font-medium text-gray-500">{t('timesheet_report.total_entries_label')}</p>
                     <p className="text-2xl font-bold text-gray-900">
                       {formatNumber(reportData.totalEntries || 0)}
                     </p>
@@ -462,7 +462,7 @@ const TimesheetReport: React.FC = () => {
                     <CheckCircle className="h-6 w-6 text-green-600" />
                   </div>
                   <div className="ml-4">
-                    <p className="text-sm font-medium text-gray-500">อนุมัติแล้ว</p>
+                    <p className="text-sm font-medium text-gray-500">{t('timesheet_report.approved_entries_label')}</p>
                     <p className="text-2xl font-bold text-gray-900">
                       {formatNumber(reportData.approvedEntries || 0)}
                     </p>
@@ -476,7 +476,7 @@ const TimesheetReport: React.FC = () => {
                     <AlertCircle className="h-6 w-6 text-yellow-600" />
                   </div>
                   <div className="ml-4">
-                    <p className="text-sm font-medium text-gray-500">รออนุมัติ</p>
+                    <p className="text-sm font-medium text-gray-500">{t('timesheet_report.pending_entries_label')}</p>
                     <p className="text-2xl font-bold text-gray-900">
                       {formatNumber(reportData.pendingEntries || 0)}
                     </p>
@@ -490,7 +490,7 @@ const TimesheetReport: React.FC = () => {
                     <Clock className="h-6 w-6 text-purple-600" />
                   </div>
                   <div className="ml-4">
-                    <p className="text-sm font-medium text-gray-500">ชั่วโมงรวม</p>
+                    <p className="text-sm font-medium text-gray-500">{t('timesheet_report.total_hours_label')}</p>
                     <p className="text-2xl font-bold text-gray-900">
                       {formatHours(reportData.totalHours || 0)}
                     </p>
@@ -503,7 +503,7 @@ const TimesheetReport: React.FC = () => {
             {reportData.statusBreakdown && reportData.statusBreakdown.length > 0 && (
               <div className="bg-white rounded-xl shadow-sm border">
                 <div className="px-6 py-4 border-b border-gray-200">
-                  <h3 className="text-lg font-semibold text-gray-900">สรุปตามสถานะ</h3>
+                  <h3 className="text-lg font-semibold text-gray-900">{t('timesheet_report.status_summary_title')}</h3>
                 </div>
                 <div className="p-6">
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -512,12 +512,12 @@ const TimesheetReport: React.FC = () => {
                         <div className="flex items-center justify-between mb-3">
                           <h4 className="font-medium text-gray-900">{status.status}</h4>
                           <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(status.status)}`}>
-                            {formatNumber(status.count)} รายการ
+                            {formatNumber(status.count)} {t('timesheet_report.entries_count')}
                           </span>
                         </div>
                         <div className="space-y-2">
                           <div className="flex justify-between text-sm">
-                            <span className="text-gray-600">เปอร์เซ็นต์:</span>
+                            <span className="text-gray-600">{t('timesheet_report.percentage_label')}:</span>
                             <span className="font-medium">{status.percentage}%</span>
                           </div>
                           <div className="w-full bg-gray-200 rounded-full h-2">
@@ -538,26 +538,26 @@ const TimesheetReport: React.FC = () => {
             {reportData.projects && reportData.projects.length > 0 && (
               <div className="bg-white rounded-xl shadow-sm border">
                 <div className="px-6 py-4 border-b border-gray-200">
-                  <h3 className="text-lg font-semibold text-gray-900">สรุปตามโครงการ</h3>
+                  <h3 className="text-lg font-semibold text-gray-900">{t('timesheet_report.project_summary_title')}</h3>
                 </div>
                 <div className="overflow-x-auto">
                   <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
                       <tr>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          โครงการ
+                          {t('timesheet_report.project_label')}
                         </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          สถานะ
+                          {t('timesheet_report.status_label')}
                         </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          รายการ
+                          {t('timesheet_report.entries_label')}
                         </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          ชั่วโมง
+                          {t('timesheet_report.hours_label')}
                         </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          เฉลี่ย/รายการ
+                          {t('timesheet_report.average_per_entry_label')}
                         </th>
                       </tr>
                     </thead>
@@ -593,7 +593,7 @@ const TimesheetReport: React.FC = () => {
             {reportData.topUsers && reportData.topUsers.length > 0 && (
               <div className="bg-white rounded-xl shadow-sm border">
                 <div className="px-6 py-4 border-b border-gray-200">
-                  <h3 className="text-lg font-semibold text-gray-900">ผู้ใช้งานที่มีรายการสูงสุด</h3>
+                  <h3 className="text-lg font-semibold text-gray-900">{t('timesheet_report.top_users_title')}</h3>
                 </div>
                 <div className="p-6">
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -614,15 +614,15 @@ const TimesheetReport: React.FC = () => {
                         </div>
                         <div className="space-y-2">
                           <div className="flex justify-between text-sm">
-                            <span className="text-gray-600">รายการ:</span>
+                            <span className="text-gray-600">{t('timesheet_report.entries_label')}:</span>
                             <span className="font-medium">{formatNumber(user.entries)}</span>
                           </div>
                           <div className="flex justify-between text-sm">
-                            <span className="text-gray-600">ชั่วโมง:</span>
+                            <span className="text-gray-600">{t('timesheet_report.hours_label')}:</span>
                             <span className="font-medium">{formatHours(user.hours)}</span>
                           </div>
                           <div className="flex justify-between text-sm">
-                            <span className="text-gray-600">อัตราการอนุมัติ:</span>
+                            <span className="text-gray-600">{t('timesheet_report.approval_rate_label')}:</span>
                             <span className="font-medium">{user.approvalRate}%</span>
                           </div>
                           <div className="w-full bg-gray-200 rounded-full h-2">

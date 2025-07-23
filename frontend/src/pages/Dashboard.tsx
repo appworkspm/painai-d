@@ -3,9 +3,11 @@ import { StatCard } from '@/components/ui/StatCard';
 import { Clock, Briefcase, CheckCircle, AlertCircle } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { projectAPI, timesheetAPI } from '@/services/api';
+import { useTranslation } from 'react-i18next';
 
 const Dashboard = () => {
   const { user } = useAuth();
+  const { t } = useTranslation();
 
   // Fetch projects
   const { data: projectsData } = useQuery({
@@ -35,38 +37,37 @@ const Dashboard = () => {
   const pendingApprovals = timesheets.filter((ts: any) => ts.status === 'draft' || ts.status === 'submitted').length;
   const approvedTimesheets = timesheets.filter((ts: any) => ts.status === 'approved').length;
 
-
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold">Dashboard</h1>
-        <p className="text-muted-foreground">Welcome back, {user?.name}! Here's your overview.</p>
+        <h1 className="text-3xl font-bold">{t('dashboard.title')}</h1>
+        <p className="text-muted-foreground">{t('dashboard.welcome', { name: user?.name })}</p>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <StatCard
-          title="Total Hours Logged"
+          title={t('dashboard.total_hours')}
           value={totalHours.toFixed(2)}
           icon={Clock}
-          description="Total hours from your timesheets."
+          description={t('dashboard.total_hours_desc')}
         />
         <StatCard
-          title="Active Projects"
+          title={t('dashboard.active_projects')}
           value={activeProjects}
           icon={Briefcase}
-          description="Projects you are currently involved in."
+          description={t('dashboard.active_projects_desc')}
         />
         <StatCard
-          title="Pending Approvals"
+          title={t('dashboard.pending_approvals')}
           value={pendingApprovals}
           icon={AlertCircle}
-          description="Timesheets waiting for approval."
+          description={t('dashboard.pending_approvals_desc')}
         />
         <StatCard
-          title="Approved Timesheets"
+          title={t('dashboard.approved_timesheets')}
           value={approvedTimesheets}
           icon={CheckCircle}
-          description="Your timesheets that have been approved."
+          description={t('dashboard.approved_timesheets_desc')}
         />
       </div>
 

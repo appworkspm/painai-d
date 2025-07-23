@@ -1,0 +1,76 @@
+.timesheet-table {
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+.timesheet-table .ant-table {
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.timesheet-table .ant-table-thead > tr > th {
+  background: #fafafa;
+  font-weight: 600;
+  color: #333;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.timesheet-table .ant-table-tbody > tr:hover > td {
+  background: #f5f5f5;
+}
+
+.timesheet-table .ant-table-tbody > tr.rejected-row > td {
+  background-color: #fff1f0;
+}
+
+.timesheet-table .ant-table-tbody > tr.rejected-row:hover > td {
+  background-color: #ffccc7;
+}
+
+.timesheet-table .ant-table-pagination {
+  margin: 16px;
+}
+
+.timesheet-table .ant-tag {
+  border-radius: 12px;
+  padding: 0 8px;
+  font-size: 12px;
+  font-weight: 500;
+  text-transform: capitalize;
+}
+
+.timesheet-table .ant-btn {
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+}
+
+.timesheet-table .ant-btn[disabled] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Responsive styles */
+@media (max-width: 768px) {
+  .timesheet-table {
+    border-radius: 0;
+  }
+  
+  .timesheet-table .ant-table-thead > tr > th {
+    padding: 12px 8px;
+  }
+  
+  .timesheet-table .ant-table-tbody > tr > td {
+    padding: 12px 8px;
+  }
+  
+  .timesheet-table .ant-btn {
+    width: 24px;
+    height: 24px;
+  }
+}

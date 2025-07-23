@@ -1,6 +1,7 @@
 import React from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { useTranslation } from 'react-i18next';
 import { 
   Clock, 
   BarChart3, 
@@ -19,6 +20,7 @@ const Layout: React.FC = () => {
   const { user, logout } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
+  const { t, i18n } = useTranslation();
 
   const handleLogout = () => {
     logout();
@@ -26,44 +28,43 @@ const Layout: React.FC = () => {
   };
 
   const navigation = [
-    { name: 'Dashboard', href: '/', icon: Home },
     {
-      name: 'My Timesheet',
+      name: t('menu.my_timesheet'),
       icon: Clock,
       children: [
-        { name: 'My Timesheets', href: '/timesheets' },
-        { name: 'Create Timesheet', href: '/timesheets/create' },
+        { name: t('menu.my_timesheets'), href: '/timesheets' },
+        { name: t('menu.create_timesheet'), href: '/timesheets/create' },
       ],
     },
     {
-      name: 'Review Timesheet',
+      name: t('menu.review_timesheet'),
       icon: FileText,
       children: [
-        { name: 'Timesheet Dashboard', href: '/timesheets/dashboard' },
-        { name: 'Timesheet Approval', href: '/timesheets/approval' },
+        { name: t('menu.timesheet_dashboard'), href: '/timesheets/dashboard' },
+        { name: t('menu.timesheet_approval'), href: '/timesheets/approval' },
       ],
     },
     {
-      name: 'Project Management',
+      name: t('menu.project_management'),
       icon: FolderOpen,
       children: [
-        { name: 'All Projects', href: '/projects' },
-        { name: 'Project Details', href: '/projects/details' },
+        { name: t('menu.all_projects'), href: '/projects' },
+        { name: t('menu.project_details'), href: '/projects/details' },
       ],
     },
     {
-      name: 'Reports',
+      name: t('menu.reports'),
       icon: BarChart3,
       children: [
-        { name: 'Workload Report', href: '/report/workload' },
+        { name: t('menu.workload_report'), href: '/report/workload' },
       ],
     },
-    { name: 'Profile', href: '/profile', icon: User },
+    { name: t('menu.profile'), href: '/profile', icon: User },
   ];
 
   // Add Admin Panel menu item for admin users
   const adminNavigation = [
-    { name: 'Admin Panel', href: '/admin', icon: Shield },
+    { name: t('menu.admin_panel'), href: '/admin', icon: Shield },
   ];
 
   return (
@@ -74,6 +75,12 @@ const Layout: React.FC = () => {
           {/* Logo */}
           <div className="flex h-16 items-center justify-center border-b border-gray-200">
             <h1 className="text-xl font-bold text-primary-600">ไปไหน (Painai)</h1>
+          </div>
+
+          {/* Language Switcher */}
+          <div className="flex justify-center py-2 border-b border-gray-200 gap-2">
+            <button onClick={() => i18n.changeLanguage('th')} className={i18n.language === 'th' ? 'font-bold underline' : ''}>ไทย</button>
+            <button onClick={() => i18n.changeLanguage('en')} className={i18n.language === 'en' ? 'font-bold underline' : ''}>EN</button>
           </div>
 
           {/* Navigation */}
@@ -141,65 +148,31 @@ const Layout: React.FC = () => {
                 );
               }
             })}
-
-            {/* Admin Panel Navigation - Only show for admin users */}
-            {user?.role === 'ADMIN' && (
-              <div className="pt-4 border-t border-gray-200">
-                <div className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  Administration
-                </div>
-                {adminNavigation.map((item) => {
-                  const isActive = location.pathname === item.href;
-                  return (
-                    <Link
-                      key={item.name}
-                      to={item.href}
-                      className={`group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors ${
-                        isActive
-                          ? 'bg-red-100 text-red-700'
-                          : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                      }`}
-                    >
-                      <item.icon className="mr-3 h-5 w-5" />
-                      {item.name}
-                    </Link>
-                  );
-                })}
-              </div>
-            )}
-          </nav>
-
-          {/* User info */}
-          <div className="border-t border-gray-200 p-4">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <div className="h-8 w-8 rounded-full bg-primary-100 flex items-center justify-center">
-                  <User className="h-5 w-5 text-primary-600" />
-                </div>
-              </div>
-              <div className="ml-3 flex-1">
-                <p className="text-sm font-medium text-gray-700">{user?.name}</p>
-                <p className="text-xs text-gray-500">{user?.email}</p>
-              </div>
-              <button
-                onClick={handleLogout}
-                className="ml-2 p-1 text-gray-400 hover:text-gray-600 transition-colors"
-                title="Logout"
+            {/* Admin menu */}
+            {user?.role === 'admin' && adminNavigation.map((item) => (
+              <Link
+                key={item.name}
+                to={item.href}
+                className="group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors text-gray-600 hover:bg-gray-50 hover:text-gray-900"
               >
-                <LogOut className="h-4 w-4" />
-              </button>
-            </div>
-          </div>
+                <item.icon className="mr-3 h-5 w-5" />
+                {item.name}
+              </Link>
+            ))}
+            {/* Logout */}
+            <button
+              onClick={handleLogout}
+              className="group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors text-gray-600 hover:bg-gray-50 hover:text-gray-900 w-full mt-4"
+            >
+              <LogOut className="mr-3 h-5 w-5" />
+              {t('menu.logout')}
+            </button>
+          </nav>
         </div>
       </div>
-
-      {/* Main content */}
-      <div className="pl-64">
-        <main className="py-6">
-          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-            <Outlet />
-          </div>
-        </main>
+      {/* Main Content */}
+      <div className="ml-64">
+        <Outlet />
       </div>
     </div>
   );

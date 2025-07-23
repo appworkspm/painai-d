@@ -3,6 +3,7 @@ import { useQuery } from 'react-query';
 import { timesheetAPI } from '../services/api';
 import { Download } from 'lucide-react';
 import { getMonth, getYear, startOfMonth, endOfMonth, format } from 'date-fns';
+import { useTranslation } from 'react-i18next';
 
 const getMonthOptions = () => Array.from({ length: 12 }, (_, i) => i);
 const getYearOptions = () => {
@@ -32,6 +33,7 @@ const WorkloadReport: React.FC = () => {
   const [selectedMonth, setSelectedMonth] = useState(getMonth(now));
   const [selectedYear, setSelectedYear] = useState(getYear(now));
   const [selectedUser, setSelectedUser] = useState('');
+  const { t } = useTranslation();
 
   const monthStart = startOfMonth(new Date(selectedYear, selectedMonth));
   const monthEnd = endOfMonth(monthStart);
@@ -51,8 +53,8 @@ const WorkloadReport: React.FC = () => {
 
   // Map timesheet data to CSV structure
   const csvRows = filteredTimesheets.map((t: any) => ({
-    'Project': t.work_type === 'LEAVE' ? 'Leave' : (t.project?.name || 'ไม่ผูกกับโครงการ'),
-    'Work Type': t.work_type === 'LEAVE' ? 'Leave' : (t.work_type === 'PROJECT' ? 'Project' : 'Non Project'),
+    'Project': t.work_type === 'LEAVE' ? t('report.leave') : (t.project?.name || t('report.no_project')),
+    'Work Type': t.work_type === 'LEAVE' ? t('report.leave') : (t.work_type === 'PROJECT' ? t('report.project') : t('report.non_project')),
     'Activity': t.description || '',
     'Employee': t.user?.name || '',
     'Role': t.user?.role || '',
@@ -73,22 +75,22 @@ const WorkloadReport: React.FC = () => {
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <h1 className="text-2xl font-bold text-gray-900">Workload Report (เดือน {format(monthStart, 'MMMM yyyy')})</h1>
+        <h1 className="text-2xl font-bold text-gray-900">{t('report.title', { month: format(monthStart, 'MMMM yyyy') })}</h1>
         <button onClick={handleExport} className="btn btn-primary flex items-center">
           <Download className="h-4 w-4 mr-2" />
-          Export Workload CSV
+          {t('report.export_csv')}
         </button>
       </div>
       <div className="flex flex-wrap gap-4 mb-4">
         <select className="input" value={selectedUser} onChange={e => setSelectedUser(e.target.value)}>
-          <option value="">All Users</option>
+          <option value="">{t('report.all_users')}</option>
           {allUsers.map((u: any) => (
             <option key={u.id} value={u.id}>{u.name} ({u.email})</option>
           ))}
         </select>
         <select className="input" value={selectedMonth} onChange={e => setSelectedMonth(Number(e.target.value))}>
           {getMonthOptions().map(m => (
-            <option key={m} value={m}>{format(new Date(2000, m), 'MMMM')}</option>
+            <option key={m} value={m}>{t('report.month', { month: format(new Date(2000, m), 'MMMM') })}</option>
           ))}
         </select>
         <select className="input" value={selectedYear} onChange={e => setSelectedYear(Number(e.target.value))}>
@@ -108,7 +110,7 @@ const WorkloadReport: React.FC = () => {
               <thead className="bg-gray-50">
                 <tr>
                   {csvHeaders.map((h) => (
-                    <th key={h} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{h}</th>
+                    <th key={h} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t(`report.table.${h.replace(/ /g, '_').toLowerCase()}`)}</th>
                   ))}
                 </tr>
               </thead>

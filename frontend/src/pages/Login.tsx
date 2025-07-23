@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { UserRole } from '../types';
+import { useTranslation } from 'react-i18next';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -12,6 +13,7 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
   const { login } = useAuth();
+  const { t } = useTranslation();
 
   const getRedirectPath = (role: string) => {
     switch (role) {
@@ -30,15 +32,12 @@ export default function Login() {
     setError('');
     setLoading(true);
     try {
-      // ใช้ AuthContext login function พร้อม remember option
       await login(email, password, remember);
-      
-      // Redirect based on user role (จะได้ user จาก AuthContext)
       const currentUser = JSON.parse(sessionStorage.getItem('user') || localStorage.getItem('user') || '{}');
       const redirectPath = getRedirectPath(currentUser.role);
       navigate(redirectPath);
     } catch (err: any) {
-      setError(err?.response?.data?.message || err.message || 'Network error');
+      setError(err?.response?.data?.message || err.message || t('login.error.network'));
     } finally {
       setLoading(false);
     }
@@ -48,9 +47,9 @@ export default function Login() {
     <div className="min-h-screen flex">
       {/* Left Side */}
       <div className="hidden md:flex flex-col justify-center items-center w-1/2 bg-gradient-to-br from-blue-700 to-blue-400 relative">
-        <div className="text-white text-2xl font-bold mb-2 tracking-widest drop-shadow">วันนี้ไปไหน?</div>
-        <div className="text-white mb-2 font-semibold text-lg tracking-wide">Design by appworks</div>
-        <div className="text-white text-xs opacity-80">version 1.0 Powered by Cursor AI</div>
+        <div className="text-white text-2xl font-bold mb-2 tracking-widest drop-shadow">{t('login.slogan')}</div>
+        <div className="text-white mb-2 font-semibold text-lg tracking-wide">{t('login.design_by')}</div>
+        <div className="text-white text-xs opacity-80">{t('login.version')}</div>
       </div>
       {/* Right Side */}
       <div className="flex flex-col justify-center items-center w-full md:w-1/2 bg-white">
@@ -72,7 +71,7 @@ export default function Login() {
               </span>
               <input
                 type="text"
-                placeholder="Email"
+                placeholder={t('login.email')}
                 className="w-full outline-none bg-transparent"
                 value={email}
                 onChange={e => setEmail(e.target.value)}
@@ -88,7 +87,7 @@ export default function Login() {
               </span>
               <input
                 type={showPassword ? 'text' : 'password'}
-                placeholder="Password"
+                placeholder={t('login.password')}
                 className="w-full outline-none bg-transparent"
                 value={password}
                 onChange={e => setPassword(e.target.value)}
@@ -100,7 +99,7 @@ export default function Login() {
                 tabIndex={-1}
                 className="ml-2 focus:outline-none"
                 onClick={() => setShowPassword(v => !v)}
-                aria-label={showPassword ? 'Hide password' : 'Show password'}
+                aria-label={showPassword ? t('login.hide_password') : t('login.show_password')}
               >
                 {showPassword ? (
                   <svg width="20" height="20" fill="none" viewBox="0 0 24 24"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z" stroke="#888" strokeWidth="2"/><circle cx="12" cy="12" r="3" stroke="#888" strokeWidth="2"/></svg>
@@ -118,10 +117,10 @@ export default function Login() {
                 onChange={e => setRemember(e.target.checked)}
                 className="mr-1"
               />
-              Remember me
+              {t('login.remember_me')}
             </label>
             <a href="/forgot-password" className="text-blue-600 hover:underline">
-              Forgot Password
+              {t('login.forgot_password')}
             </a>
           </div>
           {error && (
@@ -132,7 +131,7 @@ export default function Login() {
             className="w-full bg-gradient-to-r from-blue-600 to-blue-400 text-white py-2 rounded font-bold text-lg hover:from-blue-700 hover:to-blue-500 transition disabled:opacity-60"
             disabled={loading}
           >
-            {loading ? 'กำลังเข้าสู่ระบบ...' : 'LOGIN'}
+            {t('login.login_button')}
           </button>
         </form>
       </div>

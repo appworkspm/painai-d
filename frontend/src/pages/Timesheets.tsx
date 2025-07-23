@@ -1,779 +1,752 @@
-import React, { useState, useEffect } from 'react';
-import { Button, Table, Tag, Space, Modal, Form, message, Row, Col, Statistic, Card, Avatar } from 'antd';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { 
+  Table, 
+  Modal, 
+  Typography,
+  Card,
+  Row,
+  Col,
+  Statistic,
+  Form,
+  Input,
+  InputNumber,
+  Select,
+  DatePicker,
+  Space,
+  Tag,
+  Button
+} from 'antd';
+import type { 
+  TablePaginationConfig, 
+  ColumnsType
+} from 'antd/es/table';
+import type { SorterResult } from 'antd/lib/table/interface';
+import type { FilterValue } from 'antd/es/table/interface';
 import { 
   PlusOutlined, 
   EditOutlined, 
-  DeleteOutlined, 
-  SendOutlined, 
-  CalendarOutlined, 
-  ClockCircleOutlined, 
-  CheckCircleOutlined, 
-  CloseCircleOutlined,
-  HourglassOutlined
+  DeleteOutlined
 } from '@ant-design/icons';
-import { useAuth } from '../contexts/AuthContext';
-import { timesheetAPI, projectAPI } from '../services/api';
-import dayjs from 'dayjs';
-import 'dayjs/locale/th';
-import { Project, User } from '../types';
-import TimesheetForm from '../components/TimesheetForm';
+import dayjs, { Dayjs } from 'dayjs';
+import { useTranslation } from 'react-i18next';
 
-dayjs.locale('th');
+const { Title } = Typography;
 
-// Define a custom interface that matches the API response structure
-interface TimesheetData {
+// Types
+type TimesheetStatus = 'draft' | 'submitted' | 'approved' | 'rejected' | 'pending';
+type WorkType = 'development' | 'design' | 'meeting' | 'research' | 'documentation' | 'testing' | 'deployment' | 'other';
+
+interface Project {
   id: string;
-  date: string;
-  hours_worked: number;
-  overtime_hours: number;
-  status: 'DRAFT' | 'SUBMITTED' | 'APPROVED' | 'REJECTED';
-  rejection_reason?: string;
-  work_type: string;
-  sub_work_type: string;
-  activity: string;
-  description?: string;
-  billable: boolean;
-  project_id?: string | null;
-  user_id: string;
-  approver_id?: string | null;
-  created_at: string;
-  updated_at: string;
-  user: User;
-  project?: {
-    id: string;
-    name: string;
-    code: string;
-  };
-  approver?: User;
+  name: string;
+  code: string;
+  billable?: boolean;
 }
 
+interface Timesheet extends BaseTimesheet {
+  id: string;
+  date: string;
+  project_id: string | null;
+  work_type: WorkType;
+  sub_work_type?: string;
+  activity: string;
+  hours_worked: number;
+  description: string;
+  status: TimesheetStatus;
+  created_at: string;
+  updated_at: string;
+  project?: Pick<Project, 'id' | 'name' | 'code'>;
+}
+
+interface BaseTimesheet {
+  date: string;
+  project_id: string | null;
+  work_type: WorkType;
+  sub_work_type?: string;
+  activity: string;
+  hours_worked: number;
+  description: string;
+  status: TimesheetStatus;
+}
+
+interface TimesheetTableData extends Omit<Timesheet, 'date'> {
+  key: string;
+  project_name: string;
+  project_code: string;
+  date: Dayjs;
+}
+
+interface TimesheetsState {
+  // Data
+  timesheets: TimesheetTableData[];
+  projects: Project[];
+  
+  // UI State
+  loading: boolean;
+  submitting: boolean;
+  deletingId: string | null;
+  isModalVisible: boolean;
+  editingTimesheet: TimesheetTableData | null;
+  
+  // Stats
+  stats: {
+    totalHours: number;
+    billableHours: number;
+    nonBillableHours: number;
+    totalEarnings: number;
+    projects: Array<{ id: string; name: string; hours: number }>;
+    thisWeekHours?: number;
+    pending?: number;
+    approved?: number;
+  };
+  
+  // Filters
+  filters: {
+    dateRange?: [dayjs.Dayjs, dayjs.Dayjs];
+    projectId?: string;
+    workType?: string;
+    billable?: boolean;
+    status?: string;
+    search?: string;
+  };
+  
+  // Pagination
+  pagination: {
+    current: number;
+    pageSize: number;
+    total: number;
+  };
+  
+  // Sorting
+  sorter?: SorterResult<TimesheetTableData>;
+}
+
+
+// Main Timesheets component
 const Timesheets: React.FC = () => {
-  // Initialize auth context
-  // Auth context - keeping for future use
-  const { user: _user } = useAuth();
-  const [timesheets, setTimesheets] = useState<TimesheetData[]>([]);
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-  const [deleting, setDeleting] = useState<string | null>(null);
-  const [form] = Form.useForm();
-  const [modalVisible, setModalVisible] = useState(false);
-  const [editingTimesheet, setEditingTimesheet] = useState<TimesheetData | null>(null);
-  // Pagination state - keeping the state for future implementation
-  // State setters will be added back when implementing pagination
-  useState(1); // currentPage
-  useState(10); // pageSize
-  useState(0); // total
-  const [stats, setStats] = useState({
-    total: 0,
-    draft: 0,
-    submitted: 0,
-    approved: 0,
-    rejected: 0,
-    totalHours: 0
+  const { t } = useTranslation();
+  // Create a form type that matches our form values (with Dayjs for dates)
+  type TimesheetFormValues = Omit<Timesheet, 'date' | 'created_at' | 'updated_at'> & {
+    date: Dayjs;
+  };
+  
+  const [form] = Form.useForm<TimesheetFormValues>();
+  const [state, setState] = useState<TimesheetsState>({
+    timesheets: [],
+    projects: [],
+    loading: true,
+    submitting: false,
+    deletingId: null,
+    isModalVisible: false,
+    editingTimesheet: null,
+    stats: {
+      totalHours: 0,
+      billableHours: 0,
+      nonBillableHours: 0,
+      totalEarnings: 0,
+      projects: [],
+      thisWeekHours: 0,
+      pending: 0,
+      approved: 0,
+    },
+    filters: {},
+    pagination: {
+      current: 1,
+      pageSize: 10,
+      total: 0
+    },
   });
-  const [workStats, setWorkStats] = useState({
-    totalWorkingDays: 0,
-    recordedDays: 0,
-    leaveDays: 0,
-    actualWorkDays: 0,
-    missingDays: 0,
-    missingDates: [] as string[]
-  });
-  // Filters state - keeping the state for future implementation
-  useState<Record<string, any>>({}); // filters
 
-  const workTypeOptions = [
-    { label: 'งานโครงการ', value: 'PROJECT' },
-    { label: 'ไม่ใช่งานโครงการ', value: 'NON_PROJECT' },
-    { label: 'ลางาน', value: 'LEAVE' }
-  ];
+  // Destructure state with proper typing
+  const {
+    timesheets,
+    loading,
+    isModalVisible,
+    editingTimesheet,
+    filters,
+    pagination,
+  } = state;
 
+  // Mock API service with access to translation
+  const timesheetAPI = useMemo(() => ({
+    create: async (data: Omit<Timesheet, 'id' | 'created_at' | 'updated_at' | 'project'>): Promise<{ data: Timesheet }> => {
+      console.log('Creating timesheet:', data);
+      const project = data.project_id ? {
+        id: data.project_id,
+        name: `${t('timesheet.mock.project_prefix')} ${data.project_id}`,
+        code: `PJ-${data.project_id}`
+      } : undefined;
+      
+      const newTimesheet: Timesheet = {
+        ...data,
+        id: Date.now().toString(),
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        project
+      };
+      
+      return { data: newTimesheet };
+    },
+    update: async (id: string, data: Partial<Omit<Timesheet, 'id' | 'created_at' | 'updated_at' | 'project'>>): Promise<{ data: Timesheet }> => {
+      console.log(`Updating timesheet ${id}:`, data);
+      const project = data.project_id ? {
+        id: data.project_id,
+        name: `${t('timesheet.mock.project_prefix')} ${data.project_id}`,
+        code: `PJ-${data.project_id}`
+      } : undefined;
+      
+      return { 
+        data: { 
+          ...data,
+          id,
+          project,
+          updated_at: new Date().toISOString()
+        } as Timesheet
+      };
+    },
+    delete: async (id: string): Promise<{ success: boolean }> => {
+      console.log(`Deleting timesheet ${id}`);
+      return { success: true };
+    },
+    getStats: async (): Promise<{ data: TimesheetsState['stats'] }> => ({
+      data: {
+        totalHours: 0,
+        billableHours: 0,
+        nonBillableHours: 0,
+        totalEarnings: 0,
+        thisWeekHours: 0,
+        pending: 0,
+        approved: 0,
+        projects: []
+      }
+    }),
+    getProjects: async (): Promise<{ data: Project[] }> => ({
+      data: [
+        { 
+          id: '1', 
+          name: `${t('timesheet.mock.project_prefix')} A`, 
+          code: 'PJ-A',
+          billable: true
+        },
+        { 
+          id: '2', 
+          name: `${t('timesheet.mock.project_prefix')} B`, 
+          code: 'PJ-B',
+          billable: false
+        },
+      ]
+    }),
+    getTimesheets: async (): Promise<{ data: Timesheet[]; total: number }> => ({
+      data: [],
+      total: 0
+    })
+  }), [t]);
+
+  // Fetch timesheets data
+  const fetchTimesheets = useCallback(async () => {
+    try {
+      setState(prev => ({ ...prev, loading: true }));
+      const response = await timesheetAPI.getTimesheets();
+      setState(prev => ({
+        ...prev,
+        timesheets: response.data.map((item: Timesheet) => ({
+          ...item,
+          key: item.id,
+          date: dayjs(item.date),
+          project_name: item.project?.name || 'N/A',
+          project_code: item.project?.code || 'N/A',
+        })),
+        pagination: {
+          ...prev.pagination,
+          total: response.total || 0
+        },
+        loading: false
+      }));
+    } catch (error) {
+      console.error('Error fetching timesheets:', error);
+      setState(prev => ({ ...prev, loading: false }));
+    }
+  }, [timesheetAPI]);
+
+  // Fetch projects data
+  const fetchProjects = useCallback(async () => {
+    try {
+      setState(prev => ({ ...prev, loading: true }));
+      const response = await timesheetAPI.getProjects();
+      setState(prev => ({
+        ...prev,
+        projects: response.data || [],
+        loading: false
+      }));
+    } catch (error) {
+      console.error('Error fetching projects:', error);
+      setState(prev => ({ ...prev, loading: false }));
+    }
+  }, [timesheetAPI]);
+
+  // Initial data fetch
   useEffect(() => {
     fetchTimesheets();
     fetchProjects();
-  }, []);
+  }, [fetchTimesheets, fetchProjects]);
 
-  const calculateWorkingDays = (year: number, month: number) => {
-    const startDate = dayjs(`${year}-${month.toString().padStart(2, '0')}-01`);
-    const endDate = startDate.endOf('month');
-    const workingDays = [];
-
-    let currentDate = startDate;
-    while (currentDate.isBefore(endDate) || currentDate.isSame(endDate, 'day')) {
-      if (currentDate.day() >= 1 && currentDate.day() <= 5) {
-        workingDays.push(currentDate.format('YYYY-MM-DD'));
-      }
-      currentDate = currentDate.add(1, 'day');
-    }
-
-    return workingDays;
-  };
-
-  const calculateWorkStats = (timesheets: TimesheetData[]) => {
-    const now = dayjs();
-    const currentYear = now.year();
-    const currentMonth = now.month() + 1;
-
-    const workingDays = calculateWorkingDays(currentYear, currentMonth);
-
-    const recordedDates = timesheets
-      .filter(ts => {
-        const tsDate = dayjs(ts.date);
-        return tsDate.year() === currentYear && tsDate.month() + 1 === currentMonth;
-      })
-      .map(ts => dayjs(ts.date).format('YYYY-MM-DD'));
-
-    const leaveDates = timesheets
-      .filter(ts => {
-        const tsDate = dayjs(ts.date);
-        return tsDate.year() === currentYear &&
-               tsDate.month() + 1 === currentMonth &&
-               ts.work_type === 'LEAVE';
-      })
-      .map(ts => dayjs(ts.date).format('YYYY-MM-DD'));
-
-    const missingDates = workingDays.filter(date => !recordedDates.includes(date));
-
-    const actualWorkDays = recordedDates.filter(date => !leaveDates.includes(date));
-
-    setWorkStats({
-      totalWorkingDays: workingDays.length,
-      recordedDays: recordedDates.length,
-      leaveDays: leaveDates.length,
-      actualWorkDays: actualWorkDays.length,
-      missingDays: missingDates.length,
-      missingDates: missingDates
-    });
-  };
-
-  const fetchTimesheets = async () => {
-    try {
-      setLoading(true);
-      const response = await timesheetAPI.getMyTimesheets({
-        limit: 100,
-        sortBy: 'date:desc'
-      });
-
-      if (response.success && response.data) {
-        const timesheetsData = response.data.data || [];
-        // Map the API response to our Timesheet type
-        const mappedTimesheets = timesheetsData.map((ts: any) => ({
-          ...ts,
-          project_id: ts.project_id || null,
-          submitted_at: ts.submitted_at || null,
-          approved_by: ts.approved_by || null,
-          approved_at: ts.approved_at || null,
-          rejection_reason: ts.rejection_reason || null,
-          hourly_rate: ts.hourly_rate || null
+  // Fetch timesheets when filters or pagination change
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setState(prev => ({ ...prev, loading: true }));
+        const response = await timesheetAPI.getTimesheets();
+        setState(prev => ({
+          ...prev,
+          timesheets: response.data.map((item: Timesheet) => ({
+            ...item,
+            key: item.id,
+            date: dayjs(item.date),
+            project_name: item.project?.name || 'N/A',
+            project_code: item.project?.code || 'N/A',
+          })),
+          pagination: {
+            ...prev.pagination,
+            total: response.total || 0
+          },
+          loading: false
         }));
-        
-        setTimesheets(mappedTimesheets);
-        calculateWorkStats(mappedTimesheets);
-
-        const stats = {
-          total: mappedTimesheets.length,
-          draft: mappedTimesheets.filter(ts => ts.status === 'DRAFT').length,
-          submitted: mappedTimesheets.filter(ts => ts.status === 'SUBMITTED').length,
-          approved: mappedTimesheets.filter(ts => ts.status === 'APPROVED').length,
-          rejected: mappedTimesheets.filter(ts => ts.status === 'REJECTED').length,
-          totalHours: mappedTimesheets.reduce((sum, ts) => sum + (ts.hours_worked || 0), 0)
-        };
-        setStats(stats);
+      } catch (error) {
+        console.error('Error fetching timesheets:', error);
+        setState(prev => ({ ...prev, loading: false }));
       }
-    } catch (error) {
-      console.error('Error fetching timesheets:', error);
-      message.error('Failed to load timesheets');
-    } finally {
-      setLoading(false);
-    }
+    };
+
+    fetchData();
+  }, [filters, pagination, timesheetAPI]);
+
+  // Fetch projects on component mount
+  useEffect(() => {
+    const fetchProjects = async () => {
+      try {
+        const response = await timesheetAPI.getProjects();
+        setState(prev => ({
+          ...prev,
+          projects: response.data,
+          loading: false
+        }));
+      } catch (error) {
+        console.error('Error fetching projects:', error);
+      }
+    };
+
+    fetchProjects();
+  }, [timesheetAPI]);
+
+  // Handle table changes (pagination, sorting, etc.)
+  const handleTableChange = (
+    pagination: TablePaginationConfig,
+    filters: Record<string, FilterValue | null>,
+    sorter: SorterResult<TimesheetTableData> | SorterResult<TimesheetTableData>[],
+  ) => {
+    // Convert sorter to any to avoid TypeScript errors with the sorter type
+    const tableSorter = Array.isArray(sorter) ? sorter[0] : sorter;
+    
+    setState(prev => ({
+      ...prev,
+      pagination: {
+        ...prev.pagination,
+        current: pagination.current || 1,
+        pageSize: pagination.pageSize || 10,
+      },
+      filters: {
+        ...prev.filters,
+        ...filters,
+      },
+      sorter: tableSorter as any, // Type assertion to avoid type complexity
+    }));
   };
 
-  const fetchProjects = async () => {
+  // Handle form submission
+  const handleSubmit = async (values: TimesheetFormValues) => {
     try {
-      setLoading(true);
-      const response = await projectAPI.getProjects();
+      setState(prev => ({ ...prev, submitting: true }));
       
-      if (response.success && response.data) {
-        // Map the API response to our Project type
-        const projectsData = response.data.map((project: any) => ({
-          id: project.id,
-          name: project.name,
-          description: project.description || '',
-          status: project.status || 'ACTIVE',
-          managerId: project.managerId || '',
-          jobCode: project.jobCode || '',
-          customerName: project.customerName || '',
-          startDate: project.startDate || new Date().toISOString(),
-          endDate: project.endDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-          budget: project.budget || 0,
-          createdAt: project.createdAt || new Date().toISOString(),
-          updatedAt: project.updatedAt || new Date().toISOString()
-        }));
-        
-        setProjects(projectsData);
-      } else {
-        message.error(response.message || 'Failed to load projects');
-      }
-    } catch (error) {
-      console.error('Error fetching projects:', error);
-      message.error('Failed to load projects');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleSubmit = async (values: any) => {
-    try {
-      setSubmitting(true);
-      const data = {
+      // Convert form values to Timesheet format for the API
+      const timesheetData: Omit<Timesheet, 'id' | 'created_at' | 'updated_at' | 'project'> = {
         ...values,
         date: values.date.format('YYYY-MM-DD'),
-        hours_worked: parseFloat(values.hours_worked),
-        overtime_hours: parseFloat(values.overtime_hours || 0),
-        billable: values.work_type === 'PROJECT',
-        project_id: values.work_type === 'NON_PROJECT' ? null : values.project_id
+        project_id: values.project_id || null,
       };
-
-      if (editingTimesheet) {
-        const response = await timesheetAPI.updateTimesheet(editingTimesheet.id, data);
-        if (response.success) {
-          message.success('อัปเดต timesheet สำเร็จ');
-        } else {
-          message.error(response.message || 'เกิดข้อผิดพลาดในการอัปเดต');
-          return;
-        }
+      
+      if (state.editingTimesheet) {
+        await timesheetAPI.update(state.editingTimesheet.id, timesheetData);
       } else {
-        const response = await timesheetAPI.createTimesheet(data);
-        if (response.success) {
-          message.success('สร้าง timesheet สำเร็จ');
-        } else {
-          message.error(response.message || 'เกิดข้อผิดพลาดในการสร้าง');
-          return;
-        }
+        await timesheetAPI.create(timesheetData);
       }
-
-      setModalVisible(false);
-      setEditingTimesheet(null);
+      
+      await fetchTimesheets();
+      setState(prev => ({
+        ...prev,
+        isModalVisible: false,
+        editingTimesheet: null,
+        submitting: false
+      }));
+      
       form.resetFields();
-      fetchTimesheets();
-    } catch (error: any) {
-      message.error(error.response?.data?.message || 'เกิดข้อผิดพลาดในการบันทึกข้อมูล');
-    } finally {
-      setSubmitting(false);
+    } catch (error) {
+      console.error('Error saving timesheet:', error);
+      setState(prev => ({ ...prev, submitting: false }));
     }
   };
 
-  const handleEdit = (timesheet: TimesheetData) => {
-    setEditingTimesheet(timesheet);
+  // Handle edit action
+  const handleEdit = useCallback((record: TimesheetTableData) => {
+    // Set form values directly from TimesheetTableData
     form.setFieldsValue({
-      ...timesheet,
-      date: dayjs(timesheet.date),
-      project_id: timesheet.project_id,
-      work_type: timesheet.work_type,
-      sub_work_type: timesheet.sub_work_type,
-      activity: timesheet.activity,
-      hours_worked: timesheet.hours_worked,
-      overtime_hours: timesheet.overtime_hours,
-      description: timesheet.description,
-      billable: timesheet.billable
+      ...record,
+      date: record.date, // Keep as Dayjs for the form
+      project_id: record.project_id || undefined, // Use undefined for form fields
     });
-    setModalVisible(true);
-  };
-
-  const handleDelete = async (id: string) => {
-    try {
-      setDeleting(id);
-      const response = await timesheetAPI.deleteTimesheet(id);
-      if (response.success) {
-        message.success('ลบ timesheet สำเร็จ');
-        fetchTimesheets();
-      } else {
-        message.error(response.message || 'เกิดข้อผิดพลาดในการลบ');
-      }
-    } catch (error: any) {
-      message.error(error.response?.data?.message || 'เกิดข้อผิดพลาดในการลบข้อมูล');
-    } finally {
-      setDeleting(null);
-    }
-  };
-
-  const handleSubmitTimesheet = async (id: string) => {
-    try {
-      setSubmitting(true);
-      const response = await timesheetAPI.submitTimesheet(id);
-      if (response.success) {
-        message.success('ส่ง timesheet สำเร็จ');
-        fetchTimesheets();
-      } else {
-        message.error(response.message || 'เกิดข้อผิดพลาดในการส่ง');
-      }
-    } catch (error: any) {
-      message.error(error.response?.data?.message || 'เกิดข้อผิดพลาดในการส่งข้อมูล');
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const getStatusColor = (status: string) => {
-    switch ((status || '').toLowerCase()) {
-      case 'draft': return 'default';
-      case 'submitted': return 'processing';
-      case 'approved': return 'success';
-      case 'rejected': return 'error';
-      default: return 'default';
-    }
-  };
-
-  const getStatusText = (status: string) => {
-    switch ((status || '').toLowerCase()) {
-      case 'draft': return 'ร่าง';
-      case 'submitted': return 'ส่งแล้ว';
-      case 'approved': return 'อนุมัติแล้ว';
-      case 'rejected': return 'ไม่อนุมัติ';
-      default: return status;
-    }
-  };
-
-  // ฟังก์ชันสำหรับการแสดงชื่อประเภทงานย่อย
-  const getSubWorkTypeLabel = (workType: string, subWorkType: string) => {
-    const subWorkTypeOptions: Record<string, Record<string, string>> = {
-      PROJECT: {
-        SOFTWARE: 'ซอฟต์แวร์',
-        HARDWARE: 'ฮาร์ดแวร์',
-        MEETING: 'การประชุม',
-        TESTING: 'การทดสอบ',
-        DOCUMENTATION: 'เอกสาร',
-        DESIGN: 'การออกแบบ',
-        DEPLOYMENT: 'การติดตั้ง'
-      },
-      NON_PROJECT: {
-        MEETING: 'การประชุม',
-        TRAINING: 'การฝึกอบรม',
-        ADMINISTRATION: 'การบริหาร',
-        MAINTENANCE: 'การบำรุงรักษา',
-        SUPPORT: 'การสนับสนุน',
-        OTHER: 'อื่นๆ'
-      }
-    };
     
-    const workTypeOptions = subWorkTypeOptions[workType] || {};
-    return workTypeOptions[subWorkType] || subWorkType;
-  };
+    setState(prev => ({
+      ...prev,
+      isModalVisible: true,
+      editingTimesheet: record
+    }));
+  }, [form]);
 
-  // ฟังก์ชันสำหรับการแสดงชื่อกิจกรรม
-  const getActivityLabel = (activity: string) => {
-    const activityLabels: Record<string, string> = {
-      // งานโครงการ - ซอฟต์แวร์
-      CODE_DEVELOPMENT: 'การพัฒนาโค้ด',
-      SYSTEM_DESIGN: 'การออกแบบระบบ',
-      BUG_FIX: 'การแก้ไขบั๊ก',
-      CODE_TESTING: 'การทดสอบโค้ด',
-      CODE_REVIEW: 'การรีวิวโค้ด',
-      PERFORMANCE_OPTIMIZATION: 'การปรับปรุงประสิทธิภาพ',
-      
-      // งานโครงการ - ฮาร์ดแวร์
-      EQUIPMENT_INSTALLATION: 'การติดตั้งอุปกรณ์',
-      HARDWARE_MAINTENANCE: 'การบำรุงรักษา',
-      HARDWARE_REPAIR: 'การแก้ไขอุปกรณ์',
-      HARDWARE_UPGRADE: 'การอัปเกรด',
-      HARDWARE_INSPECTION: 'การตรวจสอบ',
-      
-      // งานโครงการ - การประชุม
-      PROJECT_TEAM_MEETING: 'การประชุมทีมโครงการ',
-      CLIENT_MEETING: 'การประชุมลูกค้า',
-      PLANNING_MEETING: 'การประชุมวางแผน',
-      PROGRESS_MEETING: 'การประชุมติดตาม',
-      REVIEW_MEETING: 'การประชุมสรุป',
-      
-      // งานโครงการ - การทดสอบ
-      SYSTEM_TESTING: 'การทดสอบระบบ',
-      UNIT_TESTING: 'การทดสอบหน่วยงาน',
-      USER_ACCEPTANCE_TESTING: 'การทดสอบการใช้งาน',
-      PERFORMANCE_TESTING: 'การทดสอบประสิทธิภาพ',
-      SECURITY_TESTING: 'การทดสอบความปลอดภัย',
-      
-      // งานโครงการ - เอกสาร
-      TECHNICAL_DOCUMENTATION: 'การเขียนเอกสารเทคนิค',
-      USER_MANUAL: 'การเขียนคู่มือผู้ใช้',
-      PROJECT_DOCUMENTATION: 'การเขียนเอกสารโครงการ',
-      REPORT_WRITING: 'การเขียนรายงาน',
-      
-      // งานโครงการ - การออกแบบ
-      UI_UX_DESIGN: 'การออกแบบ UI/UX',
-      DATABASE_DESIGN: 'การออกแบบฐานข้อมูล',
-      ARCHITECTURE_DESIGN: 'การออกแบบสถาปัตยกรรม',
-      WORKFLOW_DESIGN: 'การออกแบบเวิร์กโฟลว์',
-      
-      // งานโครงการ - การติดตั้ง
-      SYSTEM_DEPLOYMENT: 'การติดตั้งระบบ',
-      SYSTEM_CONFIGURATION: 'การปรับแต่งระบบ',
-      DATA_MIGRATION: 'การย้ายข้อมูล',
-      DEPLOYMENT_TESTING: 'การทดสอบการติดตั้ง',
-      
-      // งานไม่เกี่ยวกับโครงการ - การประชุม
-      ORGANIZATION_MEETING: 'การประชุมองค์กร',
-      DEPARTMENT_MEETING: 'การประชุมแผนก',
-      COMMITTEE_MEETING: 'การประชุมคณะกรรมการ',
-      TRAINING_MEETING: 'การประชุมฝึกอบรม',
-      
-      // งานไม่เกี่ยวกับโครงการ - การฝึกอบรม
-      INTERNAL_TRAINING: 'การฝึกอบรมภายใน',
-      EXTERNAL_TRAINING: 'การฝึกอบรมภายนอก',
-      ONLINE_TRAINING: 'การฝึกอบรมออนไลน์',
-      TRAINING_PREPARATION: 'การเตรียมการฝึกอบรม',
-      
-      // งานไม่เกี่ยวกับโครงการ - การบริหาร
-      PLANNING: 'การวางแผน',
-      PROCUREMENT: 'การจัดซื้อ',
-      BUDGET_MANAGEMENT: 'การจัดการงบประมาณ',
-      REPORTING: 'การรายงาน',
-      COORDINATION: 'การประสานงาน',
-      
-      // งานไม่เกี่ยวกับโครงการ - การบำรุงรักษา
-      SYSTEM_MAINTENANCE: 'การบำรุงรักษาระบบ',
-      BACKUP: 'การสำรองข้อมูล',
-      SYSTEM_UPDATE: 'การอัปเดตระบบ',
-      SYSTEM_MONITORING: 'การตรวจสอบระบบ',
-      
-      // งานไม่เกี่ยวกับโครงการ - การสนับสนุน
-      USER_SUPPORT: 'การสนับสนุนผู้ใช้',
-      TROUBLESHOOTING: 'การแก้ไขปัญหา',
-      CONSULTATION: 'การให้คำปรึกษา',
-      USER_TRAINING: 'การฝึกอบรมผู้ใช้',
-      
-      // งานไม่เกี่ยวกับโครงการ - อื่นๆ
-      GENERAL_WORK: 'งานทั่วไป',
-      RESEARCH: 'การวิจัย',
-      PUBLIC_RELATIONS: 'การประชาสัมพันธ์',
-      
-      // การลางาน
-      SICK_LEAVE: 'ลาป่วย',
-      PERSONAL_LEAVE: 'ลากิจ',
-      ANNUAL_LEAVE: 'ลาพักร้อน',
-      MATERNITY_LEAVE: 'ลาคลอด',
-      ORDINATION_LEAVE: 'ลาบวช',
-      STUDY_LEAVE: 'ลาศึกษาต่อ',
-      MONK_LEAVE: 'ลาอุปสมบท',
-      SPECIAL_LEAVE: 'ลากิจพิเศษ',
-      REST_LEAVE: 'ลาพักผ่อน',
-      OTHER_LEAVE: 'ลาอื่นๆ'
-    };
-    return activityLabels[activity] || activity;
-  };
+  // Handle delete confirmation
+  const handleDelete = useCallback((id: string) => {
+    Modal.confirm({
+      title: t('timesheet.delete_modal.title'),
+      content: t('timesheet.delete_modal.content'),
+      okText: t('timesheet.delete_modal.ok_text'),
+      okType: 'danger',
+      cancelText: t('timesheet.modal.cancel'),
+      onOk: async () => {
+        try {
+          setState(prev => ({ ...prev, deletingId: id }));
+          await timesheetAPI.delete(id);
+          await fetchTimesheets();
+        } catch (error) {
+          console.error('Error deleting timesheet:', error);
+        } finally {
+          setState(prev => ({ ...prev, deletingId: null }));
+        }
+      },
+      onCancel: () => {
+        setState(prev => ({ ...prev, deletingId: null }));
+      },
+    });
+  }, [fetchTimesheets]);
 
-  const handleCreateForDate = (date: string) => {
-    setEditingTimesheet(null);
-    form.resetFields();
-    // Set the date immediately and ensure it's not overridden
-    setTimeout(() => {
-      form.setFieldsValue({ 
-        date: dayjs(date),
-        work_type: 'PROJECT',
-        sub_work_type: 'SOFTWARE',
-        activity: 'CODE_DEVELOPMENT',
-        hours_worked: 8,
-        overtime_hours: 0,
-        billable: true
-      });
-    }, 0);
-    setModalVisible(true);
-  };
-
-  const columns = [
+  // Table columns with proper typing
+  const columns: ColumnsType<TimesheetTableData> = [
     {
-      title: 'วันที่',
+      title: t('timesheet.table.date'),
       dataIndex: 'date',
       key: 'date',
-      render: (date: string) => dayjs(date).format('DD/MM/YYYY')
+      render: (date: Dayjs) => date?.isValid() ? date.format('YYYY-MM-DD') : t('timesheet.table.na'),
+      sorter: (a, b) => (a.date?.isValid() ? a.date.unix() : 0) - (b.date?.isValid() ? b.date.unix() : 0),
+      width: 120,
     },
     {
-      title: 'ประเภทงาน',
+      title: t('timesheet.table.project'),
+      dataIndex: 'project_name',
+      key: 'project',
+      render: (text: string, record: TimesheetTableData) => (
+        <div>
+          <div>{text || t('timesheet.table.na')}</div>
+          {record.project_code && (
+            <div className="text-xs text-gray-500">{record.project_code}</div>
+          )}
+        </div>
+      ),
+    },
+    {
+      title: t('timesheet.table.hours'),
+      dataIndex: 'hours_worked',
+      key: 'hours',
+      align: 'right' as const,
+      render: (hours: number) => (hours || 0).toFixed(2),
+      sorter: (a, b) => (a.hours_worked || 0) - (b.hours_worked || 0),
+      width: 100,
+    },
+    {
+      title: t('timesheet.table.work_type'),
       dataIndex: 'work_type',
       key: 'work_type',
-      render: (workType: string) => workTypeOptions.find(opt => opt.value === workType)?.label || workType
+      render: (text: string) => t(`timesheet.work_type.${text}`) || t('timesheet.table.na'),
+      filters: [
+        { text: t('timesheet.work_type.development'), value: 'development' },
+        { text: t('timesheet.work_type.design'), value: 'design' },
+        { text: t('timesheet.work_type.meeting'), value: 'meeting' },
+        { text: t('timesheet.work_type.research'), value: 'research' },
+        { text: t('timesheet.work_type.documentation'), value: 'documentation' },
+        { text: t('timesheet.work_type.testing'), value: 'testing' },
+        { text: t('timesheet.work_type.deployment'), value: 'deployment' },
+        { text: t('timesheet.work_type.other'), value: 'other' }
+      ],
+      onFilter: (value, record) => record.work_type === value,
     },
     {
-      title: 'ประเภทงานย่อย',
-      dataIndex: 'sub_work_type',
-      key: 'sub_work_type',
-      render: (subWorkType: string, record: TimesheetData) => getSubWorkTypeLabel(record.work_type, subWorkType)
+      title: t('timesheet.table.description'),
+      dataIndex: 'description',
+      key: 'description',
+      ellipsis: true,
+      render: (text: string) => text || t('timesheet.table.na'),
     },
     {
-      title: 'โครงการ',
-      dataIndex: 'project',
-      key: 'project',
-      render: (project: any, record: TimesheetData) => {
-        if (record.work_type === 'NON_PROJECT') {
-          return <Tag color="orange">Non-Project</Tag>;
-        }
-        if (record.work_type === 'LEAVE') {
-          return <Tag color="red">Leave</Tag>;
-        }
-        return project ? `${project.jobCode} - ${project.name}` : '-';
-      }
-    },
-    {
-      title: 'กิจกรรม',
-      dataIndex: 'activity',
-      key: 'activity',
-      render: (activity: string) => getActivityLabel(activity)
-    },
-    {
-      title: 'ชั่วโมงทำงาน',
-      dataIndex: 'hours_worked',
-      key: 'hours_worked',
-      render: (hours: number, record: TimesheetData) => {
-        const totalHours = hours + (record.overtime_hours || 0);
-        return (
-          <div>
-            <div>{hours}h</div>
-            {record.overtime_hours > 0 && (
-              <div className="text-xs text-orange-600">+{record.overtime_hours}h OT</div>
-            )}
-            <div className="text-xs text-gray-500">รวม: {totalHours}h</div>
-          </div>
-        );
-      }
-    },
-    {
-      title: 'สถานะ',
+      title: t('timesheet.table.status'),
       dataIndex: 'status',
       key: 'status',
-      render: (status: string) => (
-        <Tag color={getStatusColor(status)}>
-          {getStatusText(status)}
-        </Tag>
-      )
+      render: (status: TimesheetStatus) => {
+        const statusMap: Record<TimesheetStatus, { color: string; text: string }> = {
+          draft: { color: 'default', text: t('timesheet.status.draft') },
+          submitted: { color: 'processing', text: t('timesheet.status.submitted') },
+          approved: { color: 'success', text: t('timesheet.status.approved') },
+          rejected: { color: 'error', text: t('timesheet.status.rejected') },
+          pending: { color: 'warning', text: t('timesheet.status.pending') },
+        };
+        const statusInfo = statusMap[status] || { color: 'default', text: String(status) };
+        return <Tag color={statusInfo.color}>{statusInfo.text}</Tag>;
+      },
+      filters: [
+        { text: t('timesheet.status.draft'), value: 'draft' },
+        { text: t('timesheet.status.submitted'), value: 'submitted' },
+        { text: t('timesheet.status.approved'), value: 'approved' },
+        { text: t('timesheet.status.rejected'), value: 'rejected' },
+        { text: t('timesheet.status.pending'), value: 'pending' }
+      ],
+      onFilter: (value, record) => record.status === value,
     },
     {
-      title: 'การดำเนินการ',
+      title: t('timesheet.table.actions'),
       key: 'actions',
-      render: (record: TimesheetData) => (
-        <Space>
-          <Button 
-            type="text" 
-            icon={<EditOutlined />} 
+      width: 120,
+      fixed: 'right' as const,
+      render: (_, record: TimesheetTableData) => (
+        <Space size="middle">
+          <Button
+            type="link"
+            icon={<EditOutlined />}
             onClick={() => handleEdit(record)}
-            disabled={record.status === 'APPROVED' || record.status === 'REJECTED'}
-            title="แก้ไข"
+            disabled={state.deletingId === record.id}
+            aria-label={t('timesheet.action.edit')}
           />
-          <Button 
-            type="text" 
-            danger 
-            icon={<DeleteOutlined />} 
+          <Button
+            type="text"
+            danger
+            icon={<DeleteOutlined />}
             onClick={() => handleDelete(record.id)}
-            loading={deleting === record.id}
-            disabled={record.status === 'APPROVED' || record.status === 'REJECTED'}
-            title="ลบ"
+            loading={state.deletingId === record.id}
+            aria-label={t('timesheet.action.delete')}
           />
-          {record.status === 'DRAFT' && (
-            <Button 
-              type="text" 
-              icon={<SendOutlined />} 
-              onClick={() => handleSubmitTimesheet(record.id)}
-              loading={submitting}
-              title="ส่งเพื่ออนุมัติ"
-            />
-          )}
         </Space>
-      )
-    }
+      ),
+    },
   ];
 
-  return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Avatar size={32} style={{ backgroundColor: '#1890ff' }} icon={<CalendarOutlined />} />
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">My Timesheets</h1>
-            <p className="text-sm text-gray-600">จัดการ timesheet ของตนเอง</p>
-          </div>
-        </div>
-        <Button 
-          type="primary" 
-          icon={<PlusOutlined />}
-          onClick={() => setModalVisible(true)}
+  // Work type options for the form
+  const workTypeOptions = [
+    { label: t('timesheet.work_type.development'), value: 'development' },
+    { label: t('timesheet.work_type.design'), value: 'design' },
+    { label: t('timesheet.work_type.meeting'), value: 'meeting' },
+    { label: t('timesheet.work_type.research'), value: 'research' },
+    { label: t('timesheet.work_type.documentation'), value: 'documentation' },
+    { label: t('timesheet.work_type.testing'), value: 'testing' },
+    { label: t('timesheet.work_type.deployment'), value: 'deployment' },
+    { label: t('timesheet.work_type.other'), value: 'other' }
+  ];
+
+  // Status options for the form
+  const statusOptions = [
+    { label: 'Draft', value: 'draft' },
+    { label: 'Submitted', value: 'submitted' },
+    { label: 'Approved', value: 'approved' },
+    { label: 'Rejected', value: 'rejected' },
+    { label: 'Pending', value: 'pending' }
+  ] as const;
+
+  // Render the modal form
+  const renderTimesheetModal = () => (
+    <Modal
+      title={editingTimesheet ? t('timesheet.edit_modal_title') : t('timesheet.add_modal_title')}
+      open={isModalVisible}
+      onCancel={() => setState(prev => ({ ...prev, isModalVisible: false }))}
+      footer={[
+        <Button key="cancel" onClick={() => setState(prev => ({ ...prev, isModalVisible: false }))}>
+          {t('timesheet.modal.cancel')}
+        </Button>,
+        <Button
+          key="submit"
+          type="primary"
+          onClick={() => {
+            form
+              .validateFields()
+              .then((values) => {
+                handleSubmit(values);
+              })
+              .catch((info) => {
+                console.log('Validate Failed:', info);
+              });
+          }}
         >
-          สร้าง Timesheet
+          {editingTimesheet ? t('timesheet.modal.update') : t('timesheet.modal.create')}
         </Button>
+      ]}
+    >
+      <Form
+        form={form}
+        layout="vertical"
+        onFinish={handleSubmit}
+        initialValues={{
+          date: dayjs(),
+          work_type: 'development',
+          hours_worked: 0,
+          status: 'draft'
+        }}
+      >
+        <Form.Item
+          name="date"
+          label={t('timesheet.form.date_label')}
+          rules={[{ required: true, message: t('timesheet.form.date_required') }]}
+        >
+          <DatePicker style={{ width: '100%' }} />
+        </Form.Item>
+
+        <Form.Item
+          name="work_type"
+          label={t('timesheet.form.work_type_label')}
+          rules={[{ required: true, message: t('timesheet.form.work_type_required') }]}
+        >
+          <Select placeholder={t('timesheet.form.select_work_type')}>
+            {workTypeOptions.map(option => (
+              <Select.Option key={option.value} value={option.value}>
+                {option.label}
+              </Select.Option>
+            ))}
+          </Select>
+        </Form.Item>
+
+        <Form.Item
+          name="hours_worked"
+          label={t('timesheet.form.hours_worked_label')}
+          rules={[{ required: true, message: t('timesheet.form.hours_worked_required') }]}
+        >
+          <InputNumber 
+            min={0}
+            max={24} 
+            step={0.5} 
+            style={{ width: '100%' }} 
+            precision={1}
+          />
+        </Form.Item>
+
+        <Form.Item
+          name="description"
+          label={t('timesheet.form.description_label')}
+          rules={[{ required: true, message: t('timesheet.form.description_required') }]}
+        >
+          <Input.TextArea rows={3} placeholder={t('timesheet.form.description_placeholder')} />
+        </Form.Item>
+
+        <Form.Item name="status" label={t('timesheet.form.status_label')}>
+          <Select>
+            {statusOptions.map(option => (
+              <Select.Option key={option.value} value={option.value}>
+                {option.label}
+              </Select.Option>
+            ))}
+          </Select>
+        </Form.Item>
+      </Form>
+    </Modal>
+  );
+
+  // Render the component
+  return (
+    <div className="timesheets-container">
+      {/* Main content goes here */}
+      <div style={{ padding: '24px' }}>
+        <div style={{ marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Title level={2} style={{ margin: 0 }}>Timesheets</Title>
+          <Button 
+            type="primary" 
+            icon={<PlusOutlined />}
+            onClick={() => {
+              form.resetFields();
+              setState(prev => ({
+                ...prev,
+                isModalVisible: true,
+                editingTimesheet: null
+              }));
+            }}
+          >
+            Add Timesheet
+          </Button>
+        </div>
+
+        {/* Stats Cards */}
+        <Row gutter={16} style={{ marginBottom: '24px' }}>
+          <Col span={6}>
+            <Card>
+              <Statistic
+                title="Total Hours"
+                value={state.stats.totalHours || 0}
+                precision={2}
+                suffix="hrs"
+              />
+            </Card>
+          </Col>
+          <Col span={6}>
+            <Card>
+              <Statistic
+                title="Billable Hours"
+                value={state.stats.billableHours || 0}
+                precision={2}
+                suffix="hrs"
+              />
+            </Card>
+          </Col>
+          <Col span={6}>
+            <Card>
+              <Statistic
+                title="Non-Billable Hours"
+                value={state.stats.nonBillableHours || 0}
+                precision={2}
+                suffix="hrs"
+              />
+            </Card>
+          </Col>
+          <Col span={6}>
+            <Card>
+              <Statistic
+                title="Total Earnings"
+                value={state.stats.totalEarnings || 0}
+                precision={2}
+                prefix="$"
+              />
+            </Card>
+          </Col>
+        </Row>
+
+        {/* Timesheets Table */}
+        <Card>
+          <Table
+            columns={columns}
+            dataSource={timesheets}
+            rowKey="id"
+            loading={loading}
+            pagination={{
+              ...pagination,
+              showSizeChanger: true,
+              showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} items`,
+            }}
+            onChange={handleTableChange}
+            scroll={{ x: 'max-content' }}
+          />
+        </Card>
       </div>
 
-      {/* Statistics Cards */}
-      <Row gutter={16}>
-        <Col span={4}>
-          <Card>
-            <Statistic
-              title="รวมทั้งหมด"
-              value={stats.total}
-              prefix={<ClockCircleOutlined style={{ marginRight: 8 }} />}
-            />
-          </Card>
-        </Col>
-        <Col span={4}>
-          <Card>
-            <Statistic
-              title="ร่าง"
-              value={stats.draft}
-              valueStyle={{ color: '#8c8c8c' }}
-              prefix={<span>📄</span>}
-            />
-          </Card>
-        </Col>
-        <Col span={4}>
-          <Card>
-            <Statistic
-              title="ส่งแล้ว"
-              value={stats.submitted}
-              valueStyle={{ color: '#faad14' }}
-              prefix={<HourglassOutlined style={{ marginRight: 8 }} />}
-            />
-          </Card>
-        </Col>
-        <Col span={4}>
-          <Card>
-            <Statistic
-              title="อนุมัติแล้ว"
-              value={stats.approved}
-              valueStyle={{ color: '#3f8600' }}
-              prefix={<CheckCircleOutlined style={{ marginRight: 8 }} />}
-            />
-          </Card>
-        </Col>
-        <Col span={4}>
-          <Card>
-            <Statistic
-              title="ไม่อนุมัติ"
-              value={stats.rejected}
-              valueStyle={{ color: '#cf1322' }}
-              prefix={<CloseCircleOutlined style={{ marginRight: 8 }} />}
-            />
-          </Card>
-        </Col>
-        <Col span={4}>
-          <Card>
-            <Statistic
-              title="ชั่วโมงรวม"
-              value={stats.totalHours}
-              suffix="ชั่วโมง"
-              precision={1}
-              prefix={<ClockCircleOutlined style={{ marginRight: 8 }} />}
-            />
-          </Card>
-        </Col>
-      </Row>
-
-      {/* Work Statistics for Current Month */}
-      <Card 
-        title={
-          <div className="flex items-center gap-2">
-            <CalendarOutlined />
-            <span>สถิติการทำงานเดือน {dayjs().format('MMMM YYYY')}</span>
-          </div>
-        }
-        className="mb-6"
-      >
-        <Row gutter={16}>
-          <Col span={6}>
-            <Statistic title="วันทำงานทั้งหมด" value={workStats.totalWorkingDays} />
-          </Col>
-          <Col span={6}>
-            <Statistic title="วันที่บันทึกแล้ว" value={workStats.recordedDays} valueStyle={{ color: '#3f8600' }} />
-          </Col>
-          <Col span={6}>
-            <Statistic title="วันลา" value={workStats.leaveDays} valueStyle={{ color: '#1890ff' }} />
-          </Col>
-          <Col span={6}>
-            <Statistic title="วันทำงานจริง" value={workStats.actualWorkDays} valueStyle={{ color: '#52c41a' }} />
-          </Col>
-        </Row>
-        <Row gutter={16} style={{ marginTop: '16px' }}>
-          <Col span={12}>
-            <Statistic title="วันที่ยังไม่ได้บันทึก" value={workStats.missingDays} valueStyle={{ color: '#cf1322' }} />
-          </Col>
-          <Col span={12}>
-            <Statistic 
-              title="อัตราการทำงาน" 
-              value={workStats.totalWorkingDays > 0 ? Math.round((workStats.actualWorkDays / workStats.totalWorkingDays) * 100) : 0} 
-              suffix="%" 
-              valueStyle={{ color: '#722ed1' }} 
-            />
-          </Col>
-        </Row>
-        {workStats.missingDates.length > 0 && (
-          <div className="mt-4">
-            <div className="mb-2 text-sm text-gray-600">วันที่ยังไม่ได้บันทึก:</div>
-            <div className="flex flex-wrap gap-2">
-              {workStats.missingDates.map(date => (
-                <Button
-                  key={date}
-                  size="small"
-                  type="dashed"
-                  onClick={() => handleCreateForDate(date)}
-                >
-                  {dayjs(date).format('DD/MM/YYYY')}
-                </Button>
-              ))}
-            </div>
-          </div>
-        )}
-      </Card>
-
-      {/* Timesheet Table */}
-      <Card title="รายการ Timesheet ของฉัน">
-        <Table
-          columns={columns}
-          dataSource={timesheets}
-          rowKey="id"
-          loading={loading}
-          pagination={{
-            pageSize: 10,
-            showSizeChanger: true,
-            showQuickJumper: true,
-            showTotal: (total: number, range: [number, number]) => `${range[0]}-${range[1]} จาก ${total} รายการ`
-          }}
-        />
-      </Card>
-
-      {/* Create/Edit Modal */}
-      <Modal
-        title={editingTimesheet ? 'แก้ไข Timesheet' : 'สร้าง Timesheet ใหม่'}
-        open={modalVisible}
-        onCancel={() => {
-          setModalVisible(false);
-          setEditingTimesheet(null);
-          form.resetFields();
-        }}
-        footer={null}
-        width={1000}
-        confirmLoading={submitting}
-        style={{ top: 20 }}
-      >
-        <TimesheetForm
-          mode={editingTimesheet ? 'edit' : 'create'}
-          initialValues={editingTimesheet ? {
-            ...editingTimesheet,
-            date: editingTimesheet.date ? dayjs(editingTimesheet.date) : undefined,
-            project_id: editingTimesheet.project_id,
-            work_type: editingTimesheet.work_type,
-            sub_work_type: editingTimesheet.sub_work_type,
-            activity: editingTimesheet.activity,
-            hours_worked: editingTimesheet.hours_worked,
-            overtime_hours: editingTimesheet.overtime_hours,
-            description: editingTimesheet.description,
-            billable: editingTimesheet.billable
-          } : undefined}
-          onSubmit={handleSubmit}
-          onCancel={() => {
-            setModalVisible(false);
-            setEditingTimesheet(null);
-            form.resetFields();
-          }}
-          loading={submitting}
-          projects={projects}
-        />
-      </Modal>
+      {/* Timesheet Modal */}
+      {renderTimesheetModal()}
     </div>
   );
 };

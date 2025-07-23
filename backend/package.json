@@ -1,5 +1,5 @@
 {
-  "name": "painai-backend",
+  "name": "painai-timesheet-backend",
   "version": "1.0.0",
   "description": "Backend API for Painai Timesheet Management System",
   "main": "dist/index.js",
