@@ -60,6 +60,7 @@ const App = () => {
                 }
               >
                 <Route index element={<Dashboard />} />
+                <Route path="dashboard" element={<Dashboard />} />
                 
                 {/* Projects */}
                 <Route path="projects" element={<Projects />} />

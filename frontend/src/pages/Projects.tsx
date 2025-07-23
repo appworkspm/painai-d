@@ -220,13 +220,13 @@ const Projects = () => {
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead className="text-right">{t('project_details.actions_column')}</TableHead>
               <TableHead>{t('project_details.project_name_column')}</TableHead>
               <TableHead>{t('project_details.job_code_column')}</TableHead>
               <TableHead>{t('project_details.status_column')}</TableHead>
               <TableHead>{t('project_details.manager_column')}</TableHead>
               <TableHead>{t('project_details.start_date_column')}</TableHead>
               <TableHead>{t('project_details.end_date_column')}</TableHead>
-              <TableHead className="text-right">{t('project_details.actions_column')}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -239,16 +239,6 @@ const Projects = () => {
             ) : (
               projects.map((project: Project) => (
                 <TableRow key={project.id}>
-                  <TableCell className="font-medium">{project.name}</TableCell>
-                  <TableCell>{project.jobCode || '-'}</TableCell>
-                  <TableCell>
-                    <Badge variant={getStatusBadgeVariant(project.status)}>
-                      {project.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>{project.manager?.name || 'N/A'}</TableCell>
-                  <TableCell>{project.startDate ? new Date(project.startDate).toLocaleDateString() : '-'}</TableCell>
-                  <TableCell>{project.endDate ? new Date(project.endDate).toLocaleDateString() : '-'}</TableCell>
                   <TableCell className="text-right">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -272,6 +262,16 @@ const Projects = () => {
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>
+                  <TableCell className="font-medium">{project.name}</TableCell>
+                  <TableCell>{project.jobCode || '-'}</TableCell>
+                  <TableCell>
+                    <Badge variant={getStatusBadgeVariant(project.status)}>
+                      {project.status}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>{project.manager?.name || 'N/A'}</TableCell>
+                  <TableCell>{project.startDate ? new Date(project.startDate).toLocaleDateString() : '-'}</TableCell>
+                  <TableCell>{project.endDate ? new Date(project.endDate).toLocaleDateString() : '-'}</TableCell>
                 </TableRow>
               ))
             )}

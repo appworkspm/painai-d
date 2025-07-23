@@ -44,7 +44,7 @@ import { useState } from 'react';
 const Sidebar = () => {
   const { user, logout } = useAuth();
   const location = useLocation();
-  const { t } = useTranslation();
+  const { t, ready } = useTranslation();
   const isAdmin = user?.role === 'admin';
   const isManager = user?.role === 'manager';
   const isVP = user?.role === 'vp';
@@ -157,6 +157,22 @@ const Sidebar = () => {
     );
   };
 
+  // Show loading if translations are not ready
+  if (!ready) {
+    return (
+      <aside className="hidden md:flex md:flex-col md:w-64 bg-white dark:bg-gray-800 border-r dark:border-gray-700">
+        <div className="h-16 flex items-center justify-center border-b dark:border-gray-700">
+          <h1 className="text-2xl font-bold text-primary">Painai</h1>
+        </div>
+        <nav className="flex-1 px-2 py-4 space-y-2 overflow-y-auto">
+          <div className="flex items-center justify-center py-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+          </div>
+        </nav>
+      </aside>
+    );
+  }
+
   return (
     <aside className="hidden md:flex md:flex-col md:w-64 bg-white dark:bg-gray-800 border-r dark:border-gray-700">
       <div className="h-16 flex items-center justify-center border-b dark:border-gray-700">
@@ -164,71 +180,71 @@ const Sidebar = () => {
       </div>
       <nav className="flex-1 px-2 py-4 space-y-2 overflow-y-auto">
         {/* Dashboard */}
-        <Section title={t('menu.dashboard')} icon={LayoutDashboard} sectionKey="dashboard">
-          <NavItem to="/" icon={TrendingUp} label={t('menu.overview')} exact />
-          <NavItem to="/dashboard" icon={PieChart} label={t('menu.analytics')} />
+        <Section title={t('menu.dashboard', 'หน้าหลัก')} icon={LayoutDashboard} sectionKey="dashboard">
+          <NavItem to="/" icon={TrendingUp} label={t('menu.overview', 'ภาพรวม')} exact />
+          <NavItem to="/dashboard" icon={PieChart} label={t('menu.analytics', 'สถิติ')} />
         </Section>
 
         {/* Projects Section */}
-        <Section title={t('menu.project_management')} icon={FolderOpen} sectionKey="projects">
-          <NavItem to="/projects" icon={ClipboardList} label={t('menu.all_projects')} />
-          <NavItem to="/projects/create" icon={Plus} label={t('menu.create_project')} />
-          <NavItem to="/projects/active" icon={Activity} label={t('menu.active_projects')} />
-          <NavItem to="/projects/completed" icon={CheckCircle2} label={t('menu.completed_projects')} />
+        <Section title={t('menu.project_management', 'โครงการ')} icon={FolderOpen} sectionKey="projects">
+          <NavItem to="/projects" icon={ClipboardList} label={t('menu.all_projects', 'โครงการทั้งหมด')} />
+          <NavItem to="/projects/create" icon={Plus} label={t('menu.create_project', 'สร้างโครงการใหม่')} />
+          <NavItem to="/projects/active" icon={Activity} label={t('menu.active_projects', 'โครงการที่ทำอยู่')} />
+          <NavItem to="/projects/completed" icon={CheckCircle2} label={t('menu.completed_projects', 'โครงการที่เสร็จแล้ว')} />
         </Section>
 
         {/* Timesheets Section */}
-        <Section title={t('menu.timesheet_management')} icon={Clock} sectionKey="timesheets">
-          <NavItem to="/timesheets" icon={FileText} label={t('menu.my_timesheets')} />
-          <NavItem to="/timesheets/create" icon={Plus} label={t('menu.create_timesheet')} />
-          <NavItem to="/timesheets/history" icon={History} label={t('menu.timesheet_history')} />
+        <Section title={t('menu.timesheet_management', 'งานของฉัน')} icon={Clock} sectionKey="timesheets">
+          <NavItem to="/timesheets" icon={FileText} label={t('menu.my_timesheets', 'ไทม์ชีท')} />
+          <NavItem to="/timesheets/create" icon={Plus} label={t('menu.create_timesheet', 'บันทึกงาน')} />
+          <NavItem to="/timesheets/history" icon={History} label={t('menu.timesheet_history', 'ประวัติการทำงาน')} />
           {(isAdmin || isManager || isVP) && (
-            <NavItem to="/timesheets/approval" icon={UserCheck} label={t('menu.timesheet_approval')} />
+            <NavItem to="/timesheets/approval" icon={UserCheck} label={t('menu.timesheet_approval', 'อนุมัติงาน')} />
           )}
         </Section>
 
         {/* Reports Section */}
-        <Section title={t('menu.reports')} icon={BarChart2} sectionKey="reports">
-          <NavItem to="/reports/workload" icon={Activity} label={t('menu.workload_report')} />
-          <NavItem to="/reports/project" icon={FileBarChart2} label={t('menu.project_report')} />
-          <NavItem to="/reports/project-cost" icon={DollarSignIcon} label={t('menu.project_cost_report')} />
-          <NavItem to="/reports/timesheet" icon={FileText} label={t('menu.timesheet_report')} />
+        <Section title={t('menu.reports', 'รายงาน')} icon={BarChart2} sectionKey="reports">
+          <NavItem to="/reports/workload" icon={Activity} label={t('menu.workload_report', 'ปริมาณงาน')} />
+          <NavItem to="/reports/project" icon={FileBarChart2} label={t('menu.project_report', 'รายงานโครงการ')} />
+          <NavItem to="/reports/project-cost" icon={DollarSignIcon} label={t('menu.project_cost_report', 'ต้นทุนโครงการ')} />
+          <NavItem to="/reports/timesheet" icon={FileText} label={t('menu.timesheet_report', 'รายงานงาน')} />
           {(isAdmin || isVP) && (
-            <NavItem to="/reports/user-activity" icon={UserIcon} label={t('menu.user_activity_report')} />
+            <NavItem to="/reports/user-activity" icon={UserIcon} label={t('menu.user_activity_report', 'กิจกรรมพนักงาน')} />
           )}
         </Section>
 
         {/* Cost Management Section */}
-        <Section title={t('menu.cost_management')} icon={DollarSign} sectionKey="costManagement">
-          <NavItem to="/cost/my-requests" icon={ListChecks} label={t('menu.my_cost_requests')} />
-          <NavItem to="/cost/entry" icon={Plus} label={t('menu.cost_entry')} />
+        <Section title={t('menu.cost_management', 'ต้นทุน')} icon={DollarSign} sectionKey="costManagement">
+          <NavItem to="/cost/my-requests" icon={ListChecks} label={t('menu.my_cost_requests', 'คำขอของฉัน')} />
+          <NavItem to="/cost/entry" icon={Plus} label={t('menu.cost_entry', 'บันทึกค่าใช้จ่าย')} />
           {(isAdmin || isManager || isVP) && (
-            <NavItem to="/cost/approval" icon={CheckCircle2} label={t('menu.cost_approval')} />
+            <NavItem to="/cost/approval" icon={CheckCircle2} label={t('menu.cost_approval', 'อนุมัติค่าใช้จ่าย')} />
           )}
         </Section>
 
         {/* Admin Section */}
         {(isAdmin || isVP) && (
-          <Section title={t('menu.administration')} icon={Shield} sectionKey="admin">
+          <Section title={t('menu.administration', 'ระบบ')} icon={Shield} sectionKey="admin">
             {isAdmin && (
-              <NavItem to="/admin" icon={LayoutDashboard} label={t('menu.admin_panel')} />
+              <NavItem to="/admin" icon={LayoutDashboard} label={t('menu.admin_panel', 'จัดการระบบ')} />
             )}
-            <NavItem to="/users" icon={UsersIcon} label={t('menu.user_management')} />
+            <NavItem to="/users" icon={UsersIcon} label={t('menu.user_management', 'พนักงาน')} />
             {isAdmin && (
-              <NavItem to="/user-roles" icon={UserCog} label={t('menu.user_roles')} />
+              <NavItem to="/user-roles" icon={UserCog} label={t('menu.user_roles', 'สิทธิ์การใช้งาน')} />
             )}
-            <NavItem to="/holidays" icon={CalendarIcon} label={t('menu.holiday_management')} />
-            <NavItem to="/user-activity" icon={Activity} label={t('menu.user_activity')} />
+            <NavItem to="/holidays" icon={CalendarIcon} label={t('menu.holiday_management', 'วันหยุด')} />
+            <NavItem to="/user-activity" icon={Activity} label={t('menu.user_activity', 'กิจกรรม')} />
             {isAdmin && (
-              <NavItem to="/system-logs" icon={FileTextIcon} label={t('menu.system_logs')} />
+              <NavItem to="/system-logs" icon={FileTextIcon} label={t('menu.system_logs', 'บันทึกระบบ')} />
             )}
           </Section>
         )}
 
         {/* User Section */}
         <div className="pt-4 mt-4 border-t border-gray-200 dark:border-gray-700">
-          <NavItem to="/profile" icon={UserIcon} label={t('menu.profile')} />
-          <NavItem to="/settings" icon={Cog} label={t('menu.settings')} />
+          <NavItem to="/profile" icon={UserIcon} label={t('menu.profile', 'โปรไฟล์')} />
+          <NavItem to="/settings" icon={Cog} label={t('menu.settings', 'ตั้งค่า')} />
           <button
             onClick={logout}
             className={cn(
@@ -238,7 +254,7 @@ const Sidebar = () => {
             )}
           >
             <LogOut className="mr-3 h-5 w-5 flex-shrink-0" />
-            <span>{t('menu.logout')}</span>
+            <span>{t('menu.logout', 'ออกจากระบบ')}</span>
           </button>
         </div>
       </nav>
