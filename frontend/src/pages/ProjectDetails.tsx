@@ -2,11 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useNotification } from '../contexts/NotificationContext';
-import { FolderOpen, Users, Calendar, Clock, CheckCircle, AlertCircle, BarChart3, Edit, Plus, Circle, X, Save, Trash2, Search, Filter, Download, LineChart } from 'lucide-react';
+import { FolderOpen, Users, Calendar, Clock, CheckCircle, AlertCircle, BarChart3, Edit, Plus, Circle, X, Save, Trash2, Search, Filter, Download, LineChart, RefreshCw, ArrowLeft, Home } from 'lucide-react';
 import { LineChart as RLineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { projectAPI, projectTeamAPI, projectTaskAPI, projectTimelineAPI, adminAPI } from '../services/api';
 import { Card, Row, Col, Statistic, Table, Tag, Space, Button, Input, Select, DatePicker, message, Spin, Empty, Skeleton } from 'antd';
 import { useTranslation } from 'react-i18next';
+import dayjs from 'dayjs';
 
 const { Search: AntSearch } = Input;
 
@@ -16,6 +17,7 @@ const ProjectDetails: React.FC = () => {
   const { showNotification } = useNotification();
   const [project, setProject] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('overview');
   const [sCurveData, setSCurveData] = useState<any>(null);
   const [loadingSCurve, setLoadingSCurve] = useState(false);
@@ -36,6 +38,14 @@ const ProjectDetails: React.FC = () => {
       setLoadingSCurve(false);
     }
   };
+
+  useEffect(() => {
+    if (id) {
+      loadAll();
+    } else {
+      loadAllProjects();
+    }
+  }, [id]);
 
   useEffect(() => {
     if (activeTab === 'scurve') {
@@ -119,7 +129,6 @@ const ProjectDetails: React.FC = () => {
   const [allProjects, setAllProjects] = useState<any[]>([]);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('ACTIVE');
-  const [error, setError] = useState<string | null>(null);
   const { t } = useTranslation();
 
   // Export functionality
