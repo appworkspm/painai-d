@@ -15,6 +15,9 @@ import ProjectProgressList from './pages/ProjectProgressList';
 import ProjectProgressDashboard from './pages/ProjectProgressDashboard';
 import Timesheets from './pages/Timesheets';
 import CreateTimesheet from './pages/CreateTimesheet';
+import CreateProject from './pages/CreateProject';
+import ActiveProjects from './pages/ActiveProjects';
+import CompletedProjects from './pages/CompletedProjects';
 import TimesheetHistory from './pages/TimesheetHistory';
 import TimesheetApproval from './pages/TimesheetApproval';
 import WorkloadReport from './pages/WorkloadReport';
@@ -72,6 +75,9 @@ const App = () => {
                 
                 {/* Projects */}
                 <Route path="projects" element={<Projects />} />
+                <Route path="projects/create" element={<CreateProject />} />
+                <Route path="projects/active" element={<ActiveProjects />} />
+                <Route path="projects/completed" element={<CompletedProjects />} />
                 <Route path="projects/dashboard" element={<ProjectDashboard />} />
                 <Route 
                   path="projects/:id" 
