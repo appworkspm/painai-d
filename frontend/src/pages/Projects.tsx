@@ -72,7 +72,13 @@ const Projects = () => {
   // Handle project creation
   const createProjectMutation = useMutation({
     mutationFn: async (projectData: Omit<Project, 'id'>) => {
-      const response = await projectAPI.createProject(projectData);
+      // Convert date strings to Date objects before sending to API
+      const formattedData = {
+        ...projectData,
+        startDate: projectData.startDate ? new Date(projectData.startDate) : undefined,
+        endDate: projectData.endDate ? new Date(projectData.endDate) : undefined
+      };
+      const response = await projectAPI.createProject(formattedData);
       if (!response.success) {
         throw new Error(response.message || 'Failed to create project');
       }
@@ -92,7 +98,13 @@ const Projects = () => {
   // Handle project update
   const updateProjectMutation = useMutation({
     mutationFn: async (data: { id: string; projectData: Partial<Project> }) => {
-      const response = await projectAPI.updateProject(data.id, data.projectData);
+      // Convert date strings to Date objects before sending to API
+      const formattedData = {
+        ...data.projectData,
+        ...(data.projectData.startDate && { startDate: new Date(data.projectData.startDate) }),
+        ...(data.projectData.endDate && { endDate: new Date(data.projectData.endDate) })
+      };
+      const response = await projectAPI.updateProject(data.id, formattedData);
       if (!response.success) {
         throw new Error(response.message || 'Failed to update project');
       }
@@ -131,7 +143,6 @@ const Projects = () => {
     },
   });
 
-
   // Show loading state
   if (isLoading) {
     return (
@@ -154,7 +165,6 @@ const Projects = () => {
     );
   }
 
-
   // Show empty state
   if (!projectsData || projectsData.length === 0) {
     return (
@@ -171,7 +181,6 @@ const Projects = () => {
   }
 
   const projects = projectsData || [];
-
 
   const handleAddClick = () => {
     setSelectedProject(null);
@@ -265,7 +274,7 @@ const Projects = () => {
                   <TableCell className="font-medium">{project.name}</TableCell>
                   <TableCell>{project.jobCode || '-'}</TableCell>
                   <TableCell>
-                    <Badge variant={getStatusBadgeVariant(project.status)}>
+                    <Badge variant={getStatusBadgeVariant(project.status) === 'success' ? 'default' : getStatusBadgeVariant(project.status)}>
                       {project.status}
                     </Badge>
                   </TableCell>
