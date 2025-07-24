@@ -3,6 +3,7 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { NotificationProvider } from './contexts/NotificationContext';
 import { ThemeProvider } from './theme/ThemeProvider';
 import AppLayout from './components/layout/AppLayout';
+import SimpleLayout from './components/layout/SimpleLayout';
 import Login from './pages/Login';
 import ForgotPassword from './pages/ForgotPassword';
 import Dashboard from './pages/Dashboard';
@@ -91,7 +92,14 @@ const App = () => {
                 
                 {/* Timesheets */}
                 <Route path="timesheets" element={<Timesheets />} />
-                <Route path="timesheets/create" element={<CreateTimesheet />} />
+                <Route 
+                  path="timesheets/create" 
+                  element={
+                    <SimpleLayout>
+                      <CreateTimesheet />
+                    </SimpleLayout>
+                  } 
+                />
                 <Route path="timesheets/history" element={<TimesheetHistory />} />
                 <Route path="timesheets/approval" element={<TimesheetApproval />} />
                 
