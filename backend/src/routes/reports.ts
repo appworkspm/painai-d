@@ -1149,6 +1149,9 @@ router.get('/project', async (req: IAuthenticatedRequest, res) => {
 
     const totalBudget = projectStats.reduce((sum, p) => sum + p.budget, 0);
     const spentBudget = projectStats.reduce((sum, p) => sum + p.spent, 0);
+    const totalHours = projectStats.reduce((sum, p) => sum + p.totalHours, 0);
+    const averageHoursPerProject = totalProjects > 0 ? totalHours / totalProjects : 0;
+    const completionRate = totalProjects > 0 ? (completedProjects / totalProjects) * 100 : 0;
 
     res.json({
       success: true,
@@ -1158,7 +1161,10 @@ router.get('/project', async (req: IAuthenticatedRequest, res) => {
         completedProjects,
         onHoldProjects,
         totalBudget,
-        spentBudget,
+        totalSpent: spentBudget,
+        totalHours,
+        averageHoursPerProject,
+        completionRate,
         projects: projectStats,
         statusBreakdown,
         monthlyData

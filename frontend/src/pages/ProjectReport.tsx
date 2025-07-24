@@ -326,6 +326,9 @@ const ProjectReport: React.FC = () => {
   };
 
   const formatHours = (hours: number) => {
+    if (!hours || isNaN(hours) || hours === 0) {
+      return '0h 0m';
+    }
     const wholeHours = Math.floor(hours);
     const minutes = Math.round((hours - wholeHours) * 60);
     return `${wholeHours}h ${minutes}m`;
