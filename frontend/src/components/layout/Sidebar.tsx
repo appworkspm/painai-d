@@ -45,9 +45,15 @@ const Sidebar = () => {
   const { user, logout } = useAuth();
   const location = useLocation();
   const { t, ready } = useTranslation();
-  const isAdmin = user?.role === 'admin';
-  const isManager = user?.role === 'manager';
-  const isVP = user?.role === 'vp';
+  // Debug logging for role
+  console.log('Sidebar - User role:', user?.role);
+  console.log('Sidebar - User data:', user);
+  
+  const isAdmin = user?.role === 'ADMIN';
+  const isManager = user?.role === 'MANAGER';
+  const isVP = user?.role === 'VP';
+  
+  console.log('Sidebar - Role checks:', { isAdmin, isManager, isVP });
   
   // State for collapsible menu sections
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
