@@ -20,6 +20,7 @@ import ActiveProjects from './pages/ActiveProjects';
 import CompletedProjects from './pages/CompletedProjects';
 import TimesheetHistory from './pages/TimesheetHistory';
 import TimesheetApproval from './pages/TimesheetApproval';
+import TimesheetReport from './pages/TimesheetReport';
 import WorkloadReport from './pages/WorkloadReport';
 import ProjectReport from './pages/ProjectReport';
 import ProjectCostReport from './pages/ProjectCostReport';
@@ -120,6 +121,7 @@ const App = () => {
                     />
                   } 
                 />
+                <Route path="reports/timesheet" element={<TimesheetReport />} />
                 <Route path="reports/user-activity" element={<UserActivityReport />} />
                 
                 {/* Cost Management */}

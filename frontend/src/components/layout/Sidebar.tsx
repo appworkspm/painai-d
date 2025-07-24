@@ -230,14 +230,17 @@ const Sidebar = () => {
             {isAdmin && (
               <NavItem to="/admin" icon={LayoutDashboard} label={t('menu.admin_panel', 'จัดการระบบ')} />
             )}
-            <NavItem to="/users" icon={UsersIcon} label={t('menu.user_management', 'พนักงาน')} />
+            <NavItem to="/admin/users" icon={UsersIcon} label={t('menu.user_management', 'พนักงาน')} />
             {isAdmin && (
-              <NavItem to="/user-roles" icon={UserCog} label={t('menu.user_roles', 'สิทธิ์การใช้งาน')} />
+              <NavItem to="/admin/user-roles" icon={UserCog} label={t('menu.user_roles', 'สิทธิ์การใช้งาน')} />
             )}
-            <NavItem to="/holidays" icon={CalendarIcon} label={t('menu.holiday_management', 'วันหยุด')} />
-            <NavItem to="/user-activity" icon={Activity} label={t('menu.user_activity', 'กิจกรรม')} />
+            <NavItem to="/admin/holidays" icon={CalendarIcon} label={t('menu.holiday_management', 'วันหยุด')} />
+            <NavItem to="/admin/user-activity" icon={Activity} label={t('menu.user_activity', 'กิจกรรม')} />
             {isAdmin && (
-              <NavItem to="/system-logs" icon={FileTextIcon} label={t('menu.system_logs', 'บันทึกระบบ')} />
+              <>
+                <NavItem to="/admin/database" icon={Building2} label={t('menu.database_management', 'จัดการฐานข้อมูล')} />
+                <NavItem to="/admin/settings" icon={SettingsIcon} label={t('menu.system_settings', 'ตั้งค่าระบบ')} />
+              </>
             )}
           </Section>
         )}
