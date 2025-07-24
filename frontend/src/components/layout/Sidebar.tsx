@@ -231,6 +231,7 @@ const Sidebar = () => {
         </Section>
 
         {/* Admin Section */}
+        {console.log('Sidebar - Rendering admin section check:', { isAdmin, isVP, condition: isAdmin || isVP })}
         {(isAdmin || isVP) && (
           <Section title={t('menu.administration', 'ระบบ')} icon={Shield} sectionKey="admin">
             {isAdmin && (
