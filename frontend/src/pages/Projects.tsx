@@ -97,13 +97,9 @@ const Projects = () => {
 
   // Handle project update
   const updateProjectMutation = useMutation({
-    mutationFn: async (data: { id: string; projectData: Partial<Project> }) => {
-      // Convert date strings to Date objects before sending to API
-      const formattedData = {
-        ...data.projectData,
-        ...(data.projectData.startDate && { startDate: new Date(data.projectData.startDate) }),
-        ...(data.projectData.endDate && { endDate: new Date(data.projectData.endDate) })
-      };
+    mutationFn: async (data: { id: string; projectData: Partial<Omit<Project, 'startDate' | 'endDate'>> & { startDate?: Date; endDate?: Date } }) => {
+      // The dates are already converted to Date objects in the form submission
+      const formattedData = { ...data.projectData };
       const response = await projectAPI.updateProject(data.id, formattedData);
       if (!response.success) {
         throw new Error(response.message || 'Failed to update project');
@@ -274,7 +270,7 @@ const Projects = () => {
                   <TableCell className="font-medium">{project.name}</TableCell>
                   <TableCell>{project.jobCode || '-'}</TableCell>
                   <TableCell>
-                    <Badge variant={getStatusBadgeVariant(project.status) === 'success' ? 'default' : getStatusBadgeVariant(project.status)}>
+                    <Badge variant={getStatusBadgeVariant(project.status) as 'default' | 'destructive' | 'secondary' | 'outline' | null | undefined}>
                       {project.status}
                     </Badge>
                   </TableCell>
