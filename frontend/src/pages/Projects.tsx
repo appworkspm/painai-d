@@ -221,96 +221,124 @@ const Projects = () => {
         </Button>
       </div>
 
-      <div className="rounded-md border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="text-right">{t('project_details.actions_column')}</TableHead>
-              <TableHead>{t('project_details.project_name_column')}</TableHead>
-              <TableHead>{t('project_details.job_code_column')}</TableHead>
-              <TableHead>{t('project_details.status_column')}</TableHead>
-              <TableHead>{t('project_details.manager_column')}</TableHead>
-              <TableHead>{t('project_details.start_date_column')}</TableHead>
-              <TableHead>{t('project_details.end_date_column')}</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {isLoading ? (
+      <div className="rounded-md border overflow-hidden">
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
               <TableRow>
-                <TableCell colSpan={7} className="h-24 text-center">
-                  Loading...
-                </TableCell>
+                <TableHead className="w-16 text-center">{t('project_details.actions_column')}</TableHead>
+                <TableHead className="min-w-[200px]">{t('project_details.project_name_column')}</TableHead>
+                <TableHead className="min-w-[120px]">{t('project_details.job_code_column')}</TableHead>
+                <TableHead className="min-w-[100px]">{t('project_details.status_column')}</TableHead>
+                <TableHead className="min-w-[150px]">{t('project_details.manager_column')}</TableHead>
+                <TableHead className="min-w-[100px]">{t('project_details.start_date_column')}</TableHead>
+                <TableHead className="min-w-[100px]">{t('project_details.end_date_column')}</TableHead>
               </TableRow>
-            ) : (
-              projects.map((project: Project) => (
-                <TableRow key={project.id}>
-                  <TableCell className="text-right">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" className="h-8 w-8 p-0">
-                          <span className="sr-only">Open menu</span>
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuLabel>{t('project_details.actions_column')}</DropdownMenuLabel>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={() => handleEditClick(project)}>
-                          {t('project_details.edit_project_action')}
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          className="text-red-600"
-                          onClick={() => handleDeleteClick(project)}
-                        >
-                          {t('project_details.delete_project_action')}
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+            </TableHeader>
+            <TableBody>
+              {isLoading ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="h-24 text-center">
+                    <div className="flex items-center justify-center">
+                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary-600 mr-2"></div>
+                      กำลังโหลด...
+                    </div>
                   </TableCell>
-                  <TableCell className="font-medium">{project.name}</TableCell>
-                  <TableCell>{project.jobCode || '-'}</TableCell>
-                  <TableCell>
-                    <Badge variant={getStatusBadgeVariant(project.status) as 'default' | 'destructive' | 'secondary' | 'outline' | null | undefined}>
-                      {project.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>{project.manager?.name || 'N/A'}</TableCell>
-                  <TableCell>{project.startDate ? new Date(project.startDate).toLocaleDateString() : '-'}</TableCell>
-                  <TableCell>{project.endDate ? new Date(project.endDate).toLocaleDateString() : '-'}</TableCell>
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
+              ) : projects.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="h-24 text-center text-gray-500">
+                    ไม่พบโครงการ
+                  </TableCell>
+                </TableRow>
+              ) : (
+                projects.map((project: Project) => (
+                  <TableRow key={project.id} className="hover:bg-gray-50">
+                    <TableCell className="text-center">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" className="h-8 w-8 p-0">
+                            <span className="sr-only">เปิดเมนู</span>
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-40">
+                          <DropdownMenuLabel className="text-xs font-medium">จัดการโครงการ</DropdownMenuLabel>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem onClick={() => handleEditClick(project)} className="text-sm">
+                            <FolderOpen className="mr-2 h-4 w-4" />
+                            {t('project_details.edit_project_action')}
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            className="text-red-600 text-sm"
+                            onClick={() => handleDeleteClick(project)}
+                          >
+                            <AlertCircle className="mr-2 h-4 w-4" />
+                            {t('project_details.delete_project_action')}
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                    <TableCell className="font-medium max-w-[200px] truncate" title={project.name}>
+                      {project.name}
+                    </TableCell>
+                    <TableCell className="text-sm text-gray-600">
+                      {project.jobCode || '-'}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={getStatusBadgeVariant(project.status) as 'default' | 'destructive' | 'secondary' | 'outline' | null | undefined} className="text-xs">
+                        {project.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-sm text-gray-600 max-w-[150px] truncate" title={project.manager?.name || 'N/A'}>
+                      {project.manager?.name || 'N/A'}
+                    </TableCell>
+                    <TableCell className="text-sm text-gray-600">
+                      {project.startDate ? new Date(project.startDate).toLocaleDateString('th-TH') : '-'}
+                    </TableCell>
+                    <TableCell className="text-sm text-gray-600">
+                      {project.endDate ? new Date(project.endDate).toLocaleDateString('th-TH') : '-'}
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
       </div>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="sm:max-w-[600px]">
+        <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{selectedProject ? t('project_details.edit_project') : t('project_details.add_new_project')}</DialogTitle>
-            <DialogDescription>
-              {selectedProject ? 'Update the details of your project.' : 'Fill in the form to create a new project.'}
+            <DialogTitle className="text-lg font-semibold">
+              {selectedProject ? t('project_details.edit_project') : t('project_details.add_new_project')}
+            </DialogTitle>
+            <DialogDescription className="text-sm text-gray-600">
+              {selectedProject ? 'แก้ไขข้อมูลโครงการของคุณ' : 'กรอกข้อมูลเพื่อสร้างโครงการใหม่'}
             </DialogDescription>
           </DialogHeader>
-          <ProjectForm
-            onSubmit={handleFormSubmit}
-            initialData={selectedProject}
-            isLoading={createProjectMutation.isPending || updateProjectMutation.isPending}
-          />
+          <div className="py-4">
+            <ProjectForm
+              onSubmit={handleFormSubmit}
+              initialData={selectedProject}
+              isLoading={createProjectMutation.isPending || updateProjectMutation.isPending}
+            />
+          </div>
         </DialogContent>
       </Dialog>
 
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <AlertDialogContent>
+        <AlertDialogContent className="sm:max-w-[425px]">
           <AlertDialogHeader>
-            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the project
-              "{selectedProject?.name}" and all of its associated data.
+            <AlertDialogTitle className="text-lg font-semibold">ยืนยันการลบโครงการ</AlertDialogTitle>
+            <AlertDialogDescription className="text-sm text-gray-600">
+              การดำเนินการนี้ไม่สามารถยกเลิกได้ โครงการ "{selectedProject?.name}" และข้อมูลที่เกี่ยวข้องทั้งหมดจะถูกลบอย่างถาวร
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setSelectedProject(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel onClick={() => setSelectedProject(null)} className="text-sm">
+              ยกเลิก
+            </AlertDialogCancel>
             <AlertDialogAction
               onClick={() => {
                 if (selectedProject) {
@@ -318,8 +346,9 @@ const Projects = () => {
                 }
               }}
               disabled={deleteProjectMutation.isPending}
+              className="bg-red-600 hover:bg-red-700 text-sm"
             >
-              {deleteProjectMutation.isPending ? 'Deleting...' : 'Continue'}
+              {deleteProjectMutation.isPending ? 'กำลังลบ...' : 'ลบโครงการ'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

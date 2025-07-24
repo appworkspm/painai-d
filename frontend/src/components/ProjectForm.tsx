@@ -68,15 +68,15 @@ export const ProjectForm = ({ onSubmit, initialData, isLoading }: ProjectFormPro
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
         <FormField
           control={form.control}
           name="name"
           render={({ field }) => (
-            <FormItem className="md:col-span-2">
-              <FormLabel>{t('project_details.project_name_label')}</FormLabel>
+            <FormItem>
+              <FormLabel className="text-sm font-medium">{t('project_details.project_name_label')} *</FormLabel>
               <FormControl>
-                <Input placeholder="กรอกชื่อโครงการ" {...field} />
+                <Input placeholder="กรอกชื่อโครงการ" {...field} className="h-10" />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -87,25 +87,27 @@ export const ProjectForm = ({ onSubmit, initialData, isLoading }: ProjectFormPro
           control={form.control}
           name="description"
           render={({ field }) => (
-            <FormItem className="md:col-span-2">
-              <FormLabel>{t('project_details.project_description_label')}</FormLabel>
+            <FormItem>
+              <FormLabel className="text-sm font-medium">{t('project_details.project_description_label')}</FormLabel>
               <FormControl>
-                <Textarea placeholder="อธิบายรายละเอียดโครงการ" {...field} />
+                <Textarea placeholder="อธิบายรายละเอียดโครงการ" {...field} rows={3} className="resize-none" />
               </FormControl>
               <FormMessage />
             </FormItem>
           )}
         />
 
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
         <FormField
           control={form.control}
           name="status"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>{t('project_details.project_status_label')}</FormLabel>
+              <FormLabel className="text-sm font-medium">{t('project_details.project_status_label')}</FormLabel>
               <Select onValueChange={field.onChange} defaultValue={field.value}>
                 <FormControl>
-                  <SelectTrigger>
+                  <SelectTrigger className="h-10">
                     <SelectValue placeholder="เลือกสถานะโครงการ" />
                   </SelectTrigger>
                 </FormControl>
@@ -126,10 +128,10 @@ export const ProjectForm = ({ onSubmit, initialData, isLoading }: ProjectFormPro
           name="managerId"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>{t('project_details.project_manager_label')}</FormLabel>
+              <FormLabel className="text-sm font-medium">{t('project_details.project_manager_label')}</FormLabel>
               <Select onValueChange={field.onChange} defaultValue={field.value}>
                 <FormControl>
-                  <SelectTrigger>
+                  <SelectTrigger className="h-10">
                     <SelectValue placeholder="เลือกผู้จัดการโครงการ" />
                   </SelectTrigger>
                 </FormControl>
@@ -151,9 +153,9 @@ export const ProjectForm = ({ onSubmit, initialData, isLoading }: ProjectFormPro
           name="jobCode"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>{t('project_details.job_code_label')}</FormLabel>
+              <FormLabel className="text-sm font-medium">{t('project_details.project_job_code_label')}</FormLabel>
               <FormControl>
-                <Input placeholder="กรอกรหัสงาน" {...field} />
+                <Input placeholder="กรอกรหัสงาน" {...field} className="h-10" />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -165,9 +167,9 @@ export const ProjectForm = ({ onSubmit, initialData, isLoading }: ProjectFormPro
           name="customerName"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>{t('project_details.customer_name_form_label')}</FormLabel>
+              <FormLabel className="text-sm font-medium">{t('project_details.customer_name_label')}</FormLabel>
               <FormControl>
-                <Input placeholder="กรอกชื่อลูกค้า" {...field} />
+                <Input placeholder="กรอกชื่อลูกค้า" {...field} className="h-10" />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -179,9 +181,9 @@ export const ProjectForm = ({ onSubmit, initialData, isLoading }: ProjectFormPro
           name="paymentTerm"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>{t('project_details.payment_terms_form_label')}</FormLabel>
+              <FormLabel className="text-sm font-medium">{t('project_details.payment_terms_label')}</FormLabel>
               <FormControl>
-                <Input placeholder="กรอกเงื่อนไขการชำระเงิน" {...field} />
+                <Input placeholder="กรอกเงื่อนไขการชำระเงิน" {...field} className="h-10" />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -193,14 +195,14 @@ export const ProjectForm = ({ onSubmit, initialData, isLoading }: ProjectFormPro
           name="startDate"
           render={({ field }) => (
             <FormItem className="flex flex-col">
-              <FormLabel>{t('project_details.start_date_label')}</FormLabel>
+              <FormLabel className="text-sm font-medium">{t('project_details.start_date_label')}</FormLabel>
               <Popover>
                 <PopoverTrigger asChild>
                   <FormControl>
                     <Button
                       variant={"outline"}
                       className={cn(
-                        "w-full pl-3 text-left font-normal",
+                        "w-full pl-3 text-left font-normal h-10",
                         !field.value && "text-muted-foreground"
                       )}
                     >
@@ -232,14 +234,14 @@ export const ProjectForm = ({ onSubmit, initialData, isLoading }: ProjectFormPro
           name="endDate"
           render={({ field }) => (
             <FormItem className="flex flex-col">
-              <FormLabel>{t('project_details.end_date_label')}</FormLabel>
+              <FormLabel className="text-sm font-medium">{t('project_details.end_date_label')}</FormLabel>
               <Popover>
                 <PopoverTrigger asChild>
                   <FormControl>
                     <Button
                       variant={"outline"}
                       className={cn(
-                        "w-full pl-3 text-left font-normal",
+                        "w-full pl-3 text-left font-normal h-10",
                         !field.value && "text-muted-foreground"
                       )}
                     >
@@ -265,24 +267,25 @@ export const ProjectForm = ({ onSubmit, initialData, isLoading }: ProjectFormPro
             </FormItem>
           )}
         />
+        </div>
 
         <FormField
           control={form.control}
           name="budget"
           render={({ field }) => (
-            <FormItem className="md:col-span-2">
-              <FormLabel>{t('project_details.budget_label')}</FormLabel>
+            <FormItem>
+              <FormLabel className="text-sm font-medium">{t('project_details.budget_label')}</FormLabel>
               <FormControl>
-                <Input type="number" placeholder="กรอกงบประมาณโครงการ" {...field} />
+                <Input type="number" placeholder="กรอกงบประมาณโครงการ" {...field} className="h-10" />
               </FormControl>
               <FormMessage />
             </FormItem>
           )}
         />
 
-        <div className="md:col-span-2 flex justify-end">
-          <Button type="submit" disabled={isLoading}>
-            {isLoading ? 'Saving...' : 'Save Project'}
+        <div className="flex justify-end gap-3 pt-4">
+          <Button type="submit" disabled={isLoading} className="px-6">
+            {isLoading ? 'กำลังบันทึก...' : 'บันทึกโครงการ'}
           </Button>
         </div>
       </form>
