@@ -40,6 +40,10 @@ const Profile: React.FC = () => {
   const { user, setUser } = useAuth();
   const { showNotification } = useNotification();
   const { t } = useTranslation();
+  
+  // Debug logging
+  console.log('Profile component - User data:', user);
+  console.log('Profile component - User role:', user?.role);
   const [isEditing, setIsEditing] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [activeTab, setActiveTab] = useState('personal');
@@ -578,7 +582,7 @@ const Profile: React.FC = () => {
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-gray-600">บทบาท:</span>
                   <Badge className={getRoleColor(user?.role || '')}>
-                    {user?.role || 'USER'}
+                    {user?.role || 'ไม่ระบุ'}
                   </Badge>
                 </div>
                 <div className="flex items-center justify-between">

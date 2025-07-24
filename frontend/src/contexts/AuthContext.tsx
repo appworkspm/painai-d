@@ -80,7 +80,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (response.success && response.data) {
         const { user, token } = response.data;
         
-        console.log('Login successful:', { user: user.name, tokenLength: token.length, remember });
+        console.log('Login successful:', { 
+          user: user.name, 
+          userRole: user.role,
+          tokenLength: token.length, 
+          remember,
+          fullUserData: user
+        });
         
         setUser(user);
         setToken(token);
