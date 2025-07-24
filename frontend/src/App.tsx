@@ -45,7 +45,8 @@ import { GlobalErrorHandler } from './components/GlobalErrorHandler';
 // Admin route wrapper
 const AdminRoute = ({ children }: { children: JSX.Element }) => {
   const { user } = useAuth();
-  return user?.role === 'admin' ? children : <Navigate to="/" replace />;
+  console.log('AdminRoute - User role:', user?.role);
+  return user?.role === 'ADMIN' ? children : <Navigate to="/" replace />;
 };
 
 const App = () => {
