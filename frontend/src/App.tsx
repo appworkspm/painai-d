@@ -28,16 +28,9 @@ import ProjectCostReport from './pages/ProjectCostReport';
 import MyCostRequests from './pages/MyCostRequests';
 import ProjectCostEntry from './pages/ProjectCostEntry';
 import CostApproval from './pages/CostApproval';
-import Users from './pages/Users';
-import UserRoles from './pages/UserRoles';
-import HolidayManagement from './pages/HolidayManagement';
-import Settings from './pages/Settings';
-import Profile from './pages/Profile';
 import AdminPanel from './pages/AdminPanel';
-import UserActivity from './pages/UserActivity';
-import UserActivityReport from './pages/UserActivityReport';
-import DatabaseManagement from './pages/DatabaseManagement';
-import SystemSettings from './pages/SystemSettings';
+import Profile from './pages/Profile';
+import Settings from './pages/Settings';
 import ProtectedRoute from './components/ProtectedRoute';
 import NotFound from './pages/NotFound';
 import { ErrorBoundary } from './components/ErrorBoundary';
@@ -150,104 +143,6 @@ const App = () => {
                   element={
                     <AdminRoute>
                       <AdminPanel />
-                    </AdminRoute>
-                  }
-                />
-                <Route
-                  path="admin/users"
-                  element={
-                    <AdminRoute>
-                      <Users />
-                    </AdminRoute>
-                  }
-                />
-                <Route
-                  path="admin/user-roles"
-                  element={
-                    <AdminRoute>
-                      <UserRoles />
-                    </AdminRoute>
-                  }
-                />
-                <Route
-                  path="admin/holidays"
-                  element={
-                    <AdminRoute>
-                      <HolidayManagement />
-                    </AdminRoute>
-                  }
-                />
-                <Route
-                  path="admin/cost-approval"
-                  element={
-                    <AdminRoute>
-                      <CostApproval />
-                    </AdminRoute>
-                  }
-                />
-                <Route
-                  path="admin/user-activity"
-                  element={
-                    <AdminRoute>
-                      <UserActivity />
-                    </AdminRoute>
-                  }
-                />
-                <Route
-                  path="admin/user-activity-report"
-                  element={
-                    <AdminRoute>
-                      <UserActivityReport />
-                    </AdminRoute>
-                  }
-                />
-                <Route
-                  path="admin/database"
-                  element={
-                    <AdminRoute>
-                      <DatabaseManagement />
-                    </AdminRoute>
-                  }
-                />
-                <Route
-                  path="admin/settings"
-                  element={
-                    <AdminRoute>
-                      <SystemSettings />
-                    </AdminRoute>
-                  }
-                />
-                
-                {/* Legacy admin routes for backward compatibility */}
-                <Route
-                  path="users"
-                  element={
-                    <AdminRoute>
-                      <Users />
-                    </AdminRoute>
-                  }
-                />
-                <Route
-                  path="user-roles"
-                  element={
-                    <AdminRoute>
-                      <UserRoles />
-                    </AdminRoute>
-                  }
-                />
-                <Route
-                  path="holidays"
-                  element={
-                    <AdminRoute>
-                      <HolidayManagement />
-                    </AdminRoute>
-                  }
-                />
-                <Route
-                  path="user-activity"
-                  element={
-                    <AdminRoute>
-                      <UserActivity />
                     </AdminRoute>
                   }
                 />

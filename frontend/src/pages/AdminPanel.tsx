@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNotification } from '../contexts/NotificationContext';
-import { User, Settings, Users, BarChart3, Shield, Activity, FolderOpen, Plus, Edit, Trash2, X, Save } from 'lucide-react';
+import { User, Settings, Users, BarChart3, Shield, Activity, FolderOpen, Plus, Edit, Trash2, X, Save, UserCog, Calendar, Building2 } from 'lucide-react';
 import { User as UserType } from '../types';
 import { adminAPI, projectAPI } from '../services/api';
 
@@ -73,7 +73,12 @@ const AdminPanel: React.FC = () => {
   const menuItems = [
     { key: 'dashboard', label: 'แดชบอร์ด', icon: <BarChart3 className="w-5 h-5" /> },
     { key: 'users', label: 'จัดการผู้ใช้', icon: <Users className="w-5 h-5" /> },
-    { key: 'projects', label: 'จัดการโปรเจค', icon: <FolderOpen className="w-5 h-5" /> }
+    { key: 'projects', label: 'จัดการโปรเจค', icon: <FolderOpen className="w-5 h-5" /> },
+    { key: 'user-roles', label: 'สิทธิ์การใช้งาน', icon: <UserCog className="w-5 h-5" /> },
+    { key: 'activity', label: 'กิจกรรม', icon: <Activity className="w-5 h-5" /> },
+    { key: 'holidays', label: 'วันหยุด', icon: <Calendar className="w-5 h-5" /> },
+    { key: 'database', label: 'จัดการฐานข้อมูล', icon: <Building2 className="w-5 h-5" /> },
+    { key: 'settings', label: 'ตั้งค่าระบบ', icon: <Settings className="w-5 h-5" /> }
   ];
 
   useEffect(() => {
@@ -840,18 +845,69 @@ const AdminPanel: React.FC = () => {
     </div>
   );
 
+  const renderUserRoles = () => (
+    <div className="bg-white rounded-lg shadow p-6">
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="text-xl font-semibold text-gray-900">จัดการสิทธิ์การใช้งาน</h2>
+        <button className="bg-primary-600 text-white px-4 py-2 rounded-md hover:bg-primary-700 flex items-center">
+          <Plus className="h-4 w-4 mr-2" />
+          เพิ่มสิทธิ์ใหม่
+        </button>
+      </div>
+      <div className="text-center py-8">
+        <UserCog className="mx-auto h-12 w-12 text-gray-400" />
+        <h3 className="mt-2 text-sm font-medium text-gray-900">จัดการสิทธิ์การใช้งาน</h3>
+        <p className="mt-1 text-sm text-gray-500">จัดการบทบาทและสิทธิ์ของผู้ใช้ในระบบ</p>
+      </div>
+    </div>
+  );
+
+  const renderHolidayManagement = () => (
+    <div className="bg-white rounded-lg shadow p-6">
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="text-xl font-semibold text-gray-900">จัดการวันหยุด</h2>
+        <button className="bg-primary-600 text-white px-4 py-2 rounded-md hover:bg-primary-700 flex items-center">
+          <Plus className="h-4 w-4 mr-2" />
+          เพิ่มวันหยุด
+        </button>
+      </div>
+      <div className="text-center py-8">
+        <Calendar className="mx-auto h-12 w-12 text-gray-400" />
+        <h3 className="mt-2 text-sm font-medium text-gray-900">จัดการวันหยุด</h3>
+        <p className="mt-1 text-sm text-gray-500">เพิ่ม แก้ไข และลบวันหยุดในระบบ</p>
+      </div>
+    </div>
+  );
+
+  const renderDatabaseManagement = () => (
+    <div className="bg-white rounded-lg shadow p-6">
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="text-xl font-semibold text-gray-900">จัดการฐานข้อมูล</h2>
+        <button className="bg-primary-600 text-white px-4 py-2 rounded-md hover:bg-primary-700 flex items-center">
+          <Save className="h-4 w-4 mr-2" />
+          สำรองข้อมูล
+        </button>
+      </div>
+      <div className="text-center py-8">
+        <Building2 className="mx-auto h-12 w-12 text-gray-400" />
+        <h3 className="mt-2 text-sm font-medium text-gray-900">จัดการฐานข้อมูล</h3>
+        <p className="mt-1 text-sm text-gray-500">สำรองและกู้คืนข้อมูลในระบบ</p>
+      </div>
+    </div>
+  );
+
   const renderSystemSettings = () => (
     <div className="space-y-6">
       <div className="bg-white rounded-lg shadow">
         <div className="px-6 py-4 border-b border-gray-200">
-          <h3 className="text-lg font-medium text-gray-900">System Settings</h3>
+          <h3 className="text-lg font-medium text-gray-900">ตั้งค่าระบบ</h3>
         </div>
         <div className="p-6 space-y-6">
           <div>
-            <h4 className="text-md font-medium text-gray-900 mb-4">General Settings</h4>
+            <h4 className="text-md font-medium text-gray-900 mb-4">การตั้งค่าทั่วไป</h4>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700">System Name</label>
+                <label className="block text-sm font-medium text-gray-700">ชื่อระบบ</label>
                 <input
                   type="text"
                   value={systemSettings.systemName}
@@ -860,7 +916,7 @@ const AdminPanel: React.FC = () => {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700">Session Timeout (minutes)</label>
+                <label className="block text-sm font-medium text-gray-700">เวลาหมดอายุเซสชัน (นาที)</label>
                 <input
                   type="number"
                   value={systemSettings.sessionTimeout}
@@ -869,7 +925,7 @@ const AdminPanel: React.FC = () => {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700">Max Login Attempts</label>
+                <label className="block text-sm font-medium text-gray-700">จำนวนครั้งเข้าสู่ระบบสูงสุด</label>
                 <input
                   type="number"
                   value={systemSettings.maxLoginAttempts}
@@ -886,20 +942,18 @@ const AdminPanel: React.FC = () => {
                   {savingSettings ? (
                     <>
                       <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                      Saving...
+                      กำลังบันทึก...
                     </>
                   ) : (
                     <>
                       <Save className="h-4 w-4 mr-2" />
-                      Save Settings
+                      บันทึกการตั้งค่า
                     </>
                   )}
                 </button>
               </div>
             </div>
           </div>
-
-
         </div>
       </div>
     </div>
@@ -910,18 +964,18 @@ const AdminPanel: React.FC = () => {
       <div className="bg-white rounded-lg shadow">
         <div className="px-6 py-4 border-b border-gray-200">
           <div className="flex items-center justify-between">
-            <h3 className="text-lg font-medium text-gray-900">Activity Logs</h3>
+            <h3 className="text-lg font-medium text-gray-900">บันทึกกิจกรรม</h3>
             <div className="flex space-x-2">
               <select 
                 value={filterActivityType}
                 onChange={(e) => setFilterActivityType(e.target.value)}
                 className="px-3 py-1 border border-gray-300 rounded-md text-sm"
               >
-                <option value="all">All Activities</option>
-                <option value="user">User Management</option>
-                <option value="project">Project Management</option>
-                <option value="settings">System Settings</option>
-                <option value="admin">Admin Access</option>
+                <option value="all">กิจกรรมทั้งหมด</option>
+                <option value="user">จัดการผู้ใช้</option>
+                <option value="project">จัดการโครงการ</option>
+                <option value="settings">ตั้งค่าระบบ</option>
+                <option value="admin">การเข้าถึงระบบ</option>
               </select>
               <input
                 type="date"
@@ -934,13 +988,13 @@ const AdminPanel: React.FC = () => {
         </div>
         <div className="p-6">
           <div className="space-y-4">
-            {filteredActivityLogs.length === 0 ? (
+            {activityLogs.length === 0 ? (
               <div className="text-center py-8 text-gray-500">
-                <p>No activity logs found for the selected filters.</p>
+                <p>ไม่พบบันทึกกิจกรรมสำหรับตัวกรองที่เลือก</p>
               </div>
             ) : (
               <>
-                {filteredActivityLogs.map((log) => (
+                {activityLogs.map((log) => (
                   <div key={log.id} className="flex items-center space-x-4 p-4 bg-gray-50 rounded-lg">
                     <div className={`w-2 h-2 ${getSeverityColor(log.severity)} rounded-full`}></div>
                     <div className="flex-1">
@@ -967,6 +1021,16 @@ const AdminPanel: React.FC = () => {
         return renderUserManagement();
       case 'projects':
         return renderProjectManagement();
+      case 'user-roles':
+        return renderUserRoles();
+      case 'activity':
+        return renderActivityLogs();
+      case 'holidays':
+        return renderHolidayManagement();
+      case 'database':
+        return renderDatabaseManagement();
+      case 'settings':
+        return renderSystemSettings();
       default:
         return renderDashboard();
     }

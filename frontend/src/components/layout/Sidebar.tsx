@@ -224,17 +224,7 @@ const Sidebar = () => {
         {/* Admin Section */}
         {(isAdmin || isVP) && (
           <Section title={t('menu.administration', 'ระบบ')} icon={Shield} sectionKey="admin">
-            <NavItem to="/admin" icon={LayoutDashboard} label={t('menu.admin_panel', 'แดชบอร์ด')} />
-            <NavItem to="/admin/users" icon={UsersIcon} label={t('menu.user_management', 'จัดการผู้ใช้')} />
-            <NavItem to="/admin/user-activity" icon={Activity} label={t('menu.user_activity_report', 'กิจกรรมผู้ใช้')} />
-            <NavItem to="/admin/holidays" icon={CalendarIcon} label={t('menu.holiday_management', 'จัดการวันหยุด')} />
-            {isAdmin && (
-              <>
-                <NavItem to="/admin/user-roles" icon={UserCog} label={t('menu.user_roles', 'จัดการบทบาท')} />
-                <NavItem to="/admin/database" icon={Building2} label={t('menu.database_management', 'จัดการฐานข้อมูล')} />
-                <NavItem to="/admin/settings" icon={SettingsIcon} label={t('menu.system_settings', 'ตั้งค่าระบบ')} />
-              </>
-            )}
+            <NavItem to="/admin" icon={LayoutDashboard} label={t('menu.admin_panel', 'จัดการระบบ')} />
           </Section>
         )}
 
