@@ -69,14 +69,9 @@ const MobileLayout: React.FC = () => {
 
   const adminNavigation = [
     {
-      name: 'ผู้ใช้',
+      name: t('menu.admin_panel', 'จัดการระบบ'),
       icon: Users,
-      href: '/users',
-    },
-    {
-      name: 'ตั้งค่า',
-      icon: Settings,
-      href: '/settings',
+      href: '/admin',
     },
   ];
 

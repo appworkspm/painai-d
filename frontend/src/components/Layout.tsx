@@ -86,17 +86,7 @@ const Layout: React.FC = () => {
     {
       name: t('menu.admin_panel'),
       icon: Shield,
-      children: [
-        { name: t('menu.dashboard'), href: '/admin', icon: Home },
-        { name: t('menu.user_management'), href: '/admin/users', icon: Users },
-        { name: t('menu.user_roles'), href: '/admin/user-roles', icon: Shield },
-        { name: t('menu.holiday_management'), href: '/admin/holidays', icon: Calendar },
-        { name: t('menu.cost_approval'), href: '/admin/cost-approval', icon: DollarSign },
-        { name: t('menu.user_activity'), href: '/admin/user-activity', icon: Activity },
-        { name: t('menu.user_activity_report'), href: '/admin/user-activity-report', icon: BarChart },
-        { name: t('menu.database_management'), href: '/admin/database', icon: Database },
-        { name: t('menu.system_settings'), href: '/admin/settings', icon: Settings },
-      ],
+      href: '/admin',
     },
   ];
 
