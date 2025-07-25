@@ -232,46 +232,49 @@ const Dashboard = () => {
       {/* Header Section */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold">{t('dashboard.title')}</h1>
-          <p className="text-muted-foreground">
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">{t('dashboard.title')}</h1>
+          <p className="text-muted-foreground mt-1">
             {t('dashboard.welcome', { name: user?.name })} • {format(new Date(), 'd MMMM yyyy', { locale: th })}
           </p>
         </div>
         <div className="flex items-center space-x-2">
           <Button variant="outline" size="sm" onClick={() => window.location.href = '/profile'}>
             <Bell className="h-4 w-4 mr-2" />
-            การแจ้งเตือน
+            {t('dashboard.notifications')}
           </Button>
           <Button variant="outline" size="sm" onClick={() => window.location.href = '/settings'}>
             <Settings className="h-4 w-4 mr-2" />
-            ตั้งค่า
+            {t('dashboard.settings')}
           </Button>
         </div>
       </div>
 
       {/* Quick Actions */}
-      <div className="grid gap-4 md:grid-cols-4">
-        <Button className="h-20 flex flex-col items-center justify-center space-y-2" variant="outline" onClick={() => window.location.href = '/timesheets/create'}>
-          <Plus className="h-6 w-6" />
-          <span className="text-sm">บันทึกงาน</span>
-        </Button>
-        <Button className="h-20 flex flex-col items-center justify-center space-y-2" variant="outline" onClick={() => window.location.href = '/projects'}>
-          <FolderOpen className="h-6 w-6" />
-          <span className="text-sm">ดูโครงการ</span>
-        </Button>
-        <Button className="h-20 flex flex-col items-center justify-center space-y-2" variant="outline" onClick={() => window.location.href = '/cost/my-requests'}>
-          <DollarSign className="h-6 w-6" />
-          <span className="text-sm">คำขอค่าใช้จ่าย</span>
-        </Button>
-        <Button className="h-20 flex flex-col items-center justify-center space-y-2" variant="outline" onClick={() => window.location.href = '/reports/workload'}>
-          <BarChart3 className="h-6 w-6" />
-          <span className="text-sm">ดูรายงาน</span>
-        </Button>
+      <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">{t('dashboard.quick_actions')}</h2>
+        <div className="grid gap-4 md:grid-cols-4">
+          <Button className="h-20 flex flex-col items-center justify-center space-y-2 hover:bg-blue-50 dark:hover:bg-blue-900/20" variant="outline" onClick={() => window.location.href = '/timesheets/create'}>
+            <Plus className="h-6 w-6 text-blue-600" />
+            <span className="text-sm font-medium">{t('dashboard.record_work')}</span>
+          </Button>
+          <Button className="h-20 flex flex-col items-center justify-center space-y-2 hover:bg-green-50 dark:hover:bg-green-900/20" variant="outline" onClick={() => window.location.href = '/projects'}>
+            <FolderOpen className="h-6 w-6 text-green-600" />
+            <span className="text-sm font-medium">{t('dashboard.view_projects_short')}</span>
+          </Button>
+          <Button className="h-20 flex flex-col items-center justify-center space-y-2 hover:bg-purple-50 dark:hover:bg-purple-900/20" variant="outline" onClick={() => window.location.href = '/cost/my-requests'}>
+            <DollarSign className="h-6 w-6 text-purple-600" />
+            <span className="text-sm font-medium">{t('dashboard.cost_requests_short')}</span>
+          </Button>
+          <Button className="h-20 flex flex-col items-center justify-center space-y-2 hover:bg-orange-50 dark:hover:bg-orange-900/20" variant="outline" onClick={() => window.location.href = '/reports/workload'}>
+            <BarChart3 className="h-6 w-6 text-orange-600" />
+            <span className="text-sm font-medium">{t('dashboard.view_reports_short')}</span>
+          </Button>
+        </div>
       </div>
 
       {/* Enhanced Stats Grid */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <div className="border rounded-lg p-4 bg-blue-50">
+        <div className="border rounded-lg p-4 bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20">
           <StatCard
             title={t('dashboard.total_hours')}
             value={totalHours.toFixed(2)}
@@ -280,7 +283,7 @@ const Dashboard = () => {
             className="text-blue-600"
           />
         </div>
-        <div className="border rounded-lg p-4 bg-green-50">
+        <div className="border rounded-lg p-4 bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20">
           <StatCard
             title={t('dashboard.active_projects')}
             value={activeProjects.toString()}
@@ -289,7 +292,7 @@ const Dashboard = () => {
             className="text-green-600"
           />
         </div>
-        <div className="border rounded-lg p-4 bg-amber-50">
+        <div className="border rounded-lg p-4 bg-gradient-to-br from-amber-50 to-amber-100 dark:from-amber-900/20 dark:to-amber-800/20">
           <StatCard
             title={t('dashboard.pending_approvals')}
             value={pendingApprovals.toString()}

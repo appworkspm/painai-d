@@ -36,7 +36,6 @@
     "profile": "โปรไฟล์",
     "settings": "ตั้งค่า",
     "logout": "ออกจากระบบ",
-    "cost_approval": "อนุมัติค่าใช้จ่าย",
     "database_management": "จัดการฐานข้อมูล",
     "system_settings": "ตั้งค่าระบบ",
     "expand_sidebar": "ขยายแถบด้านข้าง",
@@ -73,7 +72,18 @@
     "cost_requests": "คำขอค่าใช้จ่าย",
     "view_reports": "ดูรายงาน",
     "notifications": "การแจ้งเตือน",
-    "settings": "ตั้งค่า"
+    "settings": "ตั้งค่า",
+    "quick_actions": "การดำเนินการด่วน",
+    "record_work": "บันทึกงาน",
+    "view_projects_short": "ดูโครงการ",
+    "cost_requests_short": "คำขอค่าใช้จ่าย",
+    "view_reports_short": "ดูรายงาน",
+    "recent_activities": "กิจกรรมล่าสุด",
+    "project_status": "สถานะโครงการ",
+    "timesheet_status": "สถานะไทม์ชีท",
+    "weekly_hours": "ชั่วโมงรายสัปดาห์",
+    "team_overview": "ภาพรวมทีม",
+    "cost_overview": "ภาพรวมต้นทุน"
   },
   "report": {
     "title": "รายงานปริมาณงาน (เดือน {{month}})",
@@ -91,6 +101,50 @@
       "employee": "พนักงาน",
       "role": "บทบาท",
       "hours": "ชั่วโมง"
+    },
+    "workload_report": {
+      "title": "รายงานปริมาณงาน",
+      "subtitle": "วิเคราะห์และติดตามปริมาณงานของทีม",
+      "total_hours": "ชั่วโมงรวม",
+      "total_users": "ผู้ใช้ทั้งหมด",
+      "total_projects": "โครงการทั้งหมด",
+      "active_users": "ผู้ใช้ที่ใช้งาน",
+      "active_projects": "โครงการที่ใช้งาน",
+      "average_hours_per_user": "ชั่วโมงเฉลี่ยต่อผู้ใช้",
+      "average_hours_per_project": "ชั่วโมงเฉลี่ยต่อโครงการ",
+      "timeframe": "ช่วงเวลา",
+      "date_range": "ช่วงวันที่",
+      "filter_button": "ตัวกรอง",
+      "export_button": "ส่งออก",
+      "reset_filters": "รีเซ็ต",
+      "loading_data": "กำลังโหลดข้อมูล...",
+      "no_data": "ไม่พบข้อมูล",
+      "no_data_message": "ไม่พบข้อมูลรายงานในช่วงเวลาที่เลือก",
+      "export_success": "ส่งออกสำเร็จ",
+      "export_error": "เกิดข้อผิดพลาดในการส่งออก",
+      "share_success": "คัดลอกลิงก์แล้ว",
+      "copy_success": "คัดลอกข้อมูลแล้ว"
+    },
+    "project_report": {
+      "title": "รายงานโครงการ",
+      "subtitle": "วิเคราะห์และติดตามโครงการทั้งหมด",
+      "project_name": "ชื่อโครงการ",
+      "status": "สถานะ",
+      "budget": "งบประมาณ",
+      "customer": "ลูกค้า",
+      "hours": "ชั่วโมง",
+      "users": "ผู้ใช้",
+      "timesheet_count": "จำนวนไทม์ชีท",
+      "completion_rate": "อัตราความสำเร็จ",
+      "budget_utilization": "การใช้งบประมาณ"
+    },
+    "timesheet_report": {
+      "title": "รายงานไทม์ชีท",
+      "subtitle": "วิเคราะห์และสรุปรายงานไทม์ชีทอย่างละเอียด"
+    },
+    "user_activity_report": {
+      "title": "รายงานกิจกรรมผู้ใช้",
+      "subtitle": "ติดตามกิจกรรมและประสิทธิภาพของผู้ใช้"
     }
   },
   "forgot": {
@@ -131,30 +185,6 @@
       "deployment": "นำขึ้นระบบ",
       "other": "อื่น ๆ"
     },
-  "calendar": {
-    "today": "วันนี้",
-    "more": "เพิ่มเติม",
-    "legend": "คำอธิบาย",
-    "timesheet": "ไทม์ชีท",
-    "meeting": "ประชุม",
-    "deadline": "กำหนดส่ง",
-    "holiday": "วันหยุด"
-  },
-  "notifications": {
-    "title": "การแจ้งเตือน",
-    "all": "ทั้งหมด",
-    "unread": "ยังไม่อ่าน",
-    "timesheet": "ไทม์ชีท",
-    "project": "โครงการ",
-    "approval": "การอนุมัติ",
-    "no_notifications": "ไม่มีการแจ้งเตือน",
-    "mark_all_read": "ทำเครื่องหมายว่าอ่านแล้วทั้งหมด",
-    "clear_all": "ลบทั้งหมด",
-    "settings": "ตั้งค่า",
-    "email_notifications": "การแจ้งเตือนทางอีเมล",
-    "push_notifications": "การแจ้งเตือนแบบพุช",
-    "sound_notifications": "การแจ้งเตือนด้วยเสียง"
-  },
     "status": {
       "draft": "ฉบับร่าง",
       "submitted": "ส่งแล้ว",
@@ -196,7 +226,26 @@
       "description_required": "กรุณากรอกรายละเอียด",
       "description_placeholder": "คุณทำงานอะไรบ้าง?",
       "status_label": "สถานะ"
-    }
+    },
+    "loading_timesheets": "กำลังโหลดไทม์ชีท...",
+    "no_timesheets_found": "ไม่พบไทม์ชีท",
+    "manage_timesheet": "จัดการไทม์ชีท",
+    "open_menu": "เปิดเมนู",
+    "timesheet_details": "รายละเอียดไทม์ชีท",
+    "timesheet_list": "รายการไทม์ชีท",
+    "timesheet_list_description": "ดูและจัดการไทม์ชีทของคุณ",
+    "export_timesheets": "ส่งออกไทม์ชีท",
+    "filter_by_date": "กรองตามวันที่",
+    "filter_by_project": "กรองตามโครงการ",
+    "filter_by_work_type": "กรองตามประเภทงาน",
+    "all_projects": "ทุกโครงการ",
+    "all_work_types": "ทุกประเภทงาน",
+    "billable_hours": "ชั่วโมงที่เรียกเก็บเงิน",
+    "non_billable_hours": "ชั่วโมงที่ไม่เรียกเก็บเงิน",
+    "total_earnings": "รายได้รวม",
+    "this_week_hours": "ชั่วโมงสัปดาห์นี้",
+    "pending_approvals": "รอการอนุมัติ",
+    "approved_timesheets": "ไทม์ชีทที่อนุมัติแล้ว"
   },
   "timesheet_report": {
     "title": "รายงานไทม์ชีท",
@@ -296,29 +345,71 @@
   },
   "profile": {
     "title": "โปรไฟล์",
+    "subtitle": "จัดการข้อมูลส่วนตัวและบัญชี",
+    "personal_info": "ข้อมูลส่วนตัว",
+    "account_info": "ข้อมูลบัญชี",
     "name_label": "ชื่อ-นามสกุล",
     "email_label": "อีเมล",
+    "role_label": "บทบาท",
+    "position_label": "ตำแหน่ง",
+    "employee_code_label": "รหัสพนักงาน",
+    "department_label": "แผนก",
+    "phone_label": "เบอร์โทรศัพท์",
     "current_password_label": "รหัสผ่านปัจจุบัน",
     "new_password_label": "รหัสผ่านใหม่",
     "confirm_password_label": "ยืนยันรหัสผ่านใหม่",
     "show_password": "แสดงรหัสผ่าน",
+    "hide_password": "ซ่อนรหัสผ่าน",
     "edit_button": "แก้ไขโปรไฟล์",
     "save_button": "บันทึกการเปลี่ยนแปลง",
     "cancel_button": "ยกเลิก",
+    "change_password_button": "เปลี่ยนรหัสผ่าน",
+    "upload_avatar": "อัปโหลดรูปโปรไฟล์",
+    "remove_avatar": "ลบรูปโปรไฟล์",
     "success": {
-      "update": "อัปเดตโปรไฟล์สำเร็จ"
+      "update": "อัปเดตโปรไฟล์สำเร็จ",
+      "password_change": "เปลี่ยนรหัสผ่านสำเร็จ",
+      "avatar_upload": "อัปโหลดรูปโปรไฟล์สำเร็จ"
     },
     "error": {
       "current_password_required": "กรุณากรอกรหัสผ่านปัจจุบัน",
       "passwords_do_not_match": "รหัสผ่านใหม่ไม่ตรงกัน",
       "password_min_length": "รหัสผ่านใหม่ต้องมีอย่างน้อย 6 ตัวอักษร",
-      "update_failed": "อัปเดตโปรไฟล์ไม่สำเร็จ"
+      "update_failed": "อัปเดตโปรไฟล์ไม่สำเร็จ",
+      "password_change_failed": "เปลี่ยนรหัสผ่านไม่สำเร็จ",
+      "avatar_upload_failed": "อัปโหลดรูปโปรไฟล์ไม่สำเร็จ"
+    },
+    "validation": {
+      "name_required": "กรุณากรอกชื่อ-นามสกุล",
+      "email_required": "กรุณากรอกอีเมล",
+      "email_invalid": "รูปแบบอีเมลไม่ถูกต้อง",
+      "phone_invalid": "รูปแบบเบอร์โทรศัพท์ไม่ถูกต้อง"
     }
   },
   "settings": {
     "title": "การตั้งค่า",
+    "subtitle": "จัดการการตั้งค่าส่วนตัวและระบบ",
     "language": "ภาษา",
-    "select_language": "เลือกภาษาที่ต้องการ"
+    "select_language": "เลือกภาษาที่ต้องการ",
+    "theme": "ธีม",
+    "light_theme": "ธีมสว่าง",
+    "dark_theme": "ธีมมืด",
+    "auto_theme": "ธีมอัตโนมัติ",
+    "notifications": "การแจ้งเตือน",
+    "email_notifications": "การแจ้งเตือนทางอีเมล",
+    "push_notifications": "การแจ้งเตือนแบบพุช",
+    "sound_notifications": "การแจ้งเตือนด้วยเสียง",
+    "security": "ความปลอดภัย",
+    "change_password": "เปลี่ยนรหัสผ่าน",
+    "two_factor_auth": "การยืนยันตัวตน 2 ขั้นตอน",
+    "session_management": "จัดการเซสชัน",
+    "privacy": "ความเป็นส่วนตัว",
+    "data_export": "ส่งออกข้อมูล",
+    "account_deletion": "ลบบัญชี",
+    "save_settings": "บันทึกการตั้งค่า",
+    "reset_settings": "รีเซ็ตการตั้งค่า",
+    "settings_saved": "บันทึกการตั้งค่าแล้ว",
+    "settings_error": "เกิดข้อผิดพลาดในการบันทึกการตั้งค่า"
   },
   "project_details": {
     "projects_title": "รายการโครงการ",
@@ -397,6 +488,10 @@
     "budget_utilised_title": "งบประมาณที่ใช้",
     "baht": "บาท",
     "project_status_description": "สถานะโครงการ",
+    "loading_projects": "กำลังโหลดโครงการ...",
+    "no_projects_found": "ไม่พบโครงการ",
+    "manage_project": "จัดการโครงการ",
+    "open_menu": "เปิดเมนู",
     "status": {
       "active": "กำลังดำเนินการ",
       "completed": "เสร็จสิ้น",
@@ -406,9 +501,171 @@
       "signed_contract": "Signed Contract",
       "not_specified": "ไม่ระบุ"
     },
+    "clear_filter": "ล้างตัวกรอง",
+    "no_projects_with_status": "ไม่พบโครงการที่มีสถานะ {{status}}",
     "overview_tab": "ภาพรวม",
     "team_tab": "ทีม",
     "tasks_tab": "งาน",
     "timeline_tab": "ไทม์ไลน์"
+  },
+  "users": {
+    "title": "จัดการผู้ใช้",
+    "subtitle": "จัดการผู้ใช้และสิทธิ์การเข้าถึงระบบ",
+    "add_user": "เพิ่มผู้ใช้",
+    "edit_user": "แก้ไขผู้ใช้",
+    "delete_user": "ลบผู้ใช้",
+    "user_management": "จัดการผู้ใช้",
+    "user_list": "รายการผู้ใช้",
+    "user_list_description": "ดูและจัดการผู้ใช้ทั้งหมดในระบบ",
+    "loading_users": "กำลังโหลดผู้ใช้...",
+    "no_users_found": "ไม่พบผู้ใช้",
+    "manage_user": "จัดการผู้ใช้",
+    "open_menu": "เปิดเมนู",
+    "confirm_delete": "คุณแน่ใจหรือไม่ที่จะลบผู้ใช้นี้?",
+    "delete_success": "ลบผู้ใช้สำเร็จ",
+    "delete_error": "เกิดข้อผิดพลาดในการลบผู้ใช้",
+    "create_success": "สร้างผู้ใช้สำเร็จ",
+    "create_error": "เกิดข้อผิดพลาดในการสร้างผู้ใช้",
+    "update_success": "อัปเดตผู้ใช้สำเร็จ",
+    "update_error": "เกิดข้อผิดพลาดในการอัปเดตผู้ใช้",
+    "load_users_error": "ไม่สามารถโหลดข้อมูลผู้ใช้ได้",
+    "table": {
+      "name": "ชื่อ",
+      "email": "อีเมล",
+      "role": "บทบาท",
+      "position": "ตำแหน่ง",
+      "employee_code": "รหัสพนักงาน",
+      "status": "สถานะ",
+      "actions": "การกระทำ",
+      "created_at": "วันที่สร้าง",
+      "last_login": "เข้าสู่ระบบล่าสุด"
+    },
+    "form": {
+      "name_label": "ชื่อ-นามสกุล",
+      "name_required": "กรุณากรอกชื่อ-นามสกุล",
+      "email_label": "อีเมล",
+      "email_required": "กรุณากรอกอีเมล",
+      "email_invalid": "รูปแบบอีเมลไม่ถูกต้อง",
+      "role_label": "บทบาท",
+      "role_required": "กรุณาเลือกบทบาท",
+      "position_label": "ตำแหน่ง",
+      "position_required": "กรุณากรอกตำแหน่ง",
+      "employee_code_label": "รหัสพนักงาน",
+      "employee_code_required": "กรุณากรอกรหัสพนักงาน",
+      "password_label": "รหัสผ่าน",
+      "password_required": "กรุณากรอกรหัสผ่าน",
+      "password_min_length": "รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร",
+      "is_active_label": "สถานะการใช้งาน",
+      "submit": "บันทึก",
+      "cancel": "ยกเลิก",
+      "create": "สร้าง",
+      "update": "อัปเดต"
+    },
+    "filter": {
+      "all": "ทั้งหมด",
+      "active": "ใช้งาน",
+      "inactive": "ไม่ใช้งาน",
+      "search_placeholder": "ค้นหาผู้ใช้...",
+      "role_filter": "กรองตามบทบาท",
+      "position_filter": "กรองตามตำแหน่ง"
+    },
+    "roles": {
+      "admin": "ผู้ดูแลระบบ",
+      "manager": "ผู้จัดการ",
+      "user": "ผู้ใช้",
+      "vp": "รองประธาน"
+    },
+    "status": {
+      "active": "ใช้งาน",
+      "inactive": "ไม่ใช้งาน"
+    }
+  },
+  "admin": {
+    "title": "จัดการระบบ",
+    "subtitle": "จัดการการตั้งค่าและข้อมูลระบบ",
+    "admin_panel": "แผงควบคุมผู้ดูแลระบบ",
+    "system_overview": "ภาพรวมระบบ",
+    "user_management": "จัดการผู้ใช้",
+    "role_management": "จัดการบทบาท",
+    "holiday_management": "จัดการวันหยุด",
+    "database_management": "จัดการฐานข้อมูล",
+    "system_settings": "ตั้งค่าระบบ",
+    "activity_logs": "บันทึกกิจกรรม",
+    "backup_restore": "สำรองและกู้คืนข้อมูล",
+    "system_health": "สถานะระบบ",
+    "performance_monitoring": "ติดตามประสิทธิภาพ",
+    "security_settings": "ตั้งค่าความปลอดภัย",
+    "notification_settings": "ตั้งค่าการแจ้งเตือน",
+    "api_management": "จัดการ API",
+    "log_viewer": "ดูบันทึก",
+    "system_maintenance": "บำรุงรักษาระบบ"
+  },
+  "notifications": {
+    "title": "การแจ้งเตือน",
+    "all": "ทั้งหมด",
+    "unread": "ยังไม่อ่าน",
+    "timesheet": "ไทม์ชีท",
+    "project": "โครงการ",
+    "approval": "การอนุมัติ",
+    "no_notifications": "ไม่มีการแจ้งเตือน",
+    "mark_all_read": "ทำเครื่องหมายว่าอ่านแล้วทั้งหมด",
+    "clear_all": "ลบทั้งหมด",
+    "settings": "ตั้งค่า",
+    "email_notifications": "การแจ้งเตือนทางอีเมล",
+    "push_notifications": "การแจ้งเตือนแบบพุช",
+    "sound_notifications": "การแจ้งเตือนด้วยเสียง"
+  },
+  "calendar": {
+    "today": "วันนี้",
+    "more": "เพิ่มเติม",
+    "legend": "คำอธิบาย",
+    "timesheet": "ไทม์ชีท",
+    "meeting": "ประชุม",
+    "deadline": "กำหนดส่ง",
+    "holiday": "วันหยุด"
+  },
+  "costRequest": {
+    "title": "คำขอค่าใช้จ่าย",
+    "status": {
+      "draft": "ร่าง",
+      "submitted": "ส่งคำขอแล้ว",
+      "approved": "อนุมัติแล้ว",
+      "rejected": "ปฏิเสธ",
+      "pending": "รอการอนุมัติ",
+      "paid": "ชำระเงินแล้ว",
+      "cancelled": "ยกเลิก"
+    },
+    "actions": {
+      "submit": "ส่งคำขอ",
+      "approve": "อนุมัติ",
+      "reject": "ปฏิเสธ",
+      "cancel": "ยกเลิก",
+      "pay": "ชำระเงิน"
+    },
+    "form": {
+      "title": "หัวข้อ",
+      "amount": "จำนวนเงิน",
+      "date": "วันที่",
+      "category": "หมวดหมู่",
+      "description": "รายละเอียด",
+      "receipt": "ใบเสร็จ",
+      "required_field": "กรุณากรอกข้อมูลในช่องนี้"
+    },
+    "messages": {
+      "create_success": "สร้างคำขอค่าใช้จ่ายสำเร็จ",
+      "update_success": "อัปเดตคำขอค่าใช้จ่ายสำเร็จ",
+      "delete_success": "ลบคำขอค่าใช้จ่ายสำเร็จ",
+      "approve_success": "อนุมัติคำขอค่าใช้จ่ายเรียบร้อยแล้ว",
+      "reject_success": "ปฏิเสธคำขอค่าใช้จ่ายเรียบร้อยแล้ว",
+      "pay_success": "บันทึกการชำระเงินเรียบร้อยแล้ว"
+    },
+    "validation": {
+      "title_required": "กรุณากรอกหัวข้อ",
+      "amount_required": "กรุณากรอกจำนวนเงิน",
+      "amount_positive": "จำนวนเงินต้องมากกว่า 0",
+      "date_required": "กรุณาเลือกวันที่",
+      "category_required": "กรุณาเลือกหมวดหมู่",
+      "description_required": "กรุณากรอกรายละเอียด"
+    }
   }
-} 
+}
