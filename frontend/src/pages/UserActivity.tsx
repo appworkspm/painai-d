@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNotification } from '../contexts/NotificationContext';
 import { Activity, User, Clock, Download, Eye } from 'lucide-react';
-import { adminAPI } from '../services/api';
+import { userActivitiesAPI } from '../services/api';
 
 const UserActivity: React.FC = () => {
   const { user } = useAuth();
@@ -28,73 +28,12 @@ const UserActivity: React.FC = () => {
   const loadUserActivities = async () => {
     setLoading(true);
     try {
-      const response = await adminAPI.getUserActivities();
+      const response = await userActivitiesAPI.getUserActivities();
       if (response.success && response.data) {
         setActivities(response.data);
       } else {
-        // Mock data for demonstration
-        setActivities([
-          {
-            id: '1',
-            userId: '1',
-            userName: 'John Doe',
-            userEmail: 'john.doe@example.com',
-            action: 'LOGIN',
-            description: 'User logged in successfully',
-            ipAddress: '192.168.1.100',
-            userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
-            timestamp: '2024-01-15T14:30:25Z',
-            status: 'SUCCESS'
-          },
-          {
-            id: '2',
-            userId: '2',
-            userName: 'Jane Smith',
-            userEmail: 'jane.smith@example.com',
-            action: 'TIMESHEET_CREATE',
-            description: 'Created new timesheet entry',
-            ipAddress: '192.168.1.101',
-            userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)',
-            timestamp: '2024-01-15T13:45:12Z',
-            status: 'SUCCESS'
-          },
-          {
-            id: '3',
-            userId: '1',
-            userName: 'John Doe',
-            userEmail: 'john.doe@example.com',
-            action: 'USER_CREATE',
-            description: 'Created new user: mike.johnson@example.com',
-            ipAddress: '192.168.1.100',
-            userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
-            timestamp: '2024-01-15T12:20:45Z',
-            status: 'SUCCESS'
-          },
-          {
-            id: '4',
-            userId: '3',
-            userName: 'Mike Johnson',
-            userEmail: 'mike.johnson@example.com',
-            action: 'LOGIN_FAILED',
-            description: 'Failed login attempt - incorrect password',
-            ipAddress: '192.168.1.102',
-            userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 14_7_1)',
-            timestamp: '2024-01-15T11:15:30Z',
-            status: 'FAILED'
-          },
-          {
-            id: '5',
-            userId: '2',
-            userName: 'Jane Smith',
-            userEmail: 'jane.smith@example.com',
-            action: 'TIMESHEET_APPROVE',
-            description: 'Approved timesheet for user: mike.johnson@example.com',
-            ipAddress: '192.168.1.101',
-            userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)',
-            timestamp: '2024-01-15T10:30:15Z',
-            status: 'SUCCESS'
-          }
-        ]);
+        // Fallback to empty array if API fails
+        setActivities([]);
       }
     } catch (error) {
       showNotification({

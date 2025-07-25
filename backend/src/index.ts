@@ -15,13 +15,19 @@ import userRoutes from './routes/users';
 import projectRoutes from './routes/projects';
 import timesheetRoutes from './routes/timesheets';
 import reportRoutes from './routes/reports';
-import activityRoutes from './routes/activities';
+import activityLogRoutes from './routes/activityLogs';
 import holidayRoutes from './routes/holidays';
 import projectProgressRoutes from './routes/projectProgress';
 import costRequestRoutes from './routes/costRequests';
 import projectCostRoutes from './routes/projectCosts';
 import dashboardRoutes from './routes/dashboard';
-import activityLogsRoutes from './routes/activityLogs';
+import activitiesRoutes from './routes/activities';
+import rolesRoutes from './routes/roles';
+import databaseRoutes from './routes/database';
+import settingsRoutes from './routes/settings';
+import calendarRoutes from './routes/calendar';
+import notificationRoutes from './routes/notifications';
+import userActivitiesRoutes from './routes/userActivities';
 
 // Load environment variables
 dotenv.config();
@@ -85,12 +91,18 @@ app.use('/api/timesheets', timesheetRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/reports', reportRoutes);
-app.use('/api/activities', activityRoutes);
-app.use('/api/activity-logs', activityLogsRoutes);
+app.use('/api/activities', activitiesRoutes);
+app.use('/api/activity-logs', activityLogRoutes);
 app.use('/api/holidays', holidayRoutes);
 app.use('/api/project-progress', projectProgressRoutes);
 app.use('/api/project-costs', projectCostRoutes);
 app.use('/api/cost-requests', costRequestRoutes);
+app.use('/api/roles', rolesRoutes);
+app.use('/api/database', databaseRoutes);
+app.use('/api/settings', settingsRoutes);
+app.use('/api/calendar', calendarRoutes);
+app.use('/api/notifications', notificationRoutes);
+app.use('/api/user-activities', userActivitiesRoutes);
 
 // API documentation
 app.get('/api', (req, res) => {
@@ -108,7 +120,10 @@ app.get('/api', (req, res) => {
       costRequests: '/api/cost-requests',
       projectCosts: '/api/project-costs',
       dashboard: '/api/dashboard',
-      activityLogs: '/api/activity-logs'
+      activityLogs: '/api/activity-logs',
+      roles: '/api/roles',
+      database: '/api/database',
+      settings: '/api/settings'
     }
   });
 });

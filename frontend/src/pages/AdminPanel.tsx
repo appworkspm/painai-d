@@ -3,7 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useNotification } from '../contexts/NotificationContext';
 import { User, Settings, Users, BarChart3, Shield, Activity, FolderOpen, Plus, Edit, Trash2, X, Save, UserCog, Calendar, Building2, Clock } from 'lucide-react';
 import { User as UserType } from '../types';
-import { adminAPI, projectAPI } from '../services/api';
+import { adminAPI, projectAPI, rolesAPI, databaseAPI, settingsAPI, holidaysAPI } from '../services/api';
 
 const AdminPanel: React.FC = () => {
   const { user } = useAuth();
@@ -510,18 +510,17 @@ const AdminPanel: React.FC = () => {
   const handleSaveSettings = async () => {
     setSavingSettings(true);
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      addActivityLog('settings_updated', 'System settings updated', 'info');
-      showNotification({
-        message: 'Settings saved successfully',
-        type: 'success'
-      });
+      const response = await settingsAPI.updateSettings(systemSettings);
+      
+      if (response.success) {
+        showNotification('success', 'Settings saved successfully');
+        addActivityLog('settings_updated', 'System settings updated', 'info');
+      } else {
+        showNotification('error', response.message || 'Failed to save settings');
+      }
     } catch (error) {
-      showNotification({
-        message: 'Failed to save settings',
-        type: 'error'
-      });
+      console.error('Failed to save settings:', error);
+      showNotification('error', 'Failed to save settings');
     } finally {
       setSavingSettings(false);
     }
@@ -534,40 +533,62 @@ const AdminPanel: React.FC = () => {
     }));
   };
 
-  const addActivityLog = (type: string, message: string, severity: string = 'info') => {
-    const newLog = {
-      id: Date.now(),
-      type,
-      message,
-      severity,
-      timestamp: new Date(),
-      user: user?.name || 'System'
-    };
-    setActivityLogs(prev => [newLog, ...prev.slice(0, 9)]);
+  const addActivityLog = async (type: string, message: string, severity: string = 'info') => {
+    try {
+      // Save to database via API
+      await fetch('/api/activity-logs', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token') || sessionStorage.getItem('token')}`
+        },
+        body: JSON.stringify({
+          type,
+          message,
+          severity
+        })
+      });
+
+      // Update local state for immediate UI feedback
+      const newLog = {
+        id: Date.now(),
+        type,
+        message,
+        severity,
+        timestamp: new Date(),
+        user: user?.name || 'System'
+      };
+      setActivityLogs(prev => [newLog, ...prev.slice(0, 9)]);
+    } catch (error) {
+      console.error('Failed to save activity log:', error);
+      // Still update local state even if API fails
+      const newLog = {
+        id: Date.now(),
+        type,
+        message,
+        severity,
+        timestamp: new Date(),
+        user: user?.name || 'System'
+      };
+      setActivityLogs(prev => [newLog, ...prev.slice(0, 9)]);
+    }
   };
 
   // User Roles Management Handlers
   const loadRoles = async () => {
     try {
-      // Mock data for now - replace with actual API call
-      const mockRoles = [
-        { id: '1', name: 'VP', description: 'Vice President', permissions: ['all'] },
-        { id: '2', name: 'ADMIN', description: 'System Administrator', permissions: ['user_management', 'project_management', 'system_settings'] },
-        { id: '3', name: 'MANAGER', description: 'Project Manager', permissions: ['project_management', 'timesheet_approval'] },
-        { id: '4', name: 'USER', description: 'Regular User', permissions: ['timesheet_management'] }
-      ];
-      setRoles(mockRoles);
-      
-      const mockPermissions = [
-        { id: 'all', name: 'All Permissions', description: 'Full system access' },
-        { id: 'user_management', name: 'User Management', description: 'Manage users and roles' },
-        { id: 'project_management', name: 'Project Management', description: 'Manage projects' },
-        { id: 'timesheet_management', name: 'Timesheet Management', description: 'Manage own timesheets' },
-        { id: 'timesheet_approval', name: 'Timesheet Approval', description: 'Approve timesheets' },
-        { id: 'system_settings', name: 'System Settings', description: 'Manage system settings' },
-        { id: 'reports', name: 'Reports', description: 'Access reports' }
-      ];
-      setPermissions(mockPermissions);
+      const [rolesResponse, permissionsResponse] = await Promise.all([
+        rolesAPI.getRoles(),
+        rolesAPI.getPermissions()
+      ]);
+
+      if (rolesResponse.success) {
+        setRoles(rolesResponse.data);
+      }
+
+      if (permissionsResponse.success) {
+        setPermissions(permissionsResponse.data);
+      }
     } catch (error) {
       console.error('Failed to load roles:', error);
       showNotification('error', 'Failed to load roles');
@@ -598,16 +619,16 @@ const AdminPanel: React.FC = () => {
 
     setCreatingRole(true);
     try {
-      // Mock API call - replace with actual API
-      const newRole = {
-        id: Date.now().toString(),
-        ...createRoleForm,
-        createdAt: new Date()
-      };
-      setRoles(prev => [...prev, newRole]);
-      setShowCreateRoleModal(false);
-      showNotification('success', 'Role created successfully');
-      addActivityLog('role_created', `Role "${createRoleForm.name}" created`, 'info');
+      const response = await rolesAPI.createRole(createRoleForm);
+      
+      if (response.success) {
+        setRoles(prev => [...prev, response.data]);
+        setShowCreateRoleModal(false);
+        showNotification('success', 'Role created successfully');
+        addActivityLog('role_created', `Role "${createRoleForm.name}" created`, 'info');
+      } else {
+        showNotification('error', response.message || 'Failed to create role');
+      }
     } catch (error) {
       console.error('Failed to create role:', error);
       showNotification('error', 'Failed to create role');
@@ -625,16 +646,19 @@ const AdminPanel: React.FC = () => {
 
     setUpdatingRole(true);
     try {
-      // Mock API call - replace with actual API
-      setRoles(prev => prev.map(role => 
-        role.id === editingRole?.id 
-          ? { ...role, ...editingRoleForm, updatedAt: new Date() }
-          : role
-      ));
-      setShowEditRoleModal(false);
-      setEditingRole(null);
-      showNotification('success', 'Role updated successfully');
-      addActivityLog('role_updated', `Role "${editingRoleForm.name}" updated`, 'info');
+      const response = await rolesAPI.updateRole(editingRole?.id, editingRoleForm);
+      
+      if (response.success) {
+        setRoles(prev => prev.map(role => 
+          role.id === editingRole?.id ? response.data : role
+        ));
+        setShowEditRoleModal(false);
+        setEditingRole(null);
+        showNotification('success', 'Role updated successfully');
+        addActivityLog('role_updated', `Role "${editingRoleForm.name}" updated`, 'info');
+      } else {
+        showNotification('error', response.message || 'Failed to update role');
+      }
     } catch (error) {
       console.error('Failed to update role:', error);
       showNotification('error', 'Failed to update role');
@@ -647,10 +671,15 @@ const AdminPanel: React.FC = () => {
     if (!confirm('Are you sure you want to delete this role?')) return;
 
     try {
-      // Mock API call - replace with actual API
-      setRoles(prev => prev.filter(role => role.id !== roleId));
-      showNotification('success', 'Role deleted successfully');
-      addActivityLog('role_deleted', 'Role deleted', 'warning');
+      const response = await rolesAPI.deleteRole(roleId);
+      
+      if (response.success) {
+        setRoles(prev => prev.filter(role => role.id !== roleId));
+        showNotification('success', 'Role deleted successfully');
+        addActivityLog('role_deleted', 'Role deleted', 'warning');
+      } else {
+        showNotification('error', response.message || 'Failed to delete role');
+      }
     } catch (error) {
       console.error('Failed to delete role:', error);
       showNotification('error', 'Failed to delete role');
@@ -673,14 +702,11 @@ const AdminPanel: React.FC = () => {
   // Holiday Management Handlers
   const loadHolidays = async () => {
     try {
-      // Mock data for now - replace with actual API call
-      const mockHolidays = [
-        { id: '1', name: 'วันขึ้นปีใหม่', date: '2025-01-01', description: 'วันขึ้นปีใหม่' },
-        { id: '2', name: 'วันสงกรานต์', date: '2025-04-13', description: 'วันสงกรานต์' },
-        { id: '3', name: 'วันแรงงาน', date: '2025-05-01', description: 'วันแรงงานแห่งชาติ' },
-        { id: '4', name: 'วันเฉลิมพระชนมพรรษา', date: '2025-07-28', description: 'วันเฉลิมพระชนมพรรษา' }
-      ];
-      setHolidays(mockHolidays);
+      const response = await holidaysAPI.getHolidays();
+      
+      if (response.success) {
+        setHolidays(response.data);
+      }
     } catch (error) {
       console.error('Failed to load holidays:', error);
       showNotification('error', 'Failed to load holidays');
@@ -711,16 +737,16 @@ const AdminPanel: React.FC = () => {
 
     setCreatingHoliday(true);
     try {
-      // Mock API call - replace with actual API
-      const newHoliday = {
-        id: Date.now().toString(),
-        ...createHolidayForm,
-        createdAt: new Date()
-      };
-      setHolidays(prev => [...prev, newHoliday]);
-      setShowCreateHolidayModal(false);
-      showNotification('success', 'Holiday created successfully');
-      addActivityLog('holiday_created', `Holiday "${createHolidayForm.name}" created`, 'info');
+      const response = await holidaysAPI.createHoliday(createHolidayForm);
+      
+      if (response.success) {
+        setHolidays(prev => [...prev, response.data]);
+        setShowCreateHolidayModal(false);
+        showNotification('success', 'Holiday created successfully');
+        addActivityLog('holiday_created', `Holiday "${createHolidayForm.name}" created`, 'info');
+      } else {
+        showNotification('error', response.message || 'Failed to create holiday');
+      }
     } catch (error) {
       console.error('Failed to create holiday:', error);
       showNotification('error', 'Failed to create holiday');
@@ -738,16 +764,19 @@ const AdminPanel: React.FC = () => {
 
     setUpdatingHoliday(true);
     try {
-      // Mock API call - replace with actual API
-      setHolidays(prev => prev.map(holiday => 
-        holiday.id === editingHoliday?.id 
-          ? { ...holiday, ...editingHolidayForm, updatedAt: new Date() }
-          : holiday
-      ));
-      setShowEditHolidayModal(false);
-      setEditingHoliday(null);
-      showNotification('success', 'Holiday updated successfully');
-      addActivityLog('holiday_updated', `Holiday "${editingHolidayForm.name}" updated`, 'info');
+      const response = await holidaysAPI.updateHoliday(editingHoliday?.id, editingHolidayForm);
+      
+      if (response.success) {
+        setHolidays(prev => prev.map(holiday => 
+          holiday.id === editingHoliday?.id ? response.data : holiday
+        ));
+        setShowEditHolidayModal(false);
+        setEditingHoliday(null);
+        showNotification('success', 'Holiday updated successfully');
+        addActivityLog('holiday_updated', `Holiday "${editingHolidayForm.name}" updated`, 'info');
+      } else {
+        showNotification('error', response.message || 'Failed to update holiday');
+      }
     } catch (error) {
       console.error('Failed to update holiday:', error);
       showNotification('error', 'Failed to update holiday');
@@ -760,10 +789,15 @@ const AdminPanel: React.FC = () => {
     if (!confirm('Are you sure you want to delete this holiday?')) return;
 
     try {
-      // Mock API call - replace with actual API
-      setHolidays(prev => prev.filter(holiday => holiday.id !== holidayId));
-      showNotification('success', 'Holiday deleted successfully');
-      addActivityLog('holiday_deleted', 'Holiday deleted', 'warning');
+      const response = await holidaysAPI.deleteHoliday(holidayId);
+      
+      if (response.success) {
+        setHolidays(prev => prev.filter(holiday => holiday.id !== holidayId));
+        showNotification('success', 'Holiday deleted successfully');
+        addActivityLog('holiday_deleted', 'Holiday deleted', 'warning');
+      } else {
+        showNotification('error', response.message || 'Failed to delete holiday');
+      }
     } catch (error) {
       console.error('Failed to delete holiday:', error);
       showNotification('error', 'Failed to delete holiday');
@@ -786,20 +820,18 @@ const AdminPanel: React.FC = () => {
   // Database Management Handlers
   const loadDatabaseStatus = async () => {
     try {
-      // Mock data for now - replace with actual API call
-      setDatabaseStatus({
-        status: 'healthy',
-        size: '2.5 GB',
-        tables: 15,
-        lastBackup: '2025-01-20 10:30:00',
-        uptime: '15 days'
-      });
-      
-      setBackupHistory([
-        { id: '1', filename: 'backup_2025_01_20.sql', size: '2.5 GB', createdAt: '2025-01-20 10:30:00', status: 'completed' },
-        { id: '2', filename: 'backup_2025_01_19.sql', size: '2.4 GB', createdAt: '2025-01-19 10:30:00', status: 'completed' },
-        { id: '3', filename: 'backup_2025_01_18.sql', size: '2.3 GB', createdAt: '2025-01-18 10:30:00', status: 'completed' }
+      const [statusResponse, backupsResponse] = await Promise.all([
+        databaseAPI.getStatus(),
+        databaseAPI.getBackups()
       ]);
+
+      if (statusResponse.success) {
+        setDatabaseStatus(statusResponse.data);
+      }
+
+      if (backupsResponse.success) {
+        setBackupHistory(backupsResponse.data);
+      }
     } catch (error) {
       console.error('Failed to load database status:', error);
       showNotification('error', 'Failed to load database status');
@@ -809,20 +841,15 @@ const AdminPanel: React.FC = () => {
   const handleCreateBackup = async () => {
     setCreatingBackup(true);
     try {
-      // Mock API call - replace with actual API
-      await new Promise(resolve => setTimeout(resolve, 2000)); // Simulate backup process
+      const response = await databaseAPI.createBackup();
       
-      const newBackup = {
-        id: Date.now().toString(),
-        filename: `backup_${new Date().toISOString().split('T')[0]}.sql`,
-        size: '2.5 GB',
-        createdAt: new Date().toISOString(),
-        status: 'completed'
-      };
-      
-      setBackupHistory(prev => [newBackup, ...prev]);
-      showNotification('success', 'Database backup created successfully');
-      addActivityLog('backup_created', 'Database backup created', 'info');
+      if (response.success) {
+        setBackupHistory(prev => [response.data, ...prev]);
+        showNotification('success', 'Database backup created successfully');
+        addActivityLog('backup_created', 'Database backup created', 'info');
+      } else {
+        showNotification('error', response.message || 'Failed to create backup');
+      }
     } catch (error) {
       console.error('Failed to create backup:', error);
       showNotification('error', 'Failed to create backup');
@@ -836,11 +863,14 @@ const AdminPanel: React.FC = () => {
 
     setRestoringBackup(true);
     try {
-      // Mock API call - replace with actual API
-      await new Promise(resolve => setTimeout(resolve, 3000)); // Simulate restore process
+      const response = await databaseAPI.restoreBackup(backupId);
       
-      showNotification('success', 'Database restored successfully');
-      addActivityLog('backup_restored', 'Database restored from backup', 'warning');
+      if (response.success) {
+        showNotification('success', 'Database restored successfully');
+        addActivityLog('backup_restored', 'Database restored from backup', 'warning');
+      } else {
+        showNotification('error', response.message || 'Failed to restore backup');
+      }
     } catch (error) {
       console.error('Failed to restore backup:', error);
       showNotification('error', 'Failed to restore backup');

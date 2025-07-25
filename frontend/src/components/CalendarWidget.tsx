@@ -6,6 +6,9 @@ import { Badge } from '@/components/ui/badge';
 import { useTranslation } from 'react-i18next';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths, isToday } from 'date-fns';
 import { th } from 'date-fns/locale';
+import { useAuth } from '@/contexts/AuthContext';
+import { useNotification } from '@/contexts/NotificationContext';
+import { calendarAPI } from '@/services/api';
 
 interface CalendarEvent {
   id: string;
@@ -32,37 +35,8 @@ const CalendarWidget: React.FC = () => {
   useEffect(() => {
     const fetchEvents = async () => {
       try {
-        // TODO: เปลี่ยนเป็น API จริงเมื่อพร้อม
-        // const response = await fetch('/api/calendar/events');
-        // const data = await response.json();
-        // setEvents(data);
-        
-        // ข้อมูลตัวอย่างสำหรับการพัฒนา
-        const sampleEvents: CalendarEvent[] = [
-          {
-            id: '1',
-            title: 'ประชุมทีมประจำสัปดาห์',
-            description: 'ประชุมทบทวนความคืบหน้าโครงการ',
-            startTime: new Date(Date.now() + 1000 * 60 * 60 * 24), // วันพรุ่งนี้
-            endTime: new Date(Date.now() + 1000 * 60 * 60 * 24 + 1000 * 60 * 90), // +1.5 ชั่วโมง
-            type: 'meeting',
-            priority: 'high',
-            attendees: ['ทีมพัฒนา'],
-            location: 'ห้องประชุม'
-          },
-          {
-            id: '2',
-            title: 'ส่งรายงานโครงการ',
-            description: 'รายงานความคืบหน้าประจำเดือน',
-            startTime: new Date(Date.now() + 1000 * 60 * 60 * 24 * 3), // 3 วันข้างหน้า
-            endTime: new Date(Date.now() + 1000 * 60 * 60 * 24 * 3),
-            type: 'deadline',
-            priority: 'high',
-            projectId: 'proj-001',
-            projectName: 'โครงการหลัก'
-          }
-        ];
-        setEvents(sampleEvents);
+        const response = await calendarAPI.getEvents();
+        setEvents(response);
       } catch (error) {
         console.error('Error fetching calendar events:', error);
         setEvents([]);

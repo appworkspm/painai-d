@@ -8,6 +8,9 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useTranslation } from 'react-i18next';
 import { format } from 'date-fns';
 import { th } from 'date-fns/locale';
+import { useAuth } from '@/contexts/AuthContext';
+import { useNotification } from '@/contexts/NotificationContext';
+import { notificationsAPI } from '@/services/api';
 
 interface Notification {
   id: string;
@@ -37,37 +40,8 @@ const NotificationCenter: React.FC = () => {
   useEffect(() => {
     const fetchNotifications = async () => {
       try {
-        // TODO: เปลี่ยนเป็น API จริงเมื่อพร้อม
-        // const response = await fetch('/api/notifications');
-        // const data = await response.json();
-        // setNotifications(data);
-        
-        // ข้อมูลตัวอย่างสำหรับการพัฒนา
-        const sampleNotifications: Notification[] = [
-          {
-            id: '1',
-            type: 'warning',
-            title: 'ไทม์ชีทรออนุมัติ',
-            message: 'คุณมีไทม์ชีทที่รอการอนุมัติ',
-            timestamp: new Date(Date.now() - 1000 * 60 * 30),
-            read: false,
-            priority: 'high',
-            category: 'timesheet',
-            actionUrl: '/timesheets/pending'
-          },
-          {
-            id: '2',
-            type: 'success',
-            title: 'อนุมัติคำขอต้นทุน',
-            message: 'คำขอต้นทุนได้รับการอนุมัติแล้ว',
-            timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2),
-            read: false,
-            priority: 'medium',
-            category: 'cost',
-            actionUrl: '/cost-requests'
-          }
-        ];
-        setNotifications(sampleNotifications);
+        const response = await notificationsAPI.getNotifications();
+        setNotifications(response);
       } catch (error) {
         console.error('Error fetching notifications:', error);
         setNotifications([]);
@@ -98,20 +72,35 @@ const NotificationCenter: React.FC = () => {
     return filtered.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
   };
 
-  const markAsRead = (id: string) => {
-    setNotifications(prev => 
-      prev.map(n => n.id === id ? { ...n, read: true } : n)
-    );
+  const markAsRead = async (id: string) => {
+    try {
+      await notificationsAPI.markAsRead(id);
+      setNotifications(prev => 
+        prev.map(n => n.id === id ? { ...n, read: true } : n)
+      );
+    } catch (error) {
+      console.error('Error marking notification as read:', error);
+    }
   };
 
-  const markAllAsRead = () => {
-    setNotifications(prev => 
-      prev.map(n => ({ ...n, read: true }))
-    );
+  const markAllAsRead = async () => {
+    try {
+      await notificationsAPI.markAllAsRead();
+      setNotifications(prev => 
+        prev.map(n => ({ ...n, read: true }))
+      );
+    } catch (error) {
+      console.error('Error marking all notifications as read:', error);
+    }
   };
 
-  const deleteNotification = (id: string) => {
-    setNotifications(prev => prev.filter(n => n.id !== id));
+  const deleteNotification = async (id: string) => {
+    try {
+      await notificationsAPI.deleteNotification(id);
+      setNotifications(prev => prev.filter(n => n.id !== id));
+    } catch (error) {
+      console.error('Error deleting notification:', error);
+    }
   };
 
   const getNotificationIcon = (type: Notification['type']) => {

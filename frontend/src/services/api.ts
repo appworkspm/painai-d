@@ -17,6 +17,122 @@ export const holidaysAPI = {
     return res.data;
   },
 };
+
+// Roles API
+export const rolesAPI = {
+  async getRoles() {
+    const res = await api.get('/api/roles/roles');
+    return res.data;
+  },
+  async getPermissions() {
+    const res = await api.get('/api/roles/permissions');
+    return res.data;
+  },
+  async createRole(data: any) {
+    const res = await api.post('/api/roles/roles', data);
+    return res.data;
+  },
+  async updateRole(id: string, data: any) {
+    const res = await api.put(`/api/roles/roles/${id}`, data);
+    return res.data;
+  },
+  async deleteRole(id: string) {
+    const res = await api.delete(`/api/roles/roles/${id}`);
+    return res.data;
+  },
+};
+
+// Database API
+export const databaseAPI = {
+  async getStatus() {
+    const res = await api.get('/api/database/status');
+    return res.data;
+  },
+  async getBackups() {
+    const res = await api.get('/api/database/backups');
+    return res.data;
+  },
+  async createBackup() {
+    const res = await api.post('/api/database/backup');
+    return res.data;
+  },
+  async restoreBackup(backupId: string) {
+    const res = await api.post(`/api/database/restore/${backupId}`);
+    return res.data;
+  },
+  async deleteBackup(backupId: string) {
+    const res = await api.delete(`/api/database/backup/${backupId}`);
+    return res.data;
+  },
+};
+
+// Settings API
+export const settingsAPI = {
+  async getSettings() {
+    const res = await api.get('/api/settings/settings');
+    return res.data;
+  },
+  async updateSettings(data: any) {
+    const res = await api.put('/api/settings/settings', data);
+    return res.data;
+  },
+  async resetSettings() {
+    const res = await api.post('/api/settings/reset');
+    return res.data;
+  },
+  async getSystemHealth() {
+    const res = await api.get('/api/settings/health');
+    return res.data;
+  },
+};
+
+// Calendar API
+export const calendarAPI = {
+  async getEvents() {
+    const res = await api.get('/api/calendar/events');
+    return res.data;
+  },
+  async getEventsByRange(startDate: string, endDate: string) {
+    const res = await api.get(`/api/calendar/events/range?startDate=${startDate}&endDate=${endDate}`);
+    return res.data;
+  },
+};
+
+// Notifications API
+export const notificationsAPI = {
+  async getNotifications() {
+    const res = await api.get('/api/notifications');
+    return res.data;
+  },
+  async markAsRead(id: string) {
+    const res = await api.patch(`/api/notifications/${id}/read`);
+    return res.data;
+  },
+  async markAllAsRead() {
+    const res = await api.patch('/api/notifications/read-all');
+    return res.data;
+  },
+  async deleteNotification(id: string) {
+    const res = await api.delete(`/api/notifications/${id}`);
+    return res.data;
+  },
+};
+
+// User Activities API
+export const userActivitiesAPI = {
+  async getUserActivities(params?: any) {
+    const res = await api.get('/api/user-activities', { params });
+    return res.data;
+  },
+  async getUserActivitiesByUser(userId: string, params?: any) {
+    const res = await api.get(`/api/user-activities/user/${userId}`, { params });
+    return res.data;
+  },
+  async getActivityStats(params?: any) {
+    const res = await api.get('/api/user-activities/stats', { params });
+    return res.data;
+  },
+};
 import axios from 'axios';
 import { 
   ApiResponse, 

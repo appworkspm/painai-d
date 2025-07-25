@@ -28,7 +28,10 @@ import {
   DeleteOutlined
 } from '@ant-design/icons';
 import dayjs, { Dayjs } from 'dayjs';
+import { useAuth } from '@/contexts/AuthContext';
+import { timesheetAPI } from '@/services/api';
 import { useTranslation } from 'react-i18next';
+import { useNotification } from '@/contexts/NotificationContext';
 
 const { Title } = Typography;
 
@@ -125,6 +128,7 @@ interface TimesheetsState {
 // Main Timesheets component
 const Timesheets: React.FC = () => {
   const { t } = useTranslation();
+  const { showNotification } = useNotification();
   // Create a form type that matches our form values (with Dayjs for dates)
   type TimesheetFormValues = Omit<Timesheet, 'date' | 'created_at' | 'updated_at'> & {
     date: Dayjs;
@@ -167,82 +171,7 @@ const Timesheets: React.FC = () => {
     pagination,
   } = state;
 
-  // Mock API service with access to translation
-  const timesheetAPI = useMemo(() => ({
-    create: async (data: Omit<Timesheet, 'id' | 'created_at' | 'updated_at' | 'project'>): Promise<{ data: Timesheet }> => {
-      console.log('Creating timesheet:', data);
-      const project = data.project_id ? {
-        id: data.project_id,
-        name: `${t('timesheet.mock.project_prefix')} ${data.project_id}`,
-        code: `PJ-${data.project_id}`
-      } : undefined;
-      
-      const newTimesheet: Timesheet = {
-        ...data,
-        id: Date.now().toString(),
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        project
-      };
-      
-      return { data: newTimesheet };
-    },
-    update: async (id: string, data: Partial<Omit<Timesheet, 'id' | 'created_at' | 'updated_at' | 'project'>>): Promise<{ data: Timesheet }> => {
-      console.log(`Updating timesheet ${id}:`, data);
-      const project = data.project_id ? {
-        id: data.project_id,
-        name: `${t('timesheet.mock.project_prefix')} ${data.project_id}`,
-        code: `PJ-${data.project_id}`
-      } : undefined;
-      
-      return { 
-        data: { 
-          ...data,
-          id,
-          project,
-          updated_at: new Date().toISOString()
-        } as Timesheet
-      };
-    },
-    delete: async (id: string): Promise<{ success: boolean }> => {
-      console.log(`Deleting timesheet ${id}`);
-      return { success: true };
-    },
-    getStats: async (): Promise<{ data: TimesheetsState['stats'] }> => ({
-      data: {
-        totalHours: 0,
-        billableHours: 0,
-        nonBillableHours: 0,
-        totalEarnings: 0,
-        thisWeekHours: 0,
-        pending: 0,
-        approved: 0,
-        projects: []
-      }
-    }),
-    getProjects: async (): Promise<{ data: Project[] }> => ({
-      data: [
-        { 
-          id: '1', 
-          name: `${t('timesheet.mock.project_prefix')} A`, 
-          code: 'PJ-A',
-          billable: true
-        },
-        { 
-          id: '2', 
-          name: `${t('timesheet.mock.project_prefix')} B`, 
-          code: 'PJ-B',
-          billable: false
-        },
-      ]
-    }),
-    getTimesheets: async (): Promise<{ data: Timesheet[]; total: number }> => ({
-      data: [],
-      total: 0
-    })
-  }), [t]);
-
-  // Fetch timesheets data
+  // Remove mock API service and use real API
   const fetchTimesheets = useCallback(async () => {
     try {
       setState(prev => ({ ...prev, loading: true }));
@@ -258,37 +187,41 @@ const Timesheets: React.FC = () => {
         })),
         pagination: {
           ...prev.pagination,
-          total: response.total || 0
-        },
-        loading: false
+          total: response.total
+        }
       }));
     } catch (error) {
-      console.error('Error fetching timesheets:', error);
+      console.error('Failed to fetch timesheets:', error);
+      showNotification('error', 'Failed to fetch timesheets');
+    } finally {
       setState(prev => ({ ...prev, loading: false }));
     }
-  }, [timesheetAPI]);
+  }, []);
 
-  // Fetch projects data
   const fetchProjects = useCallback(async () => {
     try {
-      setState(prev => ({ ...prev, loading: true }));
       const response = await timesheetAPI.getProjects();
-      setState(prev => ({
-        ...prev,
-        projects: response.data || [],
-        loading: false
-      }));
+      setState(prev => ({ ...prev, projects: response.data }));
     } catch (error) {
-      console.error('Error fetching projects:', error);
-      setState(prev => ({ ...prev, loading: false }));
+      console.error('Failed to fetch projects:', error);
     }
-  }, [timesheetAPI]);
+  }, []);
+
+  const fetchStats = useCallback(async () => {
+    try {
+      const response = await timesheetAPI.getStats();
+      setState(prev => ({ ...prev, stats: response.data }));
+    } catch (error) {
+      console.error('Failed to fetch stats:', error);
+    }
+  }, []);
 
   // Initial data fetch
   useEffect(() => {
     fetchTimesheets();
     fetchProjects();
-  }, [fetchTimesheets, fetchProjects]);
+    fetchStats(); // Fetch stats on mount
+  }, [fetchTimesheets, fetchProjects, fetchStats]);
 
   // Fetch timesheets when filters or pagination change
   useEffect(() => {
@@ -362,35 +295,36 @@ const Timesheets: React.FC = () => {
     }));
   };
 
-  // Handle form submission
   const handleSubmit = async (values: TimesheetFormValues) => {
     try {
       setState(prev => ({ ...prev, submitting: true }));
       
-      // Convert form values to Timesheet format for the API
-      const timesheetData: Omit<Timesheet, 'id' | 'created_at' | 'updated_at' | 'project'> = {
+      const timesheetData = {
         ...values,
         date: values.date.format('YYYY-MM-DD'),
-        project_id: values.project_id || null,
+        project_id: values.project_id || null
       };
-      
-      if (state.editingTimesheet) {
-        await timesheetAPI.update(state.editingTimesheet.id, timesheetData);
+
+      if (editingTimesheet) {
+        await timesheetAPI.updateTimesheet(editingTimesheet.id, timesheetData);
+        showNotification('success', 'Timesheet updated successfully');
       } else {
-        await timesheetAPI.create(timesheetData);
+        await timesheetAPI.createTimesheet(timesheetData);
+        showNotification('success', 'Timesheet created successfully');
       }
-      
-      await fetchTimesheets();
-      setState(prev => ({
-        ...prev,
-        isModalVisible: false,
+
+      setState(prev => ({ 
+        ...prev, 
+        isModalVisible: false, 
         editingTimesheet: null,
-        submitting: false
+        submitting: false 
       }));
       
-      form.resetFields();
+      fetchTimesheets();
+      fetchStats();
     } catch (error) {
-      console.error('Error saving timesheet:', error);
+      console.error('Failed to save timesheet:', error);
+      showNotification('error', 'Failed to save timesheet');
       setState(prev => ({ ...prev, submitting: false }));
     }
   };
@@ -411,30 +345,20 @@ const Timesheets: React.FC = () => {
     }));
   }, [form]);
 
-  // Handle delete confirmation
-  const handleDelete = useCallback((id: string) => {
-    Modal.confirm({
-      title: t('timesheet.delete_modal.title'),
-      content: t('timesheet.delete_modal.content'),
-      okText: t('timesheet.delete_modal.ok_text'),
-      okType: 'danger',
-      cancelText: t('timesheet.modal.cancel'),
-      onOk: async () => {
-        try {
-          setState(prev => ({ ...prev, deletingId: id }));
-          await timesheetAPI.delete(id);
-          await fetchTimesheets();
-        } catch (error) {
-          console.error('Error deleting timesheet:', error);
-        } finally {
-          setState(prev => ({ ...prev, deletingId: null }));
-        }
-      },
-      onCancel: () => {
-        setState(prev => ({ ...prev, deletingId: null }));
-      },
-    });
-  }, [fetchTimesheets]);
+  const handleDelete = async (id: string) => {
+    try {
+      setState(prev => ({ ...prev, deletingId: id }));
+      await timesheetAPI.deleteTimesheet(id);
+      showNotification('success', 'Timesheet deleted successfully');
+      fetchTimesheets();
+      fetchStats();
+    } catch (error) {
+      console.error('Failed to delete timesheet:', error);
+      showNotification('error', 'Failed to delete timesheet');
+    } finally {
+      setState(prev => ({ ...prev, deletingId: null }));
+    }
+  };
 
   // Table columns with proper typing
   const columns: ColumnsType<TimesheetTableData> = [
