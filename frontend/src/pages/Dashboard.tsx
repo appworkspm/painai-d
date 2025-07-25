@@ -9,7 +9,6 @@ import {
   DollarSign,
   Target,
   Activity,
-  PieChart,
   BarChart3,
   Plus,
   Settings,
@@ -108,9 +107,9 @@ const Dashboard = () => {
   const myCostRequests = getDataFromPaginated(myCostRequestsData);
 
   // Calculate comprehensive statistics with type safety
-  const activeProjects = projects.filter((p: any) => p?.status === 'ACTIVE').length;
-  const completedProjects = projects.filter((p: any) => p?.status === 'COMPLETED').length;
-  const onHoldProjects = projects.filter((p: any) => p?.status === 'ON_HOLD').length;
+  const activeProjects = projects?.filter((p: any) => p?.status === 'ACTIVE').length || 0;
+  const completedProjects = projects?.filter((p: any) => p?.status === 'COMPLETED').length || 0;
+  const onHoldProjects = projects?.filter((p: any) => p?.status === 'ON_HOLD').length || 0;
   
   // Timesheet statistics
   // Initialize accumulator with proper types
@@ -159,15 +158,15 @@ const Dashboard = () => {
   const totalCostAmount = costRequests.reduce((sum: number, cr: any) => sum + (parseFloat(cr.amount) || 0), 0);
 
   // Team statistics
-  const activeTeamMembers = teamMembers.filter((member: any) => member.isActive).length;
-  const totalTeamHours = allTimesheets.reduce((sum: number, ts: any) => {
-    return sum + (parseFloat(ts.hours_worked) || 0) + (parseFloat(ts.overtime_hours) || 0);
-  }, 0);
+  const activeTeamMembers = teamMembers?.filter((member: any) => member?.isActive).length || 0;
+  const totalTeamHours = allTimesheets?.reduce((sum: number, ts: any) => {
+    return sum + (parseFloat(ts?.hours_worked) || 0) + (parseFloat(ts?.overtime_hours) || 0);
+  }, 0) || 0;
 
-  // Prepare comprehensive chart data
-  const weeklyChartData = Object.entries(weeklyHours).map(([day, hours]) => ({
-    day: day.charAt(0).toUpperCase() + day.slice(1, 3),
-    hours: Number(Number(hours).toFixed(2))
+  // Prepare comprehensive chart data with null checks
+  const weeklyChartData = Object.entries(weeklyHours || {}).map(([day, hours]) => ({
+    day: day?.charAt(0)?.toUpperCase() + day?.slice(1, 3) || '',
+    hours: hours ? Number(Number(hours).toFixed(2)) : 0
   }));
 
   // Project status distribution
@@ -177,11 +176,11 @@ const Dashboard = () => {
     { name: 'ระงับ', value: onHoldProjects, color: '#f59e0b' }
   ];
 
-  // Timesheet status distribution
+  // Timesheet status distribution with default values
   const timesheetStatusData = [
-    { name: 'อนุมัติแล้ว', value: approvedTimesheets, color: '#10b981' },
-    { name: 'รออนุมัติ', value: pendingApprovals, color: '#f59e0b' },
-    { name: 'ไม่อนุมัติ', value: rejectedTimesheets, color: '#ef4444' }
+    { name: 'อนุมัติแล้ว', value: approvedTimesheets || 0, color: '#10b981' },
+    { name: 'รออนุมัติ', value: pendingApprovals || 0, color: '#f59e0b' },
+    { name: 'ไม่อนุมัติ', value: rejectedTimesheets || 0, color: '#ef4444' }
   ];
 
   // Recent activities with null checks
@@ -277,7 +276,7 @@ const Dashboard = () => {
         <div className="border rounded-lg p-4 bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20">
           <StatCard
             title={t('dashboard.total_hours')}
-            value={totalHours.toFixed(2)}
+            value={(totalHours || 0).toFixed(2)}
             icon={Clock}
             description={t('dashboard.total_hours_desc')}
             className="text-blue-600"
@@ -318,7 +317,7 @@ const Dashboard = () => {
           <div className="border rounded-lg p-4 bg-indigo-50">
             <StatCard
               title="ชั่วโมงรวมทีม"
-              value={totalTeamHours.toFixed(2)}
+              value={(totalTeamHours || 0).toFixed(2)}
               icon={Activity}
               description="ชั่วโมงทำงานของทีมทั้งหมด"
               className="text-indigo-600"
@@ -345,7 +344,7 @@ const Dashboard = () => {
           <div className="border rounded-lg p-4 bg-emerald-50">
             <StatCard
               title="อัตราการอนุมัติ"
-              value={`${((approvedTimesheets / Math.max(1, approvedTimesheets + rejectedTimesheets)) * 100).toFixed(1)}%`}
+              value={`${((approvedTimesheets || 0) / Math.max(1, (approvedTimesheets || 0) + (rejectedTimesheets || 0)) * 100).toFixed(1)}%`}
               icon={CheckCircle2}
               description="อัตราการอนุมัติไทม์ชีท"
               className="text-emerald-600"

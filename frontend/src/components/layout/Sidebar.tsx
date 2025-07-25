@@ -4,7 +4,6 @@ import { useAuth } from '@/contexts/AuthContext';
 import { NavLink, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { 
-  Briefcase, 
   Clock, 
   DollarSign, 
   FileText, 
@@ -12,21 +11,16 @@ import {
   BarChart2,
   Activity,
   LayoutDashboard,
-  FileCheck,
   ClipboardList,
   UserCheck,
-  ShieldCheck,
-  BarChart3,
   FileBarChart2,
   DollarSign as DollarSignIcon,
   User as UserIcon,
-  ClipboardCheck,
   Users as UsersIcon,
   CheckCircle2,
   Settings as SettingsIcon,
   UserCog,
   Calendar as CalendarIcon,
-  FileText as FileTextIcon,
   FolderOpen,
   Plus,
   History,
@@ -191,15 +185,6 @@ const Sidebar = () => {
           <NavItem to="/dashboard" icon={PieChart} label={t('menu.analytics', 'สถิติ')} />
         </Section>
 
-        {/* Projects Section */}
-        <Section title={t('menu.project_management', 'โครงการ')} icon={FolderOpen} sectionKey="projects">
-          <NavItem to="/projects" icon={ClipboardList} label={t('menu.all_projects', 'โครงการทั้งหมด')} />
-          <NavItem to="/projects/create" icon={Plus} label={t('menu.create_project', 'สร้างโครงการใหม่')} />
-          <NavItem to="/projects/active" icon={Activity} label={t('menu.active_projects', 'โครงการที่ทำอยู่')} />
-          <NavItem to="/projects/completed" icon={CheckCircle2} label={t('menu.completed_projects', 'โครงการที่เสร็จแล้ว')} />
-          <NavItem to="/projects/dashboard" icon={LayoutDashboard} label={t('menu.project_dashboard', 'แดชบอร์ดโครงการ')} />
-        </Section>
-
         {/* Timesheets Section */}
         <Section title={t('menu.timesheet_management', 'งานของฉัน')} icon={Clock} sectionKey="timesheets">
           <NavItem to="/timesheets" icon={FileText} label={t('menu.my_timesheets', 'ไทม์ชีท')} />
@@ -210,15 +195,21 @@ const Sidebar = () => {
           )}
         </Section>
 
+        {/* Projects Section */}
+        <Section title={t('menu.project_management', 'โครงการ')} icon={FolderOpen} sectionKey="projects">
+          <NavItem to="/projects" icon={ClipboardList} label={t('menu.all_projects', 'โครงการทั้งหมด')} />
+          <NavItem to="/projects/create" icon={Plus} label={t('menu.create_project', 'สร้างโครงการใหม่')} />
+          <NavItem to="/projects/active" icon={Activity} label={t('menu.active_projects', 'โครงการที่ทำอยู่')} />
+          <NavItem to="/projects/completed" icon={CheckCircle2} label={t('menu.completed_projects', 'โครงการที่เสร็จแล้ว')} />
+          <NavItem to="/projects/dashboard" icon={LayoutDashboard} label={t('menu.project_dashboard', 'แดชบอร์ดโครงการ')} />
+        </Section>
+
         {/* Reports Section */}
         <Section title={t('menu.reports', 'รายงาน')} icon={BarChart2} sectionKey="reports">
           <NavItem to="/reports/workload" icon={Activity} label={t('menu.workload_report', 'ปริมาณงาน')} />
           <NavItem to="/reports/project" icon={FileBarChart2} label={t('menu.project_report', 'รายงานโครงการ')} />
           <NavItem to="/reports/project-cost" icon={DollarSignIcon} label={t('menu.project_cost_report', 'ต้นทุนโครงการ')} />
           <NavItem to="/reports/timesheet" icon={FileText} label={t('menu.timesheet_report', 'รายงานงาน')} />
-          {(isAdmin || isVP) && (
-            <NavItem to="/reports/user-activity" icon={UserIcon} label={t('menu.user_activity_report', 'กิจกรรมพนักงาน')} />
-          )}
         </Section>
 
         {/* Cost Management Section */}
@@ -231,20 +222,15 @@ const Sidebar = () => {
         </Section>
 
         {/* Admin Section */}
-        {console.log('Sidebar - Rendering admin section check:', { isAdmin, isVP, condition: isAdmin || isVP })}
         {(isAdmin || isVP) && (
           <Section title={t('menu.administration', 'ระบบ')} icon={Shield} sectionKey="admin">
-            {isAdmin && (
-              <NavItem to="/admin" icon={LayoutDashboard} label={t('menu.admin_panel', 'จัดการระบบ')} />
-            )}
-            <NavItem to="/admin/users" icon={UsersIcon} label={t('menu.user_management', 'พนักงาน')} />
-            {isAdmin && (
-              <NavItem to="/admin/user-roles" icon={UserCog} label={t('menu.user_roles', 'สิทธิ์การใช้งาน')} />
-            )}
-            <NavItem to="/admin/holidays" icon={CalendarIcon} label={t('menu.holiday_management', 'วันหยุด')} />
-            <NavItem to="/admin/user-activity" icon={Activity} label={t('menu.user_activity', 'กิจกรรม')} />
+            <NavItem to="/admin" icon={LayoutDashboard} label={t('menu.admin_panel', 'แดชบอร์ด')} />
+            <NavItem to="/admin/users" icon={UsersIcon} label={t('menu.user_management', 'จัดการผู้ใช้')} />
+            <NavItem to="/admin/user-activity" icon={Activity} label={t('menu.user_activity_report', 'กิจกรรมผู้ใช้')} />
+            <NavItem to="/admin/holidays" icon={CalendarIcon} label={t('menu.holiday_management', 'จัดการวันหยุด')} />
             {isAdmin && (
               <>
+                <NavItem to="/admin/user-roles" icon={UserCog} label={t('menu.user_roles', 'จัดการบทบาท')} />
                 <NavItem to="/admin/database" icon={Building2} label={t('menu.database_management', 'จัดการฐานข้อมูล')} />
                 <NavItem to="/admin/settings" icon={SettingsIcon} label={t('menu.system_settings', 'ตั้งค่าระบบ')} />
               </>

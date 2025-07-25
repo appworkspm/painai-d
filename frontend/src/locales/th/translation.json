@@ -624,6 +624,25 @@
     "deadline": "กำหนดส่ง",
     "holiday": "วันหยุด"
   },
+  "common": {
+    "no_data": "ไม่มีข้อมูล",
+    "loading": "กำลังโหลด...",
+    "error_occurred": "เกิดข้อผิดพลาด",
+    "retry": "ลองอีกครั้ง",
+    "cancel": "ยกเลิก",
+    "submit": "ส่ง",
+    "save": "บันทึก",
+    "delete": "ลบ",
+    "edit": "แก้ไข",
+    "view": "ดู",
+    "back": "ย้อนกลับ",
+    "next": "ถัดไป",
+    "previous": "ก่อนหน้า",
+    "search": "ค้นหา",
+    "no_results": "ไม่พบผลลัพธ์",
+    "confirm_delete": "คุณแน่ใจหรือไม่ที่จะลบรายการนี้?",
+    "select_option": "เลือกตัวเลือก"
+  },
   "costRequest": {
     "title": "คำขอค่าใช้จ่าย",
     "status": {

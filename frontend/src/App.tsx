@@ -11,6 +11,7 @@ import Projects from './pages/Projects';
 import ProjectDetails from './pages/ProjectDetails';
 import ProjectProgress from './pages/ProjectProgress';
 import ProjectDashboard from './pages/ProjectDashboard';
+import EditProject from './pages/EditProject';
 import ProjectProgressList from './pages/ProjectProgressList';
 import ProjectProgressDashboard from './pages/ProjectProgressDashboard';
 import Timesheets from './pages/Timesheets';
@@ -60,6 +61,14 @@ const App = () => {
               {/* Public Routes */}
               <Route path="/login" element={<Login />} />
               <Route path="/forgot-password" element={<ForgotPassword />} />
+              <Route 
+                path="/timesheets/create" 
+                element={
+                  <SimpleLayout>
+                    <CreateTimesheet />
+                  </SimpleLayout>
+                } 
+              />
               
               {/* Protected Routes */}
               <Route
@@ -88,6 +97,12 @@ const App = () => {
                   } 
                 />
                 <Route 
+                  path="projects/:id/edit" 
+                  element={
+                    <EditProject />
+                  } 
+                />
+                <Route 
                   path="projects/:id/progress" 
                   element={
                     <ProjectProgress />
@@ -100,14 +115,6 @@ const App = () => {
                 
                 {/* Timesheets */}
                 <Route path="timesheets" element={<Timesheets />} />
-                <Route 
-                  path="timesheets/create" 
-                  element={
-                    <SimpleLayout>
-                      <CreateTimesheet />
-                    </SimpleLayout>
-                  } 
-                />
                 <Route path="timesheets/history" element={<TimesheetHistory />} />
                 <Route path="timesheets/approval" element={<TimesheetApproval />} />
                 
