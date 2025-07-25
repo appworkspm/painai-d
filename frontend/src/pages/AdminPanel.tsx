@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNotification } from '../contexts/NotificationContext';
-import { User, Settings, Users, BarChart3, Shield, Activity, FolderOpen, Plus, Edit, Trash2, X, Save, UserCog, Calendar, Building2 } from 'lucide-react';
+import { User, Settings, Users, BarChart3, Shield, Activity, FolderOpen, Plus, Edit, Trash2, X, Save, UserCog, Calendar, Building2, Clock } from 'lucide-react';
 import { User as UserType } from '../types';
 import { adminAPI, projectAPI } from '../services/api';
 
@@ -70,6 +70,51 @@ const AdminPanel: React.FC = () => {
   const [filterActivityType, setFilterActivityType] = useState('all');
   const [filterActivityDate, setFilterActivityDate] = useState('');
 
+  // User Roles Management State
+  const [roles, setRoles] = useState<any[]>([]);
+  const [permissions, setPermissions] = useState<any[]>([]);
+  const [showCreateRoleModal, setShowCreateRoleModal] = useState(false);
+  const [showEditRoleModal, setShowEditRoleModal] = useState(false);
+  const [editingRole, setEditingRole] = useState<any>(null);
+  const [createRoleForm, setCreateRoleForm] = useState({
+    name: '',
+    description: '',
+    permissions: [] as string[]
+  });
+  const [editingRoleForm, setEditingRoleForm] = useState({
+    name: '',
+    description: '',
+    permissions: [] as string[]
+  });
+  const [creatingRole, setCreatingRole] = useState(false);
+  const [updatingRole, setUpdatingRole] = useState(false);
+  const [searchRoles, setSearchRoles] = useState('');
+
+  // Holiday Management State
+  const [holidays, setHolidays] = useState<any[]>([]);
+  const [showCreateHolidayModal, setShowCreateHolidayModal] = useState(false);
+  const [showEditHolidayModal, setShowEditHolidayModal] = useState(false);
+  const [editingHoliday, setEditingHoliday] = useState<any>(null);
+  const [createHolidayForm, setCreateHolidayForm] = useState({
+    name: '',
+    date: '',
+    description: ''
+  });
+  const [editingHolidayForm, setEditingHolidayForm] = useState({
+    name: '',
+    date: '',
+    description: ''
+  });
+  const [creatingHoliday, setCreatingHoliday] = useState(false);
+  const [updatingHoliday, setUpdatingHoliday] = useState(false);
+  const [searchHolidays, setSearchHolidays] = useState('');
+
+  // Database Management State
+  const [databaseStatus, setDatabaseStatus] = useState<any>(null);
+  const [backupHistory, setBackupHistory] = useState<any[]>([]);
+  const [creatingBackup, setCreatingBackup] = useState(false);
+  const [restoringBackup, setRestoringBackup] = useState(false);
+
   const menuItems = [
     { key: 'dashboard', label: 'แดชบอร์ด', icon: <BarChart3 className="w-5 h-5" /> },
     { key: 'users', label: 'จัดการผู้ใช้', icon: <Users className="w-5 h-5" /> },
@@ -97,6 +142,17 @@ const AdminPanel: React.FC = () => {
     
     loadDataWhenReady();
   }, [user]);
+
+  // Load data based on active tab
+  useEffect(() => {
+    if (activeTab === 'user-roles') {
+      loadRoles();
+    } else if (activeTab === 'holidays') {
+      loadHolidays();
+    } else if (activeTab === 'database') {
+      loadDatabaseStatus();
+    }
+  }, [activeTab]);
 
   const loadAdminData = async () => {
     setLoading(true);
@@ -483,10 +539,314 @@ const AdminPanel: React.FC = () => {
       id: Date.now(),
       type,
       message,
+      severity,
       timestamp: new Date(),
-      severity
+      user: user?.name || 'System'
     };
-    setActivityLogs(prev => [newLog, ...prev.slice(0, 49)]); // Keep only last 50 logs
+    setActivityLogs(prev => [newLog, ...prev.slice(0, 9)]);
+  };
+
+  // User Roles Management Handlers
+  const loadRoles = async () => {
+    try {
+      // Mock data for now - replace with actual API call
+      const mockRoles = [
+        { id: '1', name: 'VP', description: 'Vice President', permissions: ['all'] },
+        { id: '2', name: 'ADMIN', description: 'System Administrator', permissions: ['user_management', 'project_management', 'system_settings'] },
+        { id: '3', name: 'MANAGER', description: 'Project Manager', permissions: ['project_management', 'timesheet_approval'] },
+        { id: '4', name: 'USER', description: 'Regular User', permissions: ['timesheet_management'] }
+      ];
+      setRoles(mockRoles);
+      
+      const mockPermissions = [
+        { id: 'all', name: 'All Permissions', description: 'Full system access' },
+        { id: 'user_management', name: 'User Management', description: 'Manage users and roles' },
+        { id: 'project_management', name: 'Project Management', description: 'Manage projects' },
+        { id: 'timesheet_management', name: 'Timesheet Management', description: 'Manage own timesheets' },
+        { id: 'timesheet_approval', name: 'Timesheet Approval', description: 'Approve timesheets' },
+        { id: 'system_settings', name: 'System Settings', description: 'Manage system settings' },
+        { id: 'reports', name: 'Reports', description: 'Access reports' }
+      ];
+      setPermissions(mockPermissions);
+    } catch (error) {
+      console.error('Failed to load roles:', error);
+      showNotification('error', 'Failed to load roles');
+    }
+  };
+
+  const handleCreateRole = () => {
+    setCreateRoleForm({ name: '', description: '', permissions: [] });
+    setShowCreateRoleModal(true);
+  };
+
+  const handleEditRole = (role: any) => {
+    setEditingRole(role);
+    setEditingRoleForm({
+      name: role.name,
+      description: role.description,
+      permissions: role.permissions
+    });
+    setShowEditRoleModal(true);
+  };
+
+  const handleSubmitCreateRole = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!createRoleForm.name.trim()) {
+      showNotification('error', 'Role name is required');
+      return;
+    }
+
+    setCreatingRole(true);
+    try {
+      // Mock API call - replace with actual API
+      const newRole = {
+        id: Date.now().toString(),
+        ...createRoleForm,
+        createdAt: new Date()
+      };
+      setRoles(prev => [...prev, newRole]);
+      setShowCreateRoleModal(false);
+      showNotification('success', 'Role created successfully');
+      addActivityLog('role_created', `Role "${createRoleForm.name}" created`, 'info');
+    } catch (error) {
+      console.error('Failed to create role:', error);
+      showNotification('error', 'Failed to create role');
+    } finally {
+      setCreatingRole(false);
+    }
+  };
+
+  const handleSubmitEditRole = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingRoleForm.name.trim()) {
+      showNotification('error', 'Role name is required');
+      return;
+    }
+
+    setUpdatingRole(true);
+    try {
+      // Mock API call - replace with actual API
+      setRoles(prev => prev.map(role => 
+        role.id === editingRole?.id 
+          ? { ...role, ...editingRoleForm, updatedAt: new Date() }
+          : role
+      ));
+      setShowEditRoleModal(false);
+      setEditingRole(null);
+      showNotification('success', 'Role updated successfully');
+      addActivityLog('role_updated', `Role "${editingRoleForm.name}" updated`, 'info');
+    } catch (error) {
+      console.error('Failed to update role:', error);
+      showNotification('error', 'Failed to update role');
+    } finally {
+      setUpdatingRole(false);
+    }
+  };
+
+  const handleDeleteRole = async (roleId: string) => {
+    if (!confirm('Are you sure you want to delete this role?')) return;
+
+    try {
+      // Mock API call - replace with actual API
+      setRoles(prev => prev.filter(role => role.id !== roleId));
+      showNotification('success', 'Role deleted successfully');
+      addActivityLog('role_deleted', 'Role deleted', 'warning');
+    } catch (error) {
+      console.error('Failed to delete role:', error);
+      showNotification('error', 'Failed to delete role');
+    }
+  };
+
+  const handleRoleFormChange = (field: string, value: string | string[]) => {
+    setCreateRoleForm(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleEditRoleFormChange = (field: string, value: string | string[]) => {
+    setEditingRoleForm(prev => ({ ...prev, [field]: value }));
+  };
+
+  const filteredRoles = roles.filter(role =>
+    role.name.toLowerCase().includes(searchRoles.toLowerCase()) ||
+    role.description.toLowerCase().includes(searchRoles.toLowerCase())
+  );
+
+  // Holiday Management Handlers
+  const loadHolidays = async () => {
+    try {
+      // Mock data for now - replace with actual API call
+      const mockHolidays = [
+        { id: '1', name: 'วันขึ้นปีใหม่', date: '2025-01-01', description: 'วันขึ้นปีใหม่' },
+        { id: '2', name: 'วันสงกรานต์', date: '2025-04-13', description: 'วันสงกรานต์' },
+        { id: '3', name: 'วันแรงงาน', date: '2025-05-01', description: 'วันแรงงานแห่งชาติ' },
+        { id: '4', name: 'วันเฉลิมพระชนมพรรษา', date: '2025-07-28', description: 'วันเฉลิมพระชนมพรรษา' }
+      ];
+      setHolidays(mockHolidays);
+    } catch (error) {
+      console.error('Failed to load holidays:', error);
+      showNotification('error', 'Failed to load holidays');
+    }
+  };
+
+  const handleCreateHoliday = () => {
+    setCreateHolidayForm({ name: '', date: '', description: '' });
+    setShowCreateHolidayModal(true);
+  };
+
+  const handleEditHoliday = (holiday: any) => {
+    setEditingHoliday(holiday);
+    setEditingHolidayForm({
+      name: holiday.name,
+      date: holiday.date,
+      description: holiday.description
+    });
+    setShowEditHolidayModal(true);
+  };
+
+  const handleSubmitCreateHoliday = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!createHolidayForm.name.trim() || !createHolidayForm.date) {
+      showNotification('error', 'Holiday name and date are required');
+      return;
+    }
+
+    setCreatingHoliday(true);
+    try {
+      // Mock API call - replace with actual API
+      const newHoliday = {
+        id: Date.now().toString(),
+        ...createHolidayForm,
+        createdAt: new Date()
+      };
+      setHolidays(prev => [...prev, newHoliday]);
+      setShowCreateHolidayModal(false);
+      showNotification('success', 'Holiday created successfully');
+      addActivityLog('holiday_created', `Holiday "${createHolidayForm.name}" created`, 'info');
+    } catch (error) {
+      console.error('Failed to create holiday:', error);
+      showNotification('error', 'Failed to create holiday');
+    } finally {
+      setCreatingHoliday(false);
+    }
+  };
+
+  const handleSubmitEditHoliday = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingHolidayForm.name.trim() || !editingHolidayForm.date) {
+      showNotification('error', 'Holiday name and date are required');
+      return;
+    }
+
+    setUpdatingHoliday(true);
+    try {
+      // Mock API call - replace with actual API
+      setHolidays(prev => prev.map(holiday => 
+        holiday.id === editingHoliday?.id 
+          ? { ...holiday, ...editingHolidayForm, updatedAt: new Date() }
+          : holiday
+      ));
+      setShowEditHolidayModal(false);
+      setEditingHoliday(null);
+      showNotification('success', 'Holiday updated successfully');
+      addActivityLog('holiday_updated', `Holiday "${editingHolidayForm.name}" updated`, 'info');
+    } catch (error) {
+      console.error('Failed to update holiday:', error);
+      showNotification('error', 'Failed to update holiday');
+    } finally {
+      setUpdatingHoliday(false);
+    }
+  };
+
+  const handleDeleteHoliday = async (holidayId: string) => {
+    if (!confirm('Are you sure you want to delete this holiday?')) return;
+
+    try {
+      // Mock API call - replace with actual API
+      setHolidays(prev => prev.filter(holiday => holiday.id !== holidayId));
+      showNotification('success', 'Holiday deleted successfully');
+      addActivityLog('holiday_deleted', 'Holiday deleted', 'warning');
+    } catch (error) {
+      console.error('Failed to delete holiday:', error);
+      showNotification('error', 'Failed to delete holiday');
+    }
+  };
+
+  const handleHolidayFormChange = (field: string, value: string) => {
+    setCreateHolidayForm(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleEditHolidayFormChange = (field: string, value: string) => {
+    setEditingHolidayForm(prev => ({ ...prev, [field]: value }));
+  };
+
+  const filteredHolidays = holidays.filter(holiday =>
+    holiday.name.toLowerCase().includes(searchHolidays.toLowerCase()) ||
+    holiday.description.toLowerCase().includes(searchHolidays.toLowerCase())
+  );
+
+  // Database Management Handlers
+  const loadDatabaseStatus = async () => {
+    try {
+      // Mock data for now - replace with actual API call
+      setDatabaseStatus({
+        status: 'healthy',
+        size: '2.5 GB',
+        tables: 15,
+        lastBackup: '2025-01-20 10:30:00',
+        uptime: '15 days'
+      });
+      
+      setBackupHistory([
+        { id: '1', filename: 'backup_2025_01_20.sql', size: '2.5 GB', createdAt: '2025-01-20 10:30:00', status: 'completed' },
+        { id: '2', filename: 'backup_2025_01_19.sql', size: '2.4 GB', createdAt: '2025-01-19 10:30:00', status: 'completed' },
+        { id: '3', filename: 'backup_2025_01_18.sql', size: '2.3 GB', createdAt: '2025-01-18 10:30:00', status: 'completed' }
+      ]);
+    } catch (error) {
+      console.error('Failed to load database status:', error);
+      showNotification('error', 'Failed to load database status');
+    }
+  };
+
+  const handleCreateBackup = async () => {
+    setCreatingBackup(true);
+    try {
+      // Mock API call - replace with actual API
+      await new Promise(resolve => setTimeout(resolve, 2000)); // Simulate backup process
+      
+      const newBackup = {
+        id: Date.now().toString(),
+        filename: `backup_${new Date().toISOString().split('T')[0]}.sql`,
+        size: '2.5 GB',
+        createdAt: new Date().toISOString(),
+        status: 'completed'
+      };
+      
+      setBackupHistory(prev => [newBackup, ...prev]);
+      showNotification('success', 'Database backup created successfully');
+      addActivityLog('backup_created', 'Database backup created', 'info');
+    } catch (error) {
+      console.error('Failed to create backup:', error);
+      showNotification('error', 'Failed to create backup');
+    } finally {
+      setCreatingBackup(false);
+    }
+  };
+
+  const handleRestoreBackup = async (backupId: string) => {
+    if (!confirm('Are you sure you want to restore this backup? This will overwrite current data.')) return;
+
+    setRestoringBackup(true);
+    try {
+      // Mock API call - replace with actual API
+      await new Promise(resolve => setTimeout(resolve, 3000)); // Simulate restore process
+      
+      showNotification('success', 'Database restored successfully');
+      addActivityLog('backup_restored', 'Database restored from backup', 'warning');
+    } catch (error) {
+      console.error('Failed to restore backup:', error);
+      showNotification('error', 'Failed to restore backup');
+    } finally {
+      setRestoringBackup(false);
+    }
   };
 
   const getSeverityColor = (severity: string) => {
@@ -846,52 +1206,360 @@ const AdminPanel: React.FC = () => {
   );
 
   const renderUserRoles = () => (
-    <div className="bg-white rounded-lg shadow p-6">
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-xl font-semibold text-gray-900">จัดการสิทธิ์การใช้งาน</h2>
-        <button className="bg-primary-600 text-white px-4 py-2 rounded-md hover:bg-primary-700 flex items-center">
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h3 className="text-lg font-medium text-gray-900">จัดการสิทธิ์การใช้งาน</h3>
+        <button 
+          className="bg-primary-600 text-white px-4 py-2 rounded-md hover:bg-primary-700 flex items-center" 
+          onClick={handleCreateRole}
+        >
           <Plus className="h-4 w-4 mr-2" />
           เพิ่มสิทธิ์ใหม่
         </button>
       </div>
-      <div className="text-center py-8">
-        <UserCog className="mx-auto h-12 w-12 text-gray-400" />
-        <h3 className="mt-2 text-sm font-medium text-gray-900">จัดการสิทธิ์การใช้งาน</h3>
-        <p className="mt-1 text-sm text-gray-500">จัดการบทบาทและสิทธิ์ของผู้ใช้ในระบบ</p>
+
+      <div className="bg-white rounded-lg shadow overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-200">
+          <div className="flex items-center justify-between">
+            <h4 className="text-lg font-medium text-gray-900">Roles & Permissions</h4>
+            <div className="flex space-x-2">
+              <input
+                type="text"
+                placeholder="Search roles..."
+                value={searchRoles}
+                onChange={(e) => setSearchRoles(e.target.value)}
+                className="px-3 py-1 border border-gray-300 rounded-md text-sm"
+              />
+            </div>
+          </div>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Role Name
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Description
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Permissions
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Actions
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {filteredRoles.map((role) => (
+                <tr key={role.id}>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="flex items-center">
+                      <div className="flex-shrink-0 h-10 w-10">
+                        <div className="h-10 w-10 rounded-full bg-primary-100 flex items-center justify-center">
+                          <UserCog className="h-5 w-5 text-primary-600" />
+                        </div>
+                      </div>
+                      <div className="ml-4">
+                        <div className="text-sm font-medium text-gray-900">{role.name}</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-900">{role.description}</div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="flex flex-wrap gap-1">
+                      {role.permissions.map((permission: string) => (
+                        <span
+                          key={permission}
+                          className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800"
+                        >
+                          {permission}
+                        </span>
+                      ))}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                    <div className="flex space-x-2">
+                      <button 
+                        className="text-primary-600 hover:text-primary-900 flex items-center"
+                        onClick={() => handleEditRole(role)}
+                      >
+                        <Edit className="h-4 w-4 mr-1" />
+                        Edit
+                      </button>
+                      <button 
+                        className="text-red-600 hover:text-red-900 flex items-center"
+                        onClick={() => handleDeleteRole(role.id)}
+                      >
+                        <Trash2 className="h-4 w-4 mr-1" />
+                        Delete
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );
 
   const renderHolidayManagement = () => (
-    <div className="bg-white rounded-lg shadow p-6">
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-xl font-semibold text-gray-900">จัดการวันหยุด</h2>
-        <button className="bg-primary-600 text-white px-4 py-2 rounded-md hover:bg-primary-700 flex items-center">
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h3 className="text-lg font-medium text-gray-900">จัดการวันหยุด</h3>
+        <button 
+          className="bg-primary-600 text-white px-4 py-2 rounded-md hover:bg-primary-700 flex items-center"
+          onClick={handleCreateHoliday}
+        >
           <Plus className="h-4 w-4 mr-2" />
           เพิ่มวันหยุด
         </button>
       </div>
-      <div className="text-center py-8">
-        <Calendar className="mx-auto h-12 w-12 text-gray-400" />
-        <h3 className="mt-2 text-sm font-medium text-gray-900">จัดการวันหยุด</h3>
-        <p className="mt-1 text-sm text-gray-500">เพิ่ม แก้ไข และลบวันหยุดในระบบ</p>
+
+      <div className="bg-white rounded-lg shadow overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-200">
+          <div className="flex items-center justify-between">
+            <h4 className="text-lg font-medium text-gray-900">Holidays</h4>
+            <div className="flex space-x-2">
+              <input
+                type="text"
+                placeholder="Search holidays..."
+                value={searchHolidays}
+                onChange={(e) => setSearchHolidays(e.target.value)}
+                className="px-3 py-1 border border-gray-300 rounded-md text-sm"
+              />
+            </div>
+          </div>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Holiday Name
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Date
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Description
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Actions
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {filteredHolidays.map((holiday) => (
+                <tr key={holiday.id}>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="flex items-center">
+                      <div className="flex-shrink-0 h-10 w-10">
+                        <div className="h-10 w-10 rounded-full bg-yellow-100 flex items-center justify-center">
+                          <Calendar className="h-5 w-5 text-yellow-600" />
+                        </div>
+                      </div>
+                      <div className="ml-4">
+                        <div className="text-sm font-medium text-gray-900">{holiday.name}</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-900">
+                      {new Date(holiday.date).toLocaleDateString('th-TH', {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric'
+                      })}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="text-sm text-gray-900">{holiday.description}</div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                    <div className="flex space-x-2">
+                      <button 
+                        className="text-primary-600 hover:text-primary-900 flex items-center"
+                        onClick={() => handleEditHoliday(holiday)}
+                      >
+                        <Edit className="h-4 w-4 mr-1" />
+                        Edit
+                      </button>
+                      <button 
+                        className="text-red-600 hover:text-red-900 flex items-center"
+                        onClick={() => handleDeleteHoliday(holiday.id)}
+                      >
+                        <Trash2 className="h-4 w-4 mr-1" />
+                        Delete
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );
 
   const renderDatabaseManagement = () => (
-    <div className="bg-white rounded-lg shadow p-6">
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-xl font-semibold text-gray-900">จัดการฐานข้อมูล</h2>
-        <button className="bg-primary-600 text-white px-4 py-2 rounded-md hover:bg-primary-700 flex items-center">
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h3 className="text-lg font-medium text-gray-900">จัดการฐานข้อมูล</h3>
+        <button 
+          className="bg-primary-600 text-white px-4 py-2 rounded-md hover:bg-primary-700 flex items-center"
+          onClick={handleCreateBackup}
+          disabled={creatingBackup}
+        >
           <Save className="h-4 w-4 mr-2" />
-          สำรองข้อมูล
+          {creatingBackup ? 'Creating Backup...' : 'สำรองข้อมูล'}
         </button>
       </div>
-      <div className="text-center py-8">
-        <Building2 className="mx-auto h-12 w-12 text-gray-400" />
-        <h3 className="mt-2 text-sm font-medium text-gray-900">จัดการฐานข้อมูล</h3>
-        <p className="mt-1 text-sm text-gray-500">สำรองและกู้คืนข้อมูลในระบบ</p>
+
+      {/* Database Status */}
+      {databaseStatus && (
+        <div className="bg-white rounded-lg shadow p-6">
+          <h4 className="text-lg font-medium text-gray-900 mb-4">Database Status</h4>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="bg-green-50 p-4 rounded-lg">
+              <div className="flex items-center">
+                <div className="flex-shrink-0">
+                  <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                    <div className="w-3 h-3 bg-green-600 rounded-full"></div>
+                  </div>
+                </div>
+                <div className="ml-3">
+                  <p className="text-sm font-medium text-green-800">Status</p>
+                  <p className="text-lg font-semibold text-green-900 capitalize">{databaseStatus.status}</p>
+                </div>
+              </div>
+            </div>
+            <div className="bg-blue-50 p-4 rounded-lg">
+              <div className="flex items-center">
+                <div className="flex-shrink-0">
+                  <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                    <Building2 className="w-4 h-4 text-blue-600" />
+                  </div>
+                </div>
+                <div className="ml-3">
+                  <p className="text-sm font-medium text-blue-800">Size</p>
+                  <p className="text-lg font-semibold text-blue-900">{databaseStatus.size}</p>
+                </div>
+              </div>
+            </div>
+            <div className="bg-purple-50 p-4 rounded-lg">
+              <div className="flex items-center">
+                <div className="flex-shrink-0">
+                  <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
+                    <div className="w-4 h-4 text-purple-600 font-bold">{databaseStatus.tables}</div>
+                  </div>
+                </div>
+                <div className="ml-3">
+                  <p className="text-sm font-medium text-purple-800">Tables</p>
+                  <p className="text-lg font-semibold text-purple-900">{databaseStatus.tables}</p>
+                </div>
+              </div>
+            </div>
+            <div className="bg-yellow-50 p-4 rounded-lg">
+              <div className="flex items-center">
+                <div className="flex-shrink-0">
+                  <div className="w-8 h-8 bg-yellow-100 rounded-full flex items-center justify-center">
+                    <Clock className="w-4 h-4 text-yellow-600" />
+                  </div>
+                </div>
+                <div className="ml-3">
+                  <p className="text-sm font-medium text-yellow-800">Uptime</p>
+                  <p className="text-lg font-semibold text-yellow-900">{databaseStatus.uptime}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Backup History */}
+      <div className="bg-white rounded-lg shadow overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-200">
+          <h4 className="text-lg font-medium text-gray-900">Backup History</h4>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Filename
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Size
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Created
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Status
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Actions
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {backupHistory.map((backup) => (
+                <tr key={backup.id}>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="flex items-center">
+                      <div className="flex-shrink-0 h-10 w-10">
+                        <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
+                          <Save className="h-5 w-5 text-blue-600" />
+                        </div>
+                      </div>
+                      <div className="ml-4">
+                        <div className="text-sm font-medium text-gray-900">{backup.filename}</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-900">{backup.size}</div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-900">
+                      {new Date(backup.createdAt).toLocaleString('th-TH')}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                      backup.status === 'completed' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+                    }`}>
+                      {backup.status}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                    <button 
+                      className="text-primary-600 hover:text-primary-900 flex items-center"
+                      onClick={() => handleRestoreBackup(backup.id)}
+                      disabled={restoringBackup}
+                    >
+                      <div className="h-4 w-4 mr-1">
+                        {restoringBackup ? (
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-600"></div>
+                        ) : (
+                          <div className="text-primary-600">↻</div>
+                        )}
+                      </div>
+                      {restoringBackup ? 'Restoring...' : 'Restore'}
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );
