@@ -84,7 +84,7 @@ const Layout: React.FC = () => {
   // Comprehensive Admin Panel menu items
   const adminNavigation = [
     {
-      name: t('menu.admin_panel'),
+      name: t('menu.admin_panel', 'จัดการระบบ'),
       icon: Shield,
       href: '/admin',
     },

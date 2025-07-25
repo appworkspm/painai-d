@@ -15,7 +15,8 @@ import {
   LogOut,
   Bell,
   User,
-  ChevronDown
+  ChevronDown,
+  Shield
 } from 'lucide-react';
 import { NotificationCenter } from '../ui/NotificationCenter';
 import { EnhancedAIAssistant } from '../ui/EnhancedAIAssistant';
@@ -70,7 +71,7 @@ const MobileLayout: React.FC = () => {
   const adminNavigation = [
     {
       name: t('menu.admin_panel', 'จัดการระบบ'),
-      icon: Users,
+      icon: Shield,
       href: '/admin',
     },
   ];
