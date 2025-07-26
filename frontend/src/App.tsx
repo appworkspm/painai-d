@@ -22,6 +22,7 @@ import CompletedProjects from './pages/CompletedProjects';
 import TimesheetHistory from './pages/TimesheetHistory';
 import TimesheetApproval from './pages/TimesheetApproval';
 import TimesheetReport from './pages/TimesheetReport';
+import UserActivityReport from './pages/UserActivityReport';
 import WorkloadReport from './pages/WorkloadReport';
 import ProjectReport from './pages/ProjectReport';
 import ProjectCostReport from './pages/ProjectCostReport';

@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next';
-import { Tag } from 'antd';
-import type { TagProps } from 'antd';
+import { Tag, TagProps } from 'antd';
+import React from 'react';
 
 type StatusType = 'project' | 'timesheet' | 'costRequest';
 
@@ -88,11 +88,10 @@ export const StatusTag: React.FC<StatusTagProps> = ({ type, status, className })
   const color = getStatusColor(type, status);
   const text = getStatusText(type, status);
   
-  return (
-    <Tag color={color} className={className}>
-      {text}
-    </Tag>
-  );
+  return React.createElement(Tag, { 
+    color: color as TagProps['color'], 
+    className: className 
+  }, text);
 };
 
 export default {
