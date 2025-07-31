@@ -19,7 +19,7 @@ router.get('/events', async (req: IAuthenticatedRequest, res) => {
     // Get events from timesheets, projects, and other sources
     const events = await prisma.timesheet.findMany({
       where: {
-        userId: userId,
+        user_id: userId,
         date: {
           gte: new Date(new Date().getFullYear(), 0, 1), // Start of current year
           lte: new Date(new Date().getFullYear(), 11, 31) // End of current year
@@ -30,14 +30,8 @@ router.get('/events', async (req: IAuthenticatedRequest, res) => {
         date: true,
         activity: true,
         description: true,
-        hoursWorked: true,
-        status: true,
-        project: {
-          select: {
-            id: true,
-            name: true
-          }
-        }
+        hours_worked: true,
+        status: true
       },
       orderBy: {
         date: 'asc'
@@ -82,7 +76,7 @@ router.get('/events/range', async (req: IAuthenticatedRequest, res) => {
 
     const events = await prisma.timesheet.findMany({
       where: {
-        userId: userId,
+        user_id: userId,
         date: {
           gte: new Date(startDate as string),
           lte: new Date(endDate as string)
@@ -93,14 +87,8 @@ router.get('/events/range', async (req: IAuthenticatedRequest, res) => {
         date: true,
         activity: true,
         description: true,
-        hoursWorked: true,
-        status: true,
-        project: {
-          select: {
-            id: true,
-            name: true
-          }
-        }
+        hours_worked: true,
+        status: true
       },
       orderBy: {
         date: 'asc'
