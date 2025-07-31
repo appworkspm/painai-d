@@ -19,7 +19,7 @@ router.get('/events', async (req: IAuthenticatedRequest, res) => {
     // Get events from timesheets, projects, and other sources
     const events = await prisma.timesheet.findMany({
       where: {
-        user_id: userId,
+        userId: userId,
         date: {
           gte: new Date(new Date().getFullYear(), 0, 1), // Start of current year
           lte: new Date(new Date().getFullYear(), 11, 31) // End of current year
@@ -30,7 +30,7 @@ router.get('/events', async (req: IAuthenticatedRequest, res) => {
         date: true,
         activity: true,
         description: true,
-        hours_worked: true,
+        hoursWorked: true,
         status: true,
         project: {
           select: {
@@ -50,12 +50,12 @@ router.get('/events', async (req: IAuthenticatedRequest, res) => {
       title: event.activity,
       description: event.description,
       startTime: new Date(event.date),
-      endTime: new Date(new Date(event.date).getTime() + event.hours_worked * 60 * 60 * 1000),
+      endTime: new Date(new Date(event.date).getTime() + event.hoursWorked * 60 * 60 * 1000),
       type: 'timesheet' as const,
       priority: event.status === 'submitted' ? 'high' : 'medium',
       projectId: event.project?.id,
       projectName: event.project?.name,
-      hours: event.hours_worked,
+      hours: event.hoursWorked,
       status: event.status
     }));
 
@@ -82,7 +82,7 @@ router.get('/events/range', async (req: IAuthenticatedRequest, res) => {
 
     const events = await prisma.timesheet.findMany({
       where: {
-        user_id: userId,
+        userId: userId,
         date: {
           gte: new Date(startDate as string),
           lte: new Date(endDate as string)
@@ -93,7 +93,7 @@ router.get('/events/range', async (req: IAuthenticatedRequest, res) => {
         date: true,
         activity: true,
         description: true,
-        hours_worked: true,
+        hoursWorked: true,
         status: true,
         project: {
           select: {
@@ -112,12 +112,12 @@ router.get('/events/range', async (req: IAuthenticatedRequest, res) => {
       title: event.activity,
       description: event.description,
       startTime: new Date(event.date),
-      endTime: new Date(new Date(event.date).getTime() + event.hours_worked * 60 * 60 * 1000),
+      endTime: new Date(new Date(event.date).getTime() + event.hoursWorked * 60 * 60 * 1000),
       type: 'timesheet' as const,
       priority: event.status === 'submitted' ? 'high' : 'medium',
       projectId: event.project?.id,
       projectName: event.project?.name,
-      hours: event.hours_worked,
+      hours: event.hoursWorked,
       status: event.status
     }));
 

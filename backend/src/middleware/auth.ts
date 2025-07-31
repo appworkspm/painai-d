@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { verifyToken, extractTokenFromHeader } from '../utils/auth';
 import { prisma } from '../utils/database';
 import { IAuthenticatedRequest, IUser } from '../types';
+export type { IAuthenticatedRequest };
 
 export const authenticate = async (
   req: IAuthenticatedRequest,

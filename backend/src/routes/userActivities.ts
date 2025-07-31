@@ -18,7 +18,7 @@ router.get('/', requireAdmin, async (req: IAuthenticatedRequest, res) => {
     const where: any = {};
     
     if (userId) {
-      where.user_id = userId as string;
+      where.userId = userId as string;
     }
     
     if (action) {
@@ -61,13 +61,13 @@ router.get('/', requireAdmin, async (req: IAuthenticatedRequest, res) => {
     // Transform data for frontend
     const transformedActivities = activities.map(activity => ({
       id: activity.id,
-      userId: activity.user_id,
+      userId: activity.userId,
       userName: activity.user?.name || 'Unknown User',
       userEmail: activity.user?.email || 'unknown@example.com',
       action: activity.action,
       description: activity.description,
-      ipAddress: activity.ip_address || 'N/A',
-      userAgent: activity.user_agent || 'N/A',
+      ipAddress: activity.ipAddress || 'N/A',
+      userAgent: activity.userAgent || 'N/A',
       timestamp: activity.timestamp.toISOString(),
       status: activity.status || 'SUCCESS'
     }));
@@ -100,7 +100,7 @@ router.get('/user/:userId', requireAdmin, async (req: IAuthenticatedRequest, res
 
     const activities = await prisma.activityLog.findMany({
       where: {
-        user_id: userId
+        userId: userId
       },
       include: {
         user: {
@@ -119,18 +119,18 @@ router.get('/user/:userId', requireAdmin, async (req: IAuthenticatedRequest, res
     });
 
     const total = await prisma.activityLog.count({
-      where: { user_id: userId }
+      where: { userId: userId }
     });
 
     const transformedActivities = activities.map(activity => ({
       id: activity.id,
-      userId: activity.user_id,
+      userId: activity.userId,
       userName: activity.user?.name || 'Unknown User',
       userEmail: activity.user?.email || 'unknown@example.com',
       action: activity.action,
       description: activity.description,
-      ipAddress: activity.ip_address || 'N/A',
-      userAgent: activity.user_agent || 'N/A',
+      ipAddress: activity.ipAddress || 'N/A',
+      userAgent: activity.userAgent || 'N/A',
       timestamp: activity.timestamp.toISOString(),
       status: activity.status || 'SUCCESS'
     }));
@@ -190,10 +190,10 @@ router.get('/stats', requireAdmin, async (req: IAuthenticatedRequest, res) => {
 
     // Get unique users
     const uniqueUsers = await prisma.activityLog.groupBy({
-      by: ['user_id'],
+      by: ['userId'],
       where,
       _count: {
-        user_id: true
+        userId: true
       }
     });
 
