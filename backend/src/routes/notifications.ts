@@ -11,15 +11,15 @@ router.use(authenticate);
 // Get notifications for the current user
 router.get('/', async (req: IAuthenticatedRequest, res) => {
   try {
-    const user_id = req.user?.id;
-    if (!user_id) {
+    const userId = req.user?.id;
+    if (!userId) {
       return res.status(401).json({ error: 'User not authenticated' });
     }
 
     // Get user's timesheets that need attention
     const pendingTimesheets = await prisma.timesheet.findMany({
       where: {
-        user_id: user_id,
+        userId: userId,
         status: 'submitted'
       },
       select: {
@@ -37,14 +37,14 @@ router.get('/', async (req: IAuthenticatedRequest, res) => {
     // Get cost requests that need attention
     const pendingCostRequests = await prisma.costRequest.findMany({
       where: {
-        user_id: user_id,
+        userId: userId,
         status: 'pending'
       },
       select: {
         id: true,
         title: true,
         amount: true,
-        created_at: true
+        createdAt: true
       }
     });
 
@@ -104,10 +104,10 @@ router.get('/', async (req: IAuthenticatedRequest, res) => {
 // Mark notification as read
 router.patch('/:id/read', async (req: IAuthenticatedRequest, res) => {
   try {
-    const user_id = req.user?.id;
+    const userId = req.user?.id;
     const { id } = req.params;
 
-    if (!user_id) {
+    if (!userId) {
       return res.status(401).json({ error: 'User not authenticated' });
     }
 
@@ -123,9 +123,9 @@ router.patch('/:id/read', async (req: IAuthenticatedRequest, res) => {
 // Mark all notifications as read
 router.patch('/read-all', async (req: IAuthenticatedRequest, res) => {
   try {
-    const user_id = req.user?.id;
+    const userId = req.user?.id;
 
-    if (!user_id) {
+    if (!userId) {
       return res.status(401).json({ error: 'User not authenticated' });
     }
 
@@ -141,10 +141,10 @@ router.patch('/read-all', async (req: IAuthenticatedRequest, res) => {
 // Delete notification
 router.delete('/:id', async (req: IAuthenticatedRequest, res) => {
   try {
-    const user_id = req.user?.id;
+    const userId = req.user?.id;
     const { id } = req.params;
 
-    if (!user_id) {
+    if (!userId) {
       return res.status(401).json({ error: 'User not authenticated' });
     }
 
