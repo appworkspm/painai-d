@@ -190,7 +190,7 @@ router.get('/stats', requireAdmin, async (req: IAuthenticatedRequest, res) => {
 
     // Get unique users
     const uniqueUsers = await prisma.activityLog.groupBy({
-      by: ['userId'],
+      by: ['user_id'],
       where,
       _count: {
         userId: true

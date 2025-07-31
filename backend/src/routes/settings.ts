@@ -1,6 +1,6 @@
 import express from 'express';
 import { PrismaClient } from '@prisma/client';
-import { authenticate, requireAdmin } from '../middleware/auth';
+import { authenticate, requireAdmin, IAuthenticatedRequest } from '../middleware/auth';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -41,7 +41,7 @@ router.get('/settings', authenticate, requireAdmin, async (req, res) => {
  * @description Update system settings
  * @middleware authenticate, requireAdmin
  */
-router.put('/settings', authenticate, requireAdmin, async (req, res) => {
+router.put('/settings', authenticate, requireAdmin, async (req: IAuthenticatedRequest, res) => {
   try {
     const { 
       systemName, 
@@ -123,7 +123,7 @@ router.put('/settings', authenticate, requireAdmin, async (req, res) => {
  * @description Reset system settings to defaults
  * @middleware authenticate, requireAdmin
  */
-router.post('/settings/reset', authenticate, requireAdmin, async (req, res) => {
+router.post('/settings/reset', authenticate, requireAdmin, async (req: IAuthenticatedRequest, res) => {
   try {
     // Reset to default settings
     systemSettings = {
