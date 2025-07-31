@@ -11,14 +11,14 @@ router.use(authenticate);
 // Get user activities (admin only)
 router.get('/', requireAdmin, async (req: IAuthenticatedRequest, res) => {
   try {
-    const { page = 1, limit = 50, userId, action, status, startDate, endDate } = req.query;
+    const { page = 1, limit = 50, user_id, action, status, startDate, endDate } = req.query;
     const skip = (Number(page) - 1) * Number(limit);
 
     // Build where clause
     const where: any = {};
     
-    if (userId) {
-      where.userId = userId as string;
+    if (user_id) {
+      where.user_id = user_id as string;
     }
     
     if (action) {
@@ -30,7 +30,7 @@ router.get('/', requireAdmin, async (req: IAuthenticatedRequest, res) => {
     }
     
     if (startDate && endDate) {
-      where.timestamp = {
+      where.created_at = {
         gte: new Date(startDate as string),
         lte: new Date(endDate as string)
       };
@@ -49,7 +49,7 @@ router.get('/', requireAdmin, async (req: IAuthenticatedRequest, res) => {
         }
       },
       orderBy: {
-        timestamp: 'desc'
+        created_at: 'desc'
       },
       skip,
       take: Number(limit)
@@ -61,14 +61,14 @@ router.get('/', requireAdmin, async (req: IAuthenticatedRequest, res) => {
     // Transform data for frontend
     const transformedActivities = activities.map(activity => ({
       id: activity.id,
-      userId: activity.userId,
+      user_id: activity.user_id,
       userName: activity.user?.name || 'Unknown User',
       userEmail: activity.user?.email || 'unknown@example.com',
       action: activity.action,
       description: activity.description,
-      ipAddress: activity.ipAddress || 'N/A',
-      userAgent: activity.userAgent || 'N/A',
-      timestamp: activity.timestamp.toISOString(),
+      ip_address: activity.ip_address || 'N/A',
+      user_agent: activity.user_agent || 'N/A',
+      created_at: activity.created_at.toISOString(),
       status: activity.status || 'SUCCESS'
     }));
 
@@ -92,15 +92,15 @@ router.get('/', requireAdmin, async (req: IAuthenticatedRequest, res) => {
 });
 
 // Get activities for specific user
-router.get('/user/:userId', requireAdmin, async (req: IAuthenticatedRequest, res) => {
+router.get('/user/:user_id', requireAdmin, async (req: IAuthenticatedRequest, res) => {
   try {
-    const { userId } = req.params;
+    const { user_id } = req.params;
     const { page = 1, limit = 50 } = req.query;
     const skip = (Number(page) - 1) * Number(limit);
 
     const activities = await prisma.activityLog.findMany({
       where: {
-        userId: userId
+        user_id: user_id
       },
       include: {
         user: {
@@ -112,26 +112,26 @@ router.get('/user/:userId', requireAdmin, async (req: IAuthenticatedRequest, res
         }
       },
       orderBy: {
-        timestamp: 'desc'
+        created_at: 'desc'
       },
       skip,
       take: Number(limit)
     });
 
     const total = await prisma.activityLog.count({
-      where: { userId: userId }
+      where: { user_id: user_id }
     });
 
     const transformedActivities = activities.map(activity => ({
       id: activity.id,
-      userId: activity.userId,
+      user_id: activity.user_id,
       userName: activity.user?.name || 'Unknown User',
       userEmail: activity.user?.email || 'unknown@example.com',
       action: activity.action,
       description: activity.description,
-      ipAddress: activity.ipAddress || 'N/A',
-      userAgent: activity.userAgent || 'N/A',
-      timestamp: activity.timestamp.toISOString(),
+      ip_address: activity.ip_address || 'N/A',
+      user_agent: activity.user_agent || 'N/A',
+      created_at: activity.created_at.toISOString(),
       status: activity.status || 'SUCCESS'
     }));
 
@@ -161,7 +161,7 @@ router.get('/stats', requireAdmin, async (req: IAuthenticatedRequest, res) => {
     
     const where: any = {};
     if (startDate && endDate) {
-      where.timestamp = {
+      where.created_at = {
         gte: new Date(startDate as string),
         lte: new Date(endDate as string)
       };
@@ -190,10 +190,10 @@ router.get('/stats', requireAdmin, async (req: IAuthenticatedRequest, res) => {
 
     // Get unique users
     const uniqueUsers = await prisma.activityLog.groupBy({
-      by: ['userId'],
+      by: ['user_id'],
       where,
       _count: {
-        userId: true
+        user_id: true
       }
     });
 

@@ -11,15 +11,15 @@ router.use(authenticate);
 // Get calendar events for the current user
 router.get('/events', async (req: IAuthenticatedRequest, res) => {
   try {
-    const userId = req.user?.id;
-    if (!userId) {
+    const user_id = req.user?.id;
+    if (!user_id) {
       return res.status(401).json({ error: 'User not authenticated' });
     }
 
     // Get events from timesheets, projects, and other sources
     const events = await prisma.timesheet.findMany({
       where: {
-        userId: userId,
+        user_id: user_id,
         date: {
           gte: new Date(new Date().getFullYear(), 0, 1), // Start of current year
           lte: new Date(new Date().getFullYear(), 11, 31) // End of current year
@@ -30,7 +30,7 @@ router.get('/events', async (req: IAuthenticatedRequest, res) => {
         date: true,
         activity: true,
         description: true,
-        hoursWorked: true,
+        hours_worked: true,
         status: true,
         project: {
           select: {
@@ -50,12 +50,12 @@ router.get('/events', async (req: IAuthenticatedRequest, res) => {
       title: event.activity,
       description: event.description,
       startTime: new Date(event.date),
-      endTime: new Date(new Date(event.date).getTime() + event.hoursWorked * 60 * 60 * 1000),
+      endTime: new Date(new Date(event.date).getTime() + event.hours_worked * 60 * 60 * 1000),
       type: 'timesheet' as const,
       priority: event.status === 'submitted' ? 'high' : 'medium',
-      projectId: event.project?.id,
+      project_id: event.project?.id,
       projectName: event.project?.name,
-      hours: event.hoursWorked,
+      hours: event.hours_worked,
       status: event.status
     }));
 
@@ -69,10 +69,10 @@ router.get('/events', async (req: IAuthenticatedRequest, res) => {
 // Get calendar events for a specific date range
 router.get('/events/range', async (req: IAuthenticatedRequest, res) => {
   try {
-    const userId = req.user?.id;
+    const user_id = req.user?.id;
     const { startDate, endDate } = req.query;
 
-    if (!userId) {
+    if (!user_id) {
       return res.status(401).json({ error: 'User not authenticated' });
     }
 
@@ -82,7 +82,7 @@ router.get('/events/range', async (req: IAuthenticatedRequest, res) => {
 
     const events = await prisma.timesheet.findMany({
       where: {
-        userId: userId,
+        user_id: user_id,
         date: {
           gte: new Date(startDate as string),
           lte: new Date(endDate as string)
@@ -93,7 +93,7 @@ router.get('/events/range', async (req: IAuthenticatedRequest, res) => {
         date: true,
         activity: true,
         description: true,
-        hoursWorked: true,
+        hours_worked: true,
         status: true,
         project: {
           select: {
@@ -112,12 +112,12 @@ router.get('/events/range', async (req: IAuthenticatedRequest, res) => {
       title: event.activity,
       description: event.description,
       startTime: new Date(event.date),
-      endTime: new Date(new Date(event.date).getTime() + event.hoursWorked * 60 * 60 * 1000),
+      endTime: new Date(new Date(event.date).getTime() + event.hours_worked * 60 * 60 * 1000),
       type: 'timesheet' as const,
       priority: event.status === 'submitted' ? 'high' : 'medium',
-      projectId: event.project?.id,
+      project_id: event.project?.id,
       projectName: event.project?.name,
-      hours: event.hoursWorked,
+      hours: event.hours_worked,
       status: event.status
     }));
 
