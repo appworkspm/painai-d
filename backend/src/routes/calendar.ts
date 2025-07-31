@@ -53,9 +53,9 @@ router.get('/events', async (req: IAuthenticatedRequest, res) => {
       endTime: new Date(new Date(event.date).getTime() + Number(event.hours_worked) * 60 * 60 * 1000),
       type: 'timesheet' as const,
       priority: event.status === 'submitted' ? 'high' : 'medium',
-      projectId: event.project?.id,
-      projectName: event.project?.name,
-      hours: event.hoursWorked,
+      // projectId: event.project?.id, // removed
+      // projectName: event.project?.name, // removed
+      hours: Number(event.hours_worked),
       status: event.status
     }));
 
@@ -115,7 +115,7 @@ router.get('/events/range', async (req: IAuthenticatedRequest, res) => {
       endTime: new Date(new Date(event.date).getTime() + Number(event.hours_worked) * 60 * 60 * 1000),
       type: 'timesheet' as const,
       priority: event.status === 'submitted' ? 'high' : 'medium',
-      hours: event.hours_worked,
+      hours: Number(event.hours_worked),
       status: event.status
     }));
 

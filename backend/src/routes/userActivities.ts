@@ -18,7 +18,7 @@ router.get('/', requireAdmin, async (req: IAuthenticatedRequest, res) => {
     const where: any = {};
     
     if (userId) {
-      where.userId = userId as string;
+      where.user_id = userId as string;
     }
     
     if (action) {
@@ -31,15 +31,21 @@ router.get('/', requireAdmin, async (req: IAuthenticatedRequest, res) => {
     
     if (startDate && endDate) {
       where.createdAt = {
-        gte: new Date(startDate as string),
-        lte: new Date(endDate as string)
       };
     }
 
     // Get activities from activity logs
     const activities = await prisma.activityLog.findMany({
       where,
-      include: {
+      select: {
+        id: true,
+        user_id: true,
+        action: true,
+        description: true,
+        ip_address: true,
+        user_agent: true,
+        created_at: true,
+        status: true,
         user: {
           select: {
             id: true,
