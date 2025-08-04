@@ -263,9 +263,12 @@ export const updateProfile = async (req: Request, res: Response): Promise<void> 
 
 export const refreshToken = async (req: Request, res: Response): Promise<void> => {
   try {
+    console.log('Refresh token request received:', req.body);
+    
     const { refreshToken } = req.body;
 
     if (!refreshToken) {
+      console.log('No refresh token provided');
       res.status(400).json({
         success: false,
         message: 'Refresh token is required'
@@ -273,14 +276,22 @@ export const refreshToken = async (req: Request, res: Response): Promise<void> =
       return;
     }
 
+    console.log('Looking up refresh token in database...');
     // Verify the refresh token
     const storedToken = await prisma.refreshToken.findUnique({
       where: { token: refreshToken },
       include: { user: true }
     });
 
+    console.log('Stored token found:', !!storedToken);
+    
     // Check if token exists and is not expired
-    if (!storedToken || storedToken.revoked || new Date() > storedToken.expiresAt) {
+    const now = new Date();
+    const isTokenExpired = storedToken && storedToken.expiresAt < now;
+    
+    if (!storedToken || storedToken.revoked || isTokenExpired) {
+      console.log('Invalid or expired token. Revoked:', storedToken?.revoked, 'Expired:', isTokenExpired);
+      
       // If token is invalid, clean it up
       if (storedToken) {
         await prisma.refreshToken.delete({
@@ -290,13 +301,16 @@ export const refreshToken = async (req: Request, res: Response): Promise<void> =
       
       res.status(401).json({
         success: false,
-        message: 'Invalid or expired refresh token'
+        message: 'Invalid or expired refresh token',
+        code: 'INVALID_REFRESH_TOKEN'
       });
       return;
     }
 
     // Check if user still exists and is active
     if (!storedToken.user || !storedToken.user.isActive) {
+      console.log('User not found or inactive');
+      
       // Clean up all user's refresh tokens if user is no longer active
       await prisma.refreshToken.deleteMany({
         where: { userId: storedToken.userId }
@@ -304,29 +318,35 @@ export const refreshToken = async (req: Request, res: Response): Promise<void> =
       
       res.status(401).json({
         success: false,
-        message: 'User account is no longer active'
+        message: 'User account is no longer active',
+        code: 'USER_INACTIVE'
       });
       return;
     }
 
+    console.log('Generating new token pair...');
     // Generate new token pair
     const { accessToken: newAccessToken, refreshToken: newRefreshToken, expiresIn } = 
       generateTokenPair(storedToken.user);
 
+    console.log('Deleting old refresh token...');
     // Delete the used refresh token
     await prisma.refreshToken.delete({
       where: { id: storedToken.id }
     });
 
+    console.log('Creating new refresh token...');
     // Store the new refresh token
     await prisma.refreshToken.create({
       data: {
         token: newRefreshToken,
         userId: storedToken.userId,
-        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days from now
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days from now
+        revoked: false
       }
     });
 
+    console.log('Tokens refreshed successfully');
     res.status(200).json({
       success: true,
       message: 'Token refreshed successfully',
@@ -340,7 +360,9 @@ export const refreshToken = async (req: Request, res: Response): Promise<void> =
     console.error('Error refreshing token:', error);
     res.status(500).json({
       success: false,
-      message: 'Internal server error'
+      message: 'Internal server error',
+      error: error instanceof Error ? error.message : 'Unknown error',
+      code: 'INTERNAL_SERVER_ERROR'
     });
   }
 };
