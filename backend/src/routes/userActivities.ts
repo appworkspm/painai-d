@@ -18,7 +18,7 @@ router.get('/', requireAdmin, async (req: IAuthenticatedRequest, res) => {
     const where: any = {};
     
     if (userId) {
-      where.user_id = userId as string;
+      where.userId = userId as string;
     }
     
     if (action) {
@@ -39,12 +39,12 @@ router.get('/', requireAdmin, async (req: IAuthenticatedRequest, res) => {
       where,
       select: {
         id: true,
-        user_id: true,
+        userId: true,
         action: true,
         description: true,
-        ip_address: true,
-        user_agent: true,
-        created_at: true,
+        ipAddress: true,
+        userAgent: true,
+        createdAt: true,
         status: true,
         user: {
           select: {
@@ -196,7 +196,7 @@ router.get('/stats', requireAdmin, async (req: IAuthenticatedRequest, res) => {
 
     // Get unique users
     const uniqueUsers = await prisma.activityLog.groupBy({
-      by: ['user_id'],
+      by: ['userId'],
       where,
       _count: {
         userId: true
