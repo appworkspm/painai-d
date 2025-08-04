@@ -37,15 +37,24 @@ router.get('/', async (req: IAuthenticatedRequest, res) => {
     // Get cost requests that need attention
     const pendingCostRequests = await prisma.costRequest.findMany({
       where: {
-        requesterId: userId,
-        userId: userId,
-        status: 'pending'
+        requester_id: userId,  // Using snake_case for the field name
+        status: 'PENDING'  // Status should be uppercase according to the schema
       },
       select: {
         id: true,
         title: true,
         amount: true,
-        createdAt: true
+        requested_at: true,  // Using snake_case for the field name
+        requester: {
+          select: {
+            name: true
+          }
+        },
+        project: {
+          select: {
+            name: true
+          }
+        }
       }
     });
 

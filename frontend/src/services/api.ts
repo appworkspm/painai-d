@@ -160,18 +160,32 @@ const api = axios.create({
 // Request interceptor to add auth token
 api.interceptors.request.use(
   (config) => {
-    // ดึง token จาก localStorage ก่อน แล้วค่อย sessionStorage
-    const token = localStorage.getItem('token') || sessionStorage.getItem('token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-      console.log('Adding token to request:', {
-        url: config.url,
-        hasToken: !!token,
-        tokenLength: token.length
-      });
-    } else {
-      console.warn('No token found for request:', config.url);
+    // Skip for auth endpoints
+    if (config.url?.includes('/auth/')) {
+      return config;
     }
+
+    // Get tokens from storage (check both localStorage and sessionStorage)
+    const getStoredAuth = (): { accessToken: string } | null => {
+      const authData = localStorage.getItem('auth') || sessionStorage.getItem('auth');
+      return authData ? JSON.parse(authData) : null;
+    };
+
+    const storedAuth = getStoredAuth();
+    
+    if (storedAuth?.accessToken) {
+      config.headers.Authorization = `Bearer ${storedAuth.accessToken}`;
+      
+      if (process.env.NODE_ENV === 'development') {
+        console.debug('Adding token to request:', {
+          url: config.url,
+          tokenLength: storedAuth.accessToken.length
+        });
+      }
+    } else if (!config.url?.includes('/public/')) {
+      console.warn('No auth token found for secured endpoint:', config.url);
+    }
+    
     return config;
   },
   (error) => {
@@ -179,50 +193,73 @@ api.interceptors.request.use(
   }
 );
 
-// Response interceptor to handle auth errors
+// Response interceptor to handle auth errors and token refresh
 api.interceptors.response.use(
   (response) => response,
-  (error) => {
-    if (error.response?.status === 401) {
-      // ไม่ redirect ทันที แต่ให้ component จัดการเอง
-      console.warn('401 Unauthorized - Token may be invalid or expired', {
-        url: error.config.url,
-        isLoginRequest: error.config.url?.includes('/auth/login'),
-        hasToken: !!(localStorage.getItem('token') || sessionStorage.getItem('token'))
-      });
+  async (error) => {
+    const originalRequest = error.config;
+    
+    // If error is 401 and we haven't already tried to refresh the token
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      originalRequest._retry = true;
       
-      // ลบ token เฉพาะเมื่อไม่ใช่ login request และมี token อยู่จริง
-      const isLoginRequest = error.config.url?.includes('/auth/login');
-      const isPublicEndpoint = error.config.url?.includes('/health') || 
-                              error.config.url?.includes('/api') === false;
-      const isFirstLoad = error.config.url?.includes('/users') || 
-                         error.config.url?.includes('/projects') || 
-                         error.config.url?.includes('/activities');
-      
-      // ไม่ลบ token สำหรับ request แรกหลัง login
-      if (!isLoginRequest && !isPublicEndpoint && !isFirstLoad) {
-        const hasToken = !!(localStorage.getItem('token') || sessionStorage.getItem('token'));
-        if (hasToken) {
-          console.log('Removing tokens due to 401 error from:', error.config.url);
-          sessionStorage.removeItem('token');
-          sessionStorage.removeItem('user');
-          localStorage.removeItem('token');
-          localStorage.removeItem('user');
-        } else {
-          console.log('No token to remove for 401 error from:', error.config.url);
+      // Skip refresh for login/refresh-token endpoints to avoid infinite loops
+      if (originalRequest.url?.includes('/auth/refresh-token') || 
+          originalRequest.url?.includes('/auth/login')) {
+        return Promise.reject(error);
+      }
+
+      try {
+        console.log('Attempting to refresh token...');
+        
+        // Get refresh token from storage
+        const storedAuth = 
+          JSON.parse(localStorage.getItem('auth') || 'null') || 
+          JSON.parse(sessionStorage.getItem('auth') || 'null');
+        
+        if (!storedAuth?.refreshToken) {
+          console.warn('No refresh token available');
+          throw new Error('No refresh token available');
         }
-      } else {
-        console.log('Skipping token removal for:', error.config.url, { 
-          isLoginRequest, 
-          isPublicEndpoint, 
-          isFirstLoad 
-        });
-        // ไม่ลบ token แต่ให้ retry request หลังจาก delay สักครู่
-        if (isFirstLoad) {
-          console.log('First load request failed, will retry later');
+
+        // Call refresh token endpoint
+        const response = await authAPI.refreshToken(storedAuth.refreshToken);
+        
+        if (response.success && response.data) {
+          const { accessToken, refreshToken, expiresIn } = response.data;
+          
+          // Update stored tokens
+          const newTokens = { 
+            accessToken, 
+            refreshToken, 
+            expiresIn: expiresIn || 60 * 15, // Default 15 minutes
+            tokenType: 'Bearer' 
+          };
+          
+          // Update tokens in the same storage as before
+          const storage = localStorage.getItem('auth') ? localStorage : sessionStorage;
+          storage.setItem('auth', JSON.stringify(newTokens));
+          
+          // Update axios default headers
+          api.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`;
+          
+          // Update the original request with new token
+          originalRequest.headers['Authorization'] = `Bearer ${accessToken}`;
+          
+          // Retry the original request
+          return api(originalRequest);
         }
+      } catch (refreshError) {
+        console.error('Token refresh failed:', refreshError);
+        // If refresh fails, clear auth data and redirect to login
+        localStorage.removeItem('auth');
+        localStorage.removeItem('user');
+        sessionStorage.removeItem('auth');
+        sessionStorage.removeItem('user');
+        window.location.href = '/login';
       }
     }
+    
     return Promise.reject(error);
   }
 );
@@ -231,6 +268,25 @@ api.interceptors.response.use(
 export const authAPI = {
   login: async (credentials: LoginRequest): Promise<ApiResponse<AuthResponse>> => {
     const response = await api.post('/api/auth/login', credentials);
+    // Map the response to match the expected AuthResponse structure
+    if (response.data.data) {
+      const { user, token, accessToken, refreshToken, expiresIn } = response.data.data;
+      return {
+        ...response.data,
+        data: {
+          user,
+          token: accessToken || token, // Fallback to token for backward compatibility
+          accessToken: accessToken || token,
+          refreshToken,
+          expiresIn
+        }
+      };
+    }
+    return response.data;
+  },
+
+  refreshToken: async (refreshToken: string): Promise<ApiResponse<{ accessToken: string; refreshToken: string; expiresIn: number }>> => {
+    const response = await api.post('/api/auth/refresh-token', { refreshToken });
     return response.data;
   },
 

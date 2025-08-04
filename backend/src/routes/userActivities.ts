@@ -62,12 +62,10 @@ router.get('/', requireAdmin, async (req: IAuthenticatedRequest, res) => {
       userId: activity.userId,
       userName: activity.user?.name || 'Unknown User',
       userEmail: activity.user?.email || 'unknown@example.com',
-      action: activity.type, // Changed from action to type
-      description: activity.message, // Changed from description to message
-      ipAddress: activity.ipAddress || 'N/A',
-      userAgent: activity.userAgent || 'N/A',
-      createdAt: activity.createdAt.toISOString(),
-      status: activity.severity || 'SUCCESS' // Changed from status to severity
+      type: activity.type,
+      message: activity.message,
+      severity: activity.severity,
+      createdAt: activity.createdAt.toISOString()
     }));
 
     res.json({
@@ -125,12 +123,10 @@ router.get('/user/:userId', requireAdmin, async (req: IAuthenticatedRequest, res
       userId: activity.userId,
       userName: activity.user?.name || 'Unknown User',
       userEmail: activity.user?.email || 'unknown@example.com',
-      action: activity.action,
-      description: activity.description,
-      ipAddress: activity.ipAddress || 'N/A',
-      userAgent: activity.userAgent || 'N/A',
-      createdAt: activity.createdAt.toISOString(),
-      status: activity.status || 'SUCCESS'
+      type: activity.type,
+      message: activity.message,
+      severity: activity.severity,
+      createdAt: activity.createdAt.toISOString()
     }));
 
     res.json({

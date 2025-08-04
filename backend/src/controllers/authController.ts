@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { body, validationResult } from 'express-validator';
 import { prisma } from '../utils/database';
-import { hashPassword, comparePassword, generateToken } from '../utils/auth';
+import { hashPassword, comparePassword, generateTokenPair } from '../utils/auth';
 import { ICreateUser, ILoginRequest, IAuthResponse } from '../types';
 import crypto from 'crypto';
 
@@ -55,15 +55,26 @@ export const register = async (req: Request, res: Response): Promise<void> => {
       }
     });
 
-    // Generate token
-    const token = generateToken(user);
+    // Generate token pair
+    const { accessToken, refreshToken, expiresIn } = generateTokenPair(user);
+
+    // Store refresh token in database
+    await prisma.refreshToken.create({
+      data: {
+        token: refreshToken,
+        userId: user.id,
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days from now
+      }
+    });
 
     res.status(201).json({
       success: true,
       message: 'User registered successfully',
       data: {
         user,
-        token
+        accessToken,
+        refreshToken,
+        expiresIn
       }
     });
   } catch (error) {
@@ -113,10 +124,25 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    // Generate token
-    const token = generateToken(user);
+    // Generate token pair
+    const { accessToken, refreshToken, expiresIn } = generateTokenPair(user);
 
-    res.json({
+    // Store refresh token in database
+    await prisma.refreshToken.create({
+      data: {
+        token: refreshToken,
+        userId: user.id,
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days from now
+      }
+    });
+
+    // Update last login time
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { lastLogin: new Date() }
+    });
+
+    res.status(200).json({
       success: true,
       message: 'Login successful',
       data: {
@@ -126,10 +152,13 @@ export const login = async (req: Request, res: Response): Promise<void> => {
           name: user.name,
           role: user.role,
           isActive: user.isActive,
+          lastLogin: user.lastLogin,
           createdAt: user.createdAt,
           updatedAt: user.updatedAt
         },
-        token
+        accessToken,
+        refreshToken,
+        expiresIn
       }
     });
   } catch (error) {
@@ -228,6 +257,90 @@ export const updateProfile = async (req: Request, res: Response): Promise<void> 
     res.status(500).json({ 
       success: false, 
       message: 'Internal server error' 
+    });
+  }
+};
+
+export const refreshToken = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { refreshToken } = req.body;
+
+    if (!refreshToken) {
+      res.status(400).json({
+        success: false,
+        message: 'Refresh token is required'
+      });
+      return;
+    }
+
+    // Verify the refresh token
+    const storedToken = await prisma.refreshToken.findUnique({
+      where: { token: refreshToken },
+      include: { user: true }
+    });
+
+    // Check if token exists and is not expired
+    if (!storedToken || storedToken.revoked || new Date() > storedToken.expiresAt) {
+      // If token is invalid, clean it up
+      if (storedToken) {
+        await prisma.refreshToken.delete({
+          where: { id: storedToken.id }
+        });
+      }
+      
+      res.status(401).json({
+        success: false,
+        message: 'Invalid or expired refresh token'
+      });
+      return;
+    }
+
+    // Check if user still exists and is active
+    if (!storedToken.user || !storedToken.user.isActive) {
+      // Clean up all user's refresh tokens if user is no longer active
+      await prisma.refreshToken.deleteMany({
+        where: { userId: storedToken.userId }
+      });
+      
+      res.status(401).json({
+        success: false,
+        message: 'User account is no longer active'
+      });
+      return;
+    }
+
+    // Generate new token pair
+    const { accessToken: newAccessToken, refreshToken: newRefreshToken, expiresIn } = 
+      generateTokenPair(storedToken.user);
+
+    // Delete the used refresh token
+    await prisma.refreshToken.delete({
+      where: { id: storedToken.id }
+    });
+
+    // Store the new refresh token
+    await prisma.refreshToken.create({
+      data: {
+        token: newRefreshToken,
+        userId: storedToken.userId,
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days from now
+      }
+    });
+
+    res.status(200).json({
+      success: true,
+      message: 'Token refreshed successfully',
+      data: {
+        accessToken: newAccessToken,
+        refreshToken: newRefreshToken,
+        expiresIn
+      }
+    });
+  } catch (error) {
+    console.error('Error refreshing token:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error'
     });
   }
 };
