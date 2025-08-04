@@ -52,6 +52,7 @@ model User {
   reportedProgresses     ProjectProgress[]      @relation("ProjectProgress_reporter")
   requestedCosts         CostRequest[]          @relation("CostRequestRequester")
   approvedCosts          CostRequest[]          @relation("CostRequestApprover")
+  refreshTokens          RefreshToken[]
 
   @@map("users")
 }
