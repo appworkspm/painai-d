@@ -37,15 +37,15 @@ router.get('/', async (req: IAuthenticatedRequest, res) => {
     // Get cost requests that need attention
     const pendingCostRequests = await prisma.costRequest.findMany({
       where: {
-        requester_id: userId,
-        user_id: userId,
+        requesterId: userId,
+        userId: userId,
         status: 'pending'
       },
       select: {
         id: true,
         title: true,
         amount: true,
-        created_at: true
+        createdAt: true
       }
     });
 

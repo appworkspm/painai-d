@@ -34,18 +34,10 @@ router.get('/', requireAdmin, async (req: IAuthenticatedRequest, res) => {
       };
     }
 
-    // Get activities from activity logs
+    // Get activities from activity logs with user details
     const activities = await prisma.activityLog.findMany({
       where,
-      select: {
-        id: true,
-        userId: true,
-        action: true,
-        description: true,
-        ipAddress: true,
-        userAgent: true,
-        createdAt: true,
-        status: true,
+      include: {
         user: {
           select: {
             id: true,
@@ -70,12 +62,12 @@ router.get('/', requireAdmin, async (req: IAuthenticatedRequest, res) => {
       userId: activity.userId,
       userName: activity.user?.name || 'Unknown User',
       userEmail: activity.user?.email || 'unknown@example.com',
-      action: activity.action,
-      description: activity.description,
+      action: activity.type, // Changed from action to type
+      description: activity.message, // Changed from description to message
       ipAddress: activity.ipAddress || 'N/A',
       userAgent: activity.userAgent || 'N/A',
       createdAt: activity.createdAt.toISOString(),
-      status: activity.status || 'SUCCESS'
+      status: activity.severity || 'SUCCESS' // Changed from status to severity
     }));
 
     res.json({
@@ -173,21 +165,21 @@ router.get('/stats', requireAdmin, async (req: IAuthenticatedRequest, res) => {
       };
     }
 
-    // Get activity counts by action
-    const actionStats = await prisma.activityLog.groupBy({
-      by: ['action'],
+    // Get activity counts by type
+    const typeStats = await prisma.activityLog.groupBy({
+      by: ['type'],
       where,
       _count: {
-        action: true
+        type: true
       }
     });
 
-    // Get activity counts by status
-    const statusStats = await prisma.activityLog.groupBy({
-      by: ['status'],
+    // Get activity counts by severity
+    const severityStats = await prisma.activityLog.groupBy({
+      by: ['severity'],
       where,
       _count: {
-        status: true
+        severity: true
       }
     });
 
@@ -208,13 +200,13 @@ router.get('/stats', requireAdmin, async (req: IAuthenticatedRequest, res) => {
       data: {
         totalActivities,
         uniqueUsers: uniqueUsers.length,
-        actionStats: actionStats.map(stat => ({
-          action: stat.action,
-          count: stat._count.action
+        typeStats: typeStats.map(stat => ({
+          type: stat.type,
+          count: stat._count.type
         })),
-        statusStats: statusStats.map(stat => ({
-          status: stat.status,
-          count: stat._count.status
+        severityStats: severityStats.map(stat => ({
+          severity: stat.severity,
+          count: stat._count.severity
         }))
       }
     });
