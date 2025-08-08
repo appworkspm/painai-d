@@ -100,11 +100,13 @@ export const login = async (req: Request, res: Response): Promise<void> => {
     }
 
     const { email, password }: ILoginRequest = req.body;
+    console.log('Login attempt:', { email });
 
     // Find user
     const user = await prisma.user.findUnique({
       where: { email }
     });
+    console.log('User found:', user);
 
     if (!user || !user.isActive) {
       res.status(401).json({
@@ -116,6 +118,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
 
     // Verify password
     const isPasswordValid = await comparePassword(password, user.password);
+    console.log('Password valid:', isPasswordValid);
     if (!isPasswordValid) {
       res.status(401).json({
         success: false,
@@ -126,21 +129,32 @@ export const login = async (req: Request, res: Response): Promise<void> => {
 
     // Generate token pair
     const { accessToken, refreshToken, expiresIn } = generateTokenPair(user);
+    console.log('Token pair generated:', { accessToken, refreshToken, expiresIn });
 
     // Store refresh token in database
-    await prisma.refreshToken.create({
-      data: {
-        token: refreshToken,
-        userId: user.id,
-        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days from now
-      }
-    });
+    try {
+      await prisma.refreshToken.create({
+        data: {
+          token: refreshToken,
+          userId: user.id,
+          expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days from now
+        }
+      });
+    } catch (err) {
+      console.error('Error creating refresh token:', err);
+      throw err;
+    }
 
     // Update last login time
-    await prisma.user.update({
-      where: { id: user.id },
-      data: { lastLogin: new Date() }
-    });
+    try {
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { lastLogin: new Date() }
+      });
+    } catch (err) {
+      console.error('Error updating last login:', err);
+      throw err;
+    }
 
     res.status(200).json({
       success: true,
@@ -165,7 +179,8 @@ export const login = async (req: Request, res: Response): Promise<void> => {
     console.error('Login error:', error);
     res.status(500).json({
       success: false,
-      message: 'Internal server error'
+      message: 'Internal server error',
+      error: error instanceof Error ? error.message : error
     });
   }
 };
