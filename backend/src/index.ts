@@ -129,7 +129,7 @@ app.get('/api', (req, res) => {
 });
 
 // Serve static files from frontend build
-const frontendPath = path.join(__dirname, '../frontend');
+const frontendPath = path.join(__dirname, '../frontend/dist');
 const indexPath = path.join(frontendPath, 'index.html');
 
 // Check if frontend build exists
