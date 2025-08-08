@@ -1,25 +1,26 @@
-model ProjectCost {
-  id          String   @id @default(uuid()) @db.Uuid
-  projectId   String   @db.Uuid
-  amount      Decimal  @db.Decimal(15, 2)
-  description String?
-  date        DateTime @default(now())
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  project     Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  costRequest CostRequest? @relation(fields: [costRequestId], references: [id], onDelete: SetNull)
-  costRequestId String?    @db.Uuid
-
-  @@map("project_costs")
-}
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
   directUrl = env("DIRECT_URL")
+}
+
+model ProjectCost {
+  id            String       @id @default(uuid()) @db.Uuid
+  projectId     String       @db.Uuid
+  amount        Decimal      @db.Decimal(15, 2)
+  description   String?
+  date          DateTime     @default(now())
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  costRequestId String?      @db.Uuid
+  costRequest   CostRequest? @relation(fields: [costRequestId], references: [id])
+  project       Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@map("project_costs")
 }
 
 model User {
@@ -42,17 +43,17 @@ model User {
   department             String?                @db.VarChar(255)
   activityLogs           ActivityLog[]
   assignedTasks          ProjectTask[]          @relation("TaskAssignee")
+  projectTeamMembers     ProjectTeamMember[]
   timesheetEditHistories TimesheetEditHistory[] @relation("UserEditHistory")
   userRoles              UserRole[]
-  projectTeamMembers     ProjectTeamMember[]
+  approvedCosts          CostRequest[]          @relation("CostRequestApprover")
+  requestedCosts         CostRequest[]          @relation("CostRequestRequester")
+  reportedProgresses     ProjectProgress[]      @relation("ProjectProgress_reporter")
   projectTimelines       ProjectTimeline[]
   projects               Project[]              @relation("ProjectManager")
+  refreshTokens          RefreshToken[]
   approved_timesheets    Timesheet[]            @relation("TimesheetApprover")
   timesheets             Timesheet[]
-  reportedProgresses     ProjectProgress[]      @relation("ProjectProgress_reporter")
-  requestedCosts         CostRequest[]          @relation("CostRequestRequester")
-  approvedCosts          CostRequest[]          @relation("CostRequestApprover")
-  refreshTokens          RefreshToken[]
 
   @@map("users")
 }
@@ -76,12 +77,12 @@ model Project {
   escalated          Boolean?            @default(false)
   projectTasks       ProjectTask[]
   projectTeamMembers ProjectTeamMember[]
+  costRequests       CostRequest[]
+  projectCosts       ProjectCost[]
+  projectProgresses  ProjectProgress[]
   projectTimelines   ProjectTimeline[]
   manager            User?               @relation("ProjectManager", fields: [managerId], references: [id])
   timesheets         Timesheet[]
-  projectProgresses  ProjectProgress[]
-  projectCosts       ProjectCost[]
-  costRequests       CostRequest[]
 
   @@map("projects")
 }
@@ -191,24 +192,24 @@ model ProjectTask {
 }
 
 model CostRequest {
-  id            String    @id @default(uuid()) @db.Uuid
-  title         String
-  description   String?
-  amount        Decimal   @db.Decimal(15, 2)
-  currency      String    @default("THB")
-  category      String
-  status        String    @default("PENDING")
-  requestedAt   DateTime  @default(now())
-  approvedAt    DateTime?
-  rejectedAt    DateTime?
+  id              String        @id @default(uuid()) @db.Uuid
+  title           String
+  description     String?
+  amount          Decimal       @db.Decimal(15, 2)
+  currency        String        @default("THB")
+  category        String
+  status          String        @default("PENDING")
+  requestedAt     DateTime      @default(now())
+  approvedAt      DateTime?
+  rejectedAt      DateTime?
   rejectionReason String?
-  projectId     String    @db.Uuid
-  requesterId   String    @db.Uuid
-  approverId    String?   @db.Uuid
-  project       Project   @relation(fields: [projectId], references: [id])
-  requester     User      @relation("CostRequestRequester", fields: [requesterId], references: [id])
-  approver      User?     @relation("CostRequestApprover", fields: [approverId], references: [id])
-  projectCosts  ProjectCost[]
+  projectId       String        @db.Uuid
+  requesterId     String        @db.Uuid
+  approverId      String?       @db.Uuid
+  approver        User?         @relation("CostRequestApprover", fields: [approverId], references: [id])
+  project         Project       @relation(fields: [projectId], references: [id])
+  requester       User          @relation("CostRequestRequester", fields: [requesterId], references: [id])
+  projectCosts    ProjectCost[]
 
   @@map("cost_requests")
 }
@@ -247,16 +248,16 @@ model ProjectProgress {
 }
 
 model ProjectTimeline {
-  id          String   @id @default(uuid()) @db.Uuid
-  projectId   String   @db.Uuid
+  id          String    @id @default(uuid()) @db.Uuid
+  projectId   String    @db.Uuid
   action      String
   description String
-  userId      String   @db.Uuid
+  userId      String    @db.Uuid
   metadata    Json?
   dueDate     DateTime?
-  createdAt   DateTime @default(now())
-  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  user        User     @relation(fields: [userId], references: [id])
+  createdAt   DateTime  @default(now())
+  project     Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user        User      @relation(fields: [userId], references: [id])
 
   @@map("project_timelines")
 }
