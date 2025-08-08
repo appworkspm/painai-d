@@ -514,7 +514,7 @@ const AdminPanel: React.FC = () => {
       
       if (response.success) {
         showNotification('success', 'Settings saved successfully');
-        addActivityLog('settings_updated', 'System settings updated', 'info');
+      addActivityLog('settings_updated', 'System settings updated', 'info');
       } else {
         showNotification('error', response.message || 'Failed to save settings');
       }
@@ -550,12 +550,12 @@ const AdminPanel: React.FC = () => {
       });
 
       // Update local state for immediate UI feedback
-      const newLog = {
-        id: Date.now(),
-        type,
-        message,
+    const newLog = {
+      id: Date.now(),
+      type,
+      message,
         severity,
-        timestamp: new Date(),
+      timestamp: new Date(),
         user: user?.name || 'System'
       };
       setActivityLogs(prev => [newLog, ...prev.slice(0, 9)]);
