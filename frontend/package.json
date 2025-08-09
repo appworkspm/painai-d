@@ -12,6 +12,10 @@
     "test": "playwright test"
   },
   "dependencies": {
+    "vite": "^7.1.1",
+    "vite-plugin-html": "3.2.2",
+    "vite-plugin-pwa": "^1.0.1",
+    "@vitejs/plugin-react": "^4.1.1",
     "@ant-design/charts": "^2.6.0",
     "@ant-design/colors": "^7.2.1",
     "@ant-design/icons": "^5.6.1",
@@ -78,10 +82,7 @@
     "sharp": "^0.34.3",
     "svg-to-img": "^2.0.9",
     "tailwindcss": "^3.4.17",
-    "typescript": "^5.2.2",
-    "vite": "^7.1.1",
-    "vite-plugin-html": "3.2.2",
-    "vite-plugin-pwa": "^1.0.1"
+    "typescript": "^5.2.2"
   },
   "keywords": [
     "react",
