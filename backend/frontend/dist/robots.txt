@@ -1,0 +1,36 @@
+# Allow all search engines to crawl the website
+User-agent: *
+Allow: /
+
+# Sitemap location
+Sitemap: https://painai.onrender.com/sitemap.xml
+
+# Disallow crawling of admin and API routes
+Disallow: /admin/
+Disallow: /api/
+Disallow: /_next/
+Disallow: /_src/
+Disallow: /_astro/
+Disallow: /*.json$
+Disallow: /*?*
+
+# Crawl-delay for all crawlers (30 requests per second)
+Crawl-delay: 3.3
+
+# Specific rules for search engines
+User-agent: Googlebot
+Allow: /
+Crawl-delay: 2.0
+
+# Block AI bots from crawling and training on the content
+User-agent: CCBot
+Disallow: /
+
+User-agent: ChatGPT-User
+Disallow: /
+
+User-agent: GPTBot
+Disallow: /
+
+User-agent: anthropic-ai
+Disallow: /
