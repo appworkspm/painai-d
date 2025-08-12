@@ -111,7 +111,7 @@ app.get('/api', (req, res) => {
         }
     });
 });
-const frontendPath = path_1.default.join(__dirname, '../frontend');
+const frontendPath = path_1.default.join(__dirname, '../frontend/dist');
 const indexPath = path_1.default.join(frontendPath, 'index.html');
 if (process.env.NODE_ENV === 'production') {
     try {

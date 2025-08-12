@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.validateLogin = exports.validateRegister = exports.forgotPassword = exports.updateProfile = exports.getProfile = exports.login = exports.register = void 0;
+exports.validateLogin = exports.validateRegister = exports.forgotPassword = exports.refreshToken = exports.updateProfile = exports.getProfile = exports.login = exports.register = void 0;
 const express_validator_1 = require("express-validator");
 const database_1 = require("../utils/database");
 const auth_1 = require("../utils/auth");
@@ -48,13 +48,22 @@ const register = async (req, res) => {
                 updatedAt: true
             }
         });
-        const token = (0, auth_1.generateToken)(user);
+        const { accessToken, refreshToken, expiresIn } = (0, auth_1.generateTokenPair)(user);
+        await database_1.prisma.refreshToken.create({
+            data: {
+                token: refreshToken,
+                userId: user.id,
+                expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+            }
+        });
         res.status(201).json({
             success: true,
             message: 'User registered successfully',
             data: {
                 user,
-                token
+                accessToken,
+                refreshToken,
+                expiresIn
             }
         });
     }
@@ -79,9 +88,11 @@ const login = async (req, res) => {
             return;
         }
         const { email, password } = req.body;
+        console.log('Login attempt:', { email });
         const user = await database_1.prisma.user.findUnique({
             where: { email }
         });
+        console.log('User found:', user);
         if (!user || !user.isActive) {
             res.status(401).json({
                 success: false,
@@ -90,6 +101,7 @@ const login = async (req, res) => {
             return;
         }
         const isPasswordValid = await (0, auth_1.comparePassword)(password, user.password);
+        console.log('Password valid:', isPasswordValid);
         if (!isPasswordValid) {
             res.status(401).json({
                 success: false,
@@ -97,8 +109,32 @@ const login = async (req, res) => {
             });
             return;
         }
-        const token = (0, auth_1.generateToken)(user);
-        res.json({
+        const { accessToken, refreshToken, expiresIn } = (0, auth_1.generateTokenPair)(user);
+        console.log('Token pair generated:', { accessToken, refreshToken, expiresIn });
+        try {
+            await database_1.prisma.refreshToken.create({
+                data: {
+                    token: refreshToken,
+                    userId: user.id,
+                    expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+                }
+            });
+        }
+        catch (err) {
+            console.error('Error creating refresh token:', err);
+            throw err;
+        }
+        try {
+            await database_1.prisma.user.update({
+                where: { id: user.id },
+                data: { lastLogin: new Date() }
+            });
+        }
+        catch (err) {
+            console.error('Error updating last login:', err);
+            throw err;
+        }
+        res.status(200).json({
             success: true,
             message: 'Login successful',
             data: {
@@ -108,10 +144,13 @@ const login = async (req, res) => {
                     name: user.name,
                     role: user.role,
                     isActive: user.isActive,
+                    lastLogin: user.lastLogin,
                     createdAt: user.createdAt,
                     updatedAt: user.updatedAt
                 },
-                token
+                accessToken,
+                refreshToken,
+                expiresIn
             }
         });
     }
@@ -119,7 +158,8 @@ const login = async (req, res) => {
         console.error('Login error:', error);
         res.status(500).json({
             success: false,
-            message: 'Internal server error'
+            message: 'Internal server error',
+            error: error instanceof Error ? error.message : error
         });
     }
 };
@@ -203,6 +243,89 @@ const updateProfile = async (req, res) => {
     }
 };
 exports.updateProfile = updateProfile;
+const refreshToken = async (req, res) => {
+    try {
+        console.log('Refresh token request received:', req.body);
+        const { refreshToken } = req.body;
+        if (!refreshToken) {
+            console.log('No refresh token provided');
+            res.status(400).json({
+                success: false,
+                message: 'Refresh token is required'
+            });
+            return;
+        }
+        console.log('Looking up refresh token in database...');
+        const storedToken = await database_1.prisma.refreshToken.findUnique({
+            where: { token: refreshToken },
+            include: { user: true }
+        });
+        console.log('Stored token found:', !!storedToken);
+        const now = new Date();
+        const isTokenExpired = storedToken && storedToken.expiresAt < now;
+        if (!storedToken || storedToken.revoked || isTokenExpired) {
+            console.log('Invalid or expired token. Revoked:', storedToken?.revoked, 'Expired:', isTokenExpired);
+            if (storedToken) {
+                await database_1.prisma.refreshToken.delete({
+                    where: { id: storedToken.id }
+                });
+            }
+            res.status(401).json({
+                success: false,
+                message: 'Invalid or expired refresh token',
+                code: 'INVALID_REFRESH_TOKEN'
+            });
+            return;
+        }
+        if (!storedToken.user || !storedToken.user.isActive) {
+            console.log('User not found or inactive');
+            await database_1.prisma.refreshToken.deleteMany({
+                where: { userId: storedToken.userId }
+            });
+            res.status(401).json({
+                success: false,
+                message: 'User account is no longer active',
+                code: 'USER_INACTIVE'
+            });
+            return;
+        }
+        console.log('Generating new token pair...');
+        const { accessToken: newAccessToken, refreshToken: newRefreshToken, expiresIn } = (0, auth_1.generateTokenPair)(storedToken.user);
+        console.log('Deleting old refresh token...');
+        await database_1.prisma.refreshToken.delete({
+            where: { id: storedToken.id }
+        });
+        console.log('Creating new refresh token...');
+        await database_1.prisma.refreshToken.create({
+            data: {
+                token: newRefreshToken,
+                userId: storedToken.userId,
+                expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+                revoked: false
+            }
+        });
+        console.log('Tokens refreshed successfully');
+        res.status(200).json({
+            success: true,
+            message: 'Token refreshed successfully',
+            data: {
+                accessToken: newAccessToken,
+                refreshToken: newRefreshToken,
+                expiresIn
+            }
+        });
+    }
+    catch (error) {
+        console.error('Error refreshing token:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Internal server error',
+            error: error instanceof Error ? error.message : 'Unknown error',
+            code: 'INTERNAL_SERVER_ERROR'
+        });
+    }
+};
+exports.refreshToken = refreshToken;
 const forgotPassword = async (req, res) => {
     try {
         const { email } = req.body;

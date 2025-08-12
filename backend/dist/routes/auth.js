@@ -6,6 +6,7 @@ const auth_1 = require("../middleware/auth");
 const router = (0, express_1.Router)();
 router.post('/register', authController_1.validateRegister, authController_1.register);
 router.post('/login', authController_1.validateLogin, authController_1.login);
+router.post('/refresh-token', authController_1.refreshToken);
 router.post('/forgot-password', authController_1.forgotPassword);
 router.get('/profile', auth_1.authenticate, authController_1.getProfile);
 router.patch('/profile', auth_1.authenticate, authController_1.updateProfile);

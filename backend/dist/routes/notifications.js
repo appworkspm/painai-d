@@ -17,7 +17,7 @@ router.get('/', async (req, res) => {
         }
         const pendingTimesheets = await prisma.timesheet.findMany({
             where: {
-                userId: userId,
+                user_id: userId,
                 status: 'submitted'
             },
             select: {
@@ -34,14 +34,23 @@ router.get('/', async (req, res) => {
         const pendingCostRequests = await prisma.costRequest.findMany({
             where: {
                 requesterId: userId,
-                userId: userId,
-                status: 'pending'
+                status: 'PENDING'
             },
             select: {
                 id: true,
                 title: true,
                 amount: true,
-                createdAt: true
+                requestedAt: true,
+                requester: {
+                    select: {
+                        name: true
+                    }
+                },
+                project: {
+                    select: {
+                        name: true
+                    }
+                }
             }
         });
         const notifications = [];

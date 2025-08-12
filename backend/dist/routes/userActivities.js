@@ -28,15 +28,7 @@ router.get('/', auth_1.requireAdmin, async (req, res) => {
         }
         const activities = await prisma.activityLog.findMany({
             where,
-            select: {
-                id: true,
-                userId: true,
-                action: true,
-                description: true,
-                ipAddress: true,
-                userAgent: true,
-                createdAt: true,
-                status: true,
+            include: {
                 user: {
                     select: {
                         id: true,
@@ -57,12 +49,10 @@ router.get('/', auth_1.requireAdmin, async (req, res) => {
             userId: activity.userId,
             userName: activity.user?.name || 'Unknown User',
             userEmail: activity.user?.email || 'unknown@example.com',
-            action: activity.action,
-            description: activity.description,
-            ipAddress: activity.ipAddress || 'N/A',
-            userAgent: activity.userAgent || 'N/A',
-            createdAt: activity.createdAt.toISOString(),
-            status: activity.status || 'SUCCESS'
+            type: activity.type,
+            message: activity.message,
+            severity: activity.severity,
+            createdAt: activity.createdAt.toISOString()
         }));
         res.json({
             success: true,
@@ -115,12 +105,10 @@ router.get('/user/:userId', auth_1.requireAdmin, async (req, res) => {
             userId: activity.userId,
             userName: activity.user?.name || 'Unknown User',
             userEmail: activity.user?.email || 'unknown@example.com',
-            action: activity.action,
-            description: activity.description,
-            ipAddress: activity.ipAddress || 'N/A',
-            userAgent: activity.userAgent || 'N/A',
-            createdAt: activity.createdAt.toISOString(),
-            status: activity.status || 'SUCCESS'
+            type: activity.type,
+            message: activity.message,
+            severity: activity.severity,
+            createdAt: activity.createdAt.toISOString()
         }));
         res.json({
             success: true,
@@ -151,18 +139,18 @@ router.get('/stats', auth_1.requireAdmin, async (req, res) => {
                 lte: new Date(endDate)
             };
         }
-        const actionStats = await prisma.activityLog.groupBy({
-            by: ['action'],
+        const typeStats = await prisma.activityLog.groupBy({
+            by: ['type'],
             where,
             _count: {
-                action: true
+                type: true
             }
         });
-        const statusStats = await prisma.activityLog.groupBy({
-            by: ['status'],
+        const severityStats = await prisma.activityLog.groupBy({
+            by: ['severity'],
             where,
             _count: {
-                status: true
+                severity: true
             }
         });
         const totalActivities = await prisma.activityLog.count({ where });
@@ -178,13 +166,13 @@ router.get('/stats', auth_1.requireAdmin, async (req, res) => {
             data: {
                 totalActivities,
                 uniqueUsers: uniqueUsers.length,
-                actionStats: actionStats.map(stat => ({
-                    action: stat.action,
-                    count: stat._count.action
+                typeStats: typeStats.map(stat => ({
+                    type: stat.type,
+                    count: stat._count.type
                 })),
-                statusStats: statusStats.map(stat => ({
-                    status: stat.status,
-                    count: stat._count.status
+                severityStats: severityStats.map(stat => ({
+                    severity: stat.severity,
+                    count: stat._count.severity
                 }))
             }
         });
