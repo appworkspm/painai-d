@@ -3,12 +3,5 @@ export declare const logActivity: ({ userId, type, message, severity, }: {
     type: string;
     message: string;
     severity?: string;
-}) => Promise<{
-    id: string;
-    createdAt: Date;
-    userId: string | null;
-    type: string;
-    message: string;
-    severity: string;
-}>;
+}) => Promise<any>;
 //# sourceMappingURL=activityLogService.d.ts.map
